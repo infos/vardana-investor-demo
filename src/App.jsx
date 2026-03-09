@@ -1292,7 +1292,7 @@ function EpicFHIRSection() {
     <div style={{ background: c.card, borderRadius: c.radius, border: `1.5px solid ${c.tealLight}`, boxShadow: c.shadowMd, overflow: "hidden" }}>
       <button onClick={fetchEpicData} style={{ width: "100%", padding: "14px 18px", border: "none", background: expanded ? "linear-gradient(135deg, #0D3B66 0%, #0F766E 100%)" : "linear-gradient(135deg, #F0FDFA 0%, #CCFBF1 100%)", cursor: "pointer", fontFamily: c.font, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.3s" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 16, width: 28, height: 28, borderRadius: 8, background: expanded ? "rgba(255,255,255,0.15)" : c.teal, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🏥</span>
+          <span style={{ width: 28, height: 28, borderRadius: 8, background: expanded ? "rgba(255,255,255,0.15)" : c.teal, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🏥</span>
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: expanded ? "white" : c.text }}>Epic EHR Integration</div>
             <div style={{ fontSize: 11, color: expanded ? "rgba(255,255,255,0.7)" : c.textLight }}>Live FHIR R4 · Backend Systems API</div>
