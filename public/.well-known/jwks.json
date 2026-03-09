@@ -1,0 +1,12 @@
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "n": "3mAI_g57CLdVaKICDBsWU-L3Y0vvTcmUHB8baYDyQs7-QSdTpNGYRwJZWtNQjmTQKuIACB0rEk9PVNFwWHcjudMxjFtcUrt4TDHMu11SN0rJdL_u6gJfWaEXO9J7XQBA9WcnWrN8iYj5hSAn23jbk4Fkm4FP-napopmq7gSqSzainQCjnQAL5bqWyUkmeg-gBYIZpfpJT1ZByQWP8MyK1aeOOKSI7lMCZe_KtEggr6CsXg2HJISBDeWnUHPWwm2Qo7TprVnm3051w0k3J9oEq_G1w03UnMHk1U24I8L_SdGPB9-E0FjdIwlnHEpG86XmaxOGIbao7A9p9P7guV_DVQ",
+      "e": "AQAB",
+      "kid": "vardana-epic-1",
+      "use": "sig",
+      "alg": "RS384"
+    }
+  ]
+}
