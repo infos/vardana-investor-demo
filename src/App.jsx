@@ -1261,6 +1261,153 @@ function AIReasoningCard({ onOutreach }) {
   );
 }
 
+// ── Epic FHIR Live Integration ──
+function EpicFHIRSection() {
+  const [epicData, setEpicData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [expanded, setExpanded] = useState(false);
+  const [fetchTime, setFetchTime] = useState(null);
+
+  const fetchEpicData = async () => {
+    if (epicData) { setExpanded(!expanded); return; }
+    setLoading(true);
+    setError(null);
+    const start = Date.now();
+    try {
+      const res = await fetch("/api/epic-fhir?patientId=erXuFYUfucBZaryVksYEcMg3&resource=all");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setEpicData(data);
+      setFetchTime(Date.now() - start);
+      setExpanded(true);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ background: c.card, borderRadius: c.radius, border: `1.5px solid ${c.tealLight}`, boxShadow: c.shadowMd, overflow: "hidden" }}>
+      <button onClick={fetchEpicData} style={{ width: "100%", padding: "14px 18px", border: "none", background: expanded ? "linear-gradient(135deg, #0D3B66 0%, #0F766E 100%)" : "linear-gradient(135deg, #F0FDFA 0%, #CCFBF1 100%)", cursor: "pointer", fontFamily: c.font, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.3s" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 16, width: 28, height: 28, borderRadius: 8, background: expanded ? "rgba(255,255,255,0.15)" : c.teal, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🏥</span>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: expanded ? "white" : c.text }}>Epic EHR Integration</div>
+            <div style={{ fontSize: 11, color: expanded ? "rgba(255,255,255,0.7)" : c.textLight }}>Live FHIR R4 · Backend Systems API</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {loading && <span style={{ fontSize: 12, color: c.teal, fontWeight: 600 }}>Connecting...</span>}
+          {epicData && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: expanded ? "rgba(16,185,129,0.2)" : c.greenLight, color: expanded ? "#6EE7B7" : c.green, border: `1px solid ${expanded ? "rgba(16,185,129,0.3)" : "#A7F3D0"}` }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor", animation: "pulse 2s infinite" }} />LIVE
+          </span>}
+          <span style={{ fontSize: 14, color: expanded ? "white" : c.textLight, transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "rotate(0)" }}>⌄</span>
+        </div>
+      </button>
+
+      {error && <div style={{ padding: "10px 18px", fontSize: 12, color: c.red, background: c.redBg }}>{error}</div>}
+
+      {expanded && epicData && (
+        <div style={{ padding: "16px 18px" }}>
+          {fetchTime && <div style={{ fontSize: 11, color: c.textLight, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 4, height: 4, borderRadius: "50%", background: c.green }} />
+            Fetched from Epic sandbox in {fetchTime}ms · {epicData.conditions.length + epicData.medications.length + epicData.labs.length + epicData.diagnosticReports.length} resources
+          </div>}
+
+          {/* Patient Demographics */}
+          <div style={{ padding: "12px 14px", background: c.borderLight, borderRadius: 10, marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Patient Demographics · FHIR R4</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+              {[
+                { label: "Name", value: epicData.patient?.name },
+                { label: "DOB", value: epicData.patient?.dob },
+                { label: "Gender", value: epicData.patient?.gender },
+                { label: "Location", value: epicData.patient?.address },
+              ].map((f, i) => (
+                <div key={i} style={{ fontSize: 12 }}>
+                  <span style={{ color: c.textLight }}>{f.label}: </span>
+                  <span style={{ fontWeight: 600, color: c.text }}>{f.value || "—"}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Conditions */}
+          {epicData.conditions.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Conditions ({epicData.conditions.length})</div>
+              {epicData.conditions.map((cond, i) => (
+                <div key={i} style={{ fontSize: 13, color: c.textMed, padding: "4px 0", borderBottom: i < epicData.conditions.length - 1 ? `1px solid ${c.borderLight}` : "none", display: "flex", justifyContent: "space-between" }}>
+                  <span>{cond.text}</span>
+                  <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 4, background: cond.status === "active" ? c.redLight : c.greenLight, color: cond.status === "active" ? c.red : c.green, fontWeight: 600 }}>{cond.status}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Medications */}
+          {epicData.medications.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Medications ({epicData.medications.length})</div>
+              {epicData.medications.map((med, i) => (
+                <div key={i} style={{ fontSize: 13, color: c.textMed, padding: "4px 0", borderBottom: i < epicData.medications.length - 1 ? `1px solid ${c.borderLight}` : "none" }}>
+                  <span style={{ fontWeight: 600, color: c.text }}>{med.name}</span>
+                  {med.dosage && <div style={{ fontSize: 11, color: c.textLight, marginTop: 2 }}>{med.dosage}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Labs */}
+          {epicData.labs.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Lab Results ({epicData.labs.length})</div>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: c.font }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${c.border}` }}>
+                    {["Test", "Value", "Date"].map((h, i) => (
+                      <th key={i} style={{ padding: "6px 4px", textAlign: "left", fontSize: 10, fontWeight: 700, color: c.textLight, textTransform: "uppercase" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {epicData.labs.map((lab, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${c.borderLight}` }}>
+                      <td style={{ padding: "6px 4px", fontWeight: 600, color: c.text }}>{lab.name}</td>
+                      <td style={{ padding: "6px 4px", color: c.accent, fontWeight: 700 }}>{lab.value} {lab.unit}</td>
+                      <td style={{ padding: "6px 4px", color: c.textLight }}>{lab.date}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Diagnostic Reports */}
+          {epicData.diagnosticReports.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Diagnostic Reports ({epicData.diagnosticReports.length})</div>
+              {epicData.diagnosticReports.map((dr, i) => (
+                <div key={i} style={{ fontSize: 12, color: c.textMed, padding: "4px 0", borderBottom: i < epicData.diagnosticReports.length - 1 ? `1px solid ${c.borderLight}` : "none", display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontWeight: 600, color: c.text }}>{dr.name}</span>
+                  <span style={{ color: c.textLight }}>{dr.date}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ marginTop: 12, padding: "8px 12px", background: c.tealLight + "60", borderRadius: 8, fontSize: 11, color: c.teal, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+            <span>🔒</span> Authenticated via SMART on FHIR Backend Services · JWT + RS384 · FHIR R4
+          </div>
+        </div>
+      )}
+      <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
+    </div>
+  );
+}
+
 // ── Supporting Data ──
 function SupportingData() {
   const [openSection, setOpenSection] = useState(null);
@@ -1380,6 +1527,8 @@ function SupportingData() {
           ))}
         </div>
       </div>
+
+      <EpicFHIRSection />
     </div>
   );
 }
