@@ -1031,10 +1031,23 @@ function VoiceCallDemo({ patient, onComplete }) {
       try {
         userText = await startListening();
       } catch {
-        // Speech recognition failed — wait for text input
+        // Speech recognition failed — wait for text input with 90s timeout
         setIsListening(false);
         setActiveSpeaker(null);
-        userText = await new Promise(resolve => { window._liveTextResolve = resolve; });
+        userText = await Promise.race([
+          new Promise(resolve => { window._liveTextResolve = resolve; }),
+          new Promise(resolve => setTimeout(() => resolve(null), 90000))
+        ]);
+        if (!userText) {
+          // Timed out waiting for input — end gracefully
+          if (!cancelRef.current) {
+            const timeoutMsg = `It seems like we may have lost our connection, ${firstName}. No worries — I'll share everything from our conversation with your care team. Take care!`;
+            setTranscript(p => [...p, { speaker: "AI", text: timeoutMsg }]);
+            await speakAI(timeoutMsg, true);
+            setUiState("done");
+          }
+          return;
+        }
       }
       if (cancelRef.current) return;
       setActiveSpeaker(null);
@@ -1049,8 +1062,8 @@ function VoiceCallDemo({ patient, onComplete }) {
         aiData = await sendToAPI(history, turn, 12);
       } catch (err) {
         setIsThinking(false);
-        setApiError(`AI error: ${err.message}. Switching to scripted demo.`);
-        addTimer(() => { if (!cancelRef.current) { setApiError(""); startElevenLabs(); } }, 2000);
+        // Graceful exit on API error — play failsafe goodbye
+        await playFailsafeAndEnd();
         return;
       }
       setIsThinking(false);
@@ -1089,7 +1102,17 @@ function VoiceCallDemo({ patient, onComplete }) {
         break;
       }
     }
-    if (!cancelRef.current) setUiState("done");
+
+    // Graceful ending when max turns reached without AI saying goodbye
+    if (!cancelRef.current) {
+      const coordName = PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
+      const closingMsg = `Well ${firstName}, it was great checking in with you today. I've noted everything from our conversation, and your care coordinator ${coordName.split(',')[0]} will have a full summary. If anything changes or you have concerns before your next check-in, don't hesitate to reach out. Take care!`;
+      setTranscript(p => [...p, { speaker: "AI", text: closingMsg }]);
+      history.push({ role: "assistant", content: closingMsg });
+      setConversationHistory([...history]);
+      await speakAI(closingMsg, true);
+      setUiState("done");
+    }
   };
 
   const startLiveDemo = async () => {
@@ -1130,14 +1153,42 @@ function VoiceCallDemo({ patient, onComplete }) {
     if (audioRef.current) audioRef.current.volume = next ? 0 : 1;
   };
 
-  const endCall = () => {
-    cancelRef.current = true;
+  const endCall = async () => {
+    // Stop listening/recognition immediately
+    if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     if (window.speechSynthesis) window.speechSynthesis.cancel();
-    if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
     clearTimers();
     setIsListening(false);
     setIsThinking(false);
+    cancelRef.current = true;
+
+    // Speak a brief goodbye before ending
+    const pfName = patient?.name?.split(' ')[0] || 'there';
+    const goodbyeMsg = `Thank you for your time, ${pfName}. Your care team will have a summary of our conversation. Take care!`;
+    setTranscript(p => [...p, { speaker: "AI", text: goodbyeMsg }]);
+    setActiveSpeaker("AI");
+    try {
+      const url = await fetchAudio(goodbyeMsg, "AI");
+      const audio = new Audio(url);
+      audio.volume = mutedRef.current ? 0 : 1;
+      audioRef.current = audio;
+      await new Promise(resolve => {
+        audio.onended = resolve;
+        audio.onerror = resolve;
+        setTimeout(resolve, 15000);
+        audio.play().catch(resolve);
+      });
+    } catch {
+      // If TTS fails, try browser fallback
+      const synth = window.speechSynthesis;
+      if (synth) {
+        const utt = new SpeechSynthesisUtterance(goodbyeMsg);
+        utt.rate = 0.87; utt.pitch = 0.82;
+        utt.volume = mutedRef.current ? 0 : 1;
+        await new Promise(resolve => { utt.onend = utt.onerror = resolve; synth.cancel(); synth.speak(utt); });
+      }
+    }
     setActiveSpeaker(null);
     setUiState("done");
   };
