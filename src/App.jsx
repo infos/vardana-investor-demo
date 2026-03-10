@@ -29,69 +29,258 @@ const BP_DATA = [
   { date: "Feb 28", sys: 136, dia: 86 },
 ];
 
+// DOB verification — fuzzy-match spoken dates like "July 14th 1958", "7/14/58", "07-14-1958"
+const MONTH_NAMES = { january: 1, february: 2, march: 3, april: 4, may: 5, june: 6, july: 7, august: 8, september: 9, october: 10, november: 11, december: 12 };
+function validateDOB(spoken, expected) {
+  if (!spoken) return false;
+  const s = spoken.toLowerCase().replace(/[,.\-/]/g, ' ').replace(/\b(st|nd|rd|th)\b/g, '').replace(/\s+/g, ' ').trim();
+  const tokens = s.split(' ');
+  let month = null, day = null, year = null;
+  for (const t of tokens) {
+    if (MONTH_NAMES[t]) { month = MONTH_NAMES[t]; continue; }
+    const n = parseInt(t, 10);
+    if (isNaN(n)) continue;
+    if (!month && n >= 1 && n <= 12 && !day) { month = n; }
+    else if (month && !day && n >= 1 && n <= 31) { day = n; }
+    else if (month && day && !year) { year = n < 100 ? n + 1900 : n; }
+    else if (!month && !day && n >= 1 && n <= 12) { month = n; }
+  }
+  return month === expected.month && day === expected.day && year === expected.year;
+}
+
 const ROSTER = [
-  { id: 1, name: "Sarah Chen", age: 67, day: 15, phase: "Stabilize → Optimize", risk: 72, riskLevel: "high", alert: true, alertType: "Decompensation risk", alertTime: "38 min ago", trend: "worsening", scheduledOutreach: null },
-  { id: 2, name: "Robert Williams", age: 74, day: 52, phase: "Optimize", risk: 34, riskLevel: "low", alert: false, trend: "stable", scheduledOutreach: "Today 2:00 PM · Voice" },
-  { id: 3, name: "Maria Gonzalez", age: 61, day: 8, phase: "Stabilize", risk: 45, riskLevel: "moderate", alert: false, trend: "improving", scheduledOutreach: "Tomorrow 10:00 AM · SMS" },
-  { id: 4, name: "James Thompson", age: 79, day: 83, phase: "Maintain", risk: 22, riskLevel: "low", alert: false, trend: "stable", scheduledOutreach: null },
+  { id: 1, name: "Sarah Chen", age: 67, gender: "F", dob: { month: 7, day: 14, year: 1958 }, day: 15, phase: "Stabilize → Optimize", risk: 72, riskLevel: "high", alert: true, alertType: "Decompensation risk", alertTime: "38 min ago", trend: "worsening", scheduledOutreach: null, doctor: "Dr. James Harrington" },
+  { id: 2, name: "Robert Williams", age: 74, gender: "M", dob: { month: 3, day: 22, year: 1951 }, day: 52, phase: "Optimize", risk: 34, riskLevel: "low", alert: false, trend: "stable", scheduledOutreach: "Today 2:00 PM · Voice", doctor: "Dr. Sarah Patel" },
+  { id: 3, name: "Maria Gonzalez", age: 61, gender: "F", dob: { month: 11, day: 5, year: 1964 }, day: 8, phase: "Stabilize", risk: 45, riskLevel: "moderate", alert: false, trend: "improving", scheduledOutreach: "Tomorrow 10:00 AM · SMS", doctor: "Dr. Michael Torres" },
+  { id: 4, name: "James Thompson", age: 79, gender: "M", dob: { month: 9, day: 18, year: 1946 }, day: 83, phase: "Maintain", risk: 22, riskLevel: "low", alert: false, trend: "stable", scheduledOutreach: null, doctor: "Dr. Lisa Chen" },
 ];
+
+// ── Patient Clinical Data (Robert, Maria, James) ──
+const PATIENT_CLINICAL_DATA = {
+  2: {
+    conditions: ["HFpEF (EF 52%)", "Hypertension", "Atrial Fibrillation", "Hyperlipidemia"],
+    medications: [
+      { name: "Metoprolol Succinate", dose: "50mg", timing: "Once daily (morning)" },
+      { name: "Lisinopril", dose: "20mg", timing: "Once daily (morning)" },
+      { name: "Apixaban", dose: "5mg", timing: "Twice daily" },
+      { name: "Atorvastatin", dose: "40mg", timing: "Once daily (evening)" },
+      { name: "Spironolactone", dose: "25mg", timing: "Once daily" },
+    ],
+    vitals: {
+      weight: { current: 201.4, previous: 201.8, unit: "lbs", trend: "stable", status: "good" },
+      bp: { sys: 128, dia: 76, status: "good", note: "Well controlled" },
+      hr: { value: 68, status: "good", note: "Normal, rate-controlled" },
+      spo2: { value: 97, status: "good" },
+    },
+    labs: [
+      { name: "BNP", value: "145 pg/mL", date: "Feb 24", status: "borderline" },
+      { name: "Creatinine", value: "1.1 mg/dL", date: "Feb 24", status: "good" },
+      { name: "Potassium", value: "4.3 mEq/L", date: "Feb 24", status: "good" },
+      { name: "INR", value: "N/A (on Apixaban)", date: "—", status: "good" },
+    ],
+    recentCheckins: [
+      { date: "Yesterday, 9:00 AM", summary: "Routine check-in. Weight stable, no symptoms reported. Robert continues daily walks and reports improved exercise tolerance." },
+      { date: "Mar 5, 2:00 PM", summary: "Discussed medication adherence. All medications taken on time. Blood pressure well controlled. Phase 2 optimization progressing well." },
+    ],
+    allergy: "Penicillin",
+    coordinator: "Rachel Kim, RN",
+  },
+  3: {
+    conditions: ["HFrEF (EF 35%)", "Type 2 Diabetes", "COPD (mild)", "Chronic Kidney Disease Stage 2"],
+    medications: [
+      { name: "Entresto", dose: "49/51mg", timing: "Twice daily" },
+      { name: "Carvedilol", dose: "6.25mg", timing: "Twice daily (with meals)" },
+      { name: "Jardiance", dose: "10mg", timing: "Once daily (morning)" },
+      { name: "Furosemide", dose: "20mg", timing: "Once daily (morning)" },
+      { name: "Tiotropium", dose: "18mcg", timing: "Once daily (inhaler)" },
+      { name: "Metformin", dose: "500mg", timing: "Twice daily (with meals)" },
+    ],
+    vitals: {
+      weight: { current: 158.6, previous: 159.4, unit: "lbs", trend: "improving", status: "good" },
+      bp: { sys: 134, dia: 82, status: "borderline", note: "Slightly elevated" },
+      hr: { value: 78, status: "good", note: "Normal range" },
+      spo2: { value: 95, status: "borderline" },
+    },
+    labs: [
+      { name: "BNP", value: "380 pg/mL", date: "Mar 3", status: "elevated" },
+      { name: "HbA1c", value: "7.2%", date: "Mar 3", status: "borderline" },
+      { name: "eGFR", value: "72 mL/min", date: "Mar 3", status: "borderline" },
+      { name: "Potassium", value: "4.6 mEq/L", date: "Mar 3", status: "good" },
+    ],
+    recentCheckins: [
+      { date: "Today, 8:30 AM", summary: "Maria reported mild shortness of breath when climbing stairs. Weight improving (down 0.8 lbs). Reminded about low-sodium diet. Care team monitoring closely." },
+      { date: "Yesterday, 9:00 AM", summary: "Checked in on medication tolerance. Maria adjusting well to Entresto. Blood sugar slightly high — discussed carb intake." },
+    ],
+    allergy: "Sulfa drugs, Codeine",
+    coordinator: "David Park, RN",
+  },
+  4: {
+    conditions: ["HFpEF (EF 48%)", "Hypertension (controlled)", "Type 2 Diabetes (controlled)", "Osteoarthritis"],
+    medications: [
+      { name: "Losartan", dose: "50mg", timing: "Once daily (morning)" },
+      { name: "Metoprolol Tartrate", dose: "25mg", timing: "Twice daily" },
+      { name: "Empagliflozin", dose: "10mg", timing: "Once daily (morning)" },
+      { name: "Metformin", dose: "1000mg", timing: "Twice daily (with meals)" },
+      { name: "Acetaminophen", dose: "500mg", timing: "As needed for joint pain" },
+    ],
+    vitals: {
+      weight: { current: 176.2, previous: 176.0, unit: "lbs", trend: "stable", status: "good" },
+      bp: { sys: 124, dia: 74, status: "good", note: "Excellent control" },
+      hr: { value: 72, status: "good", note: "Normal sinus rhythm" },
+      spo2: { value: 98, status: "good" },
+    },
+    labs: [
+      { name: "BNP", value: "95 pg/mL", date: "Feb 28", status: "good" },
+      { name: "HbA1c", value: "6.4%", date: "Feb 28", status: "good" },
+      { name: "Creatinine", value: "1.0 mg/dL", date: "Feb 28", status: "good" },
+      { name: "Potassium", value: "4.1 mEq/L", date: "Feb 28", status: "good" },
+    ],
+    recentCheckins: [
+      { date: "Mar 8, 10:00 AM", summary: "Routine check-in. James feeling great, walking 30 minutes daily. All vitals within target. On track for Phase 3 graduation." },
+      { date: "Mar 5, 10:00 AM", summary: "Discussed transition plan for post-90-day management. James understands ongoing monitoring importance. Very compliant with all medications." },
+    ],
+    allergy: "None known",
+    coordinator: "Rachel Kim, RN",
+  },
+};
 
 const VOICE_TRANSCRIPT = [
   { t: 1200, speaker: "AI", text: "Good morning Sarah. This is the Vardana care concierge calling for your check-in. I hope you're having a good morning." },
   { t: 4500, speaker: "Sarah", text: "Oh hi. Yes, go ahead." },
-  { t: 6500, speaker: "AI", text: "I'm checking in because I noticed your weight went up a couple of pounds over the last two days. How are you feeling this morning?" },
-  { t: 10500, speaker: "Sarah", text: "Now that you mention it — I do feel more tired than usual. And my ankles look a little puffy." },
-  { t: 14000, speaker: "AI", text: "Thank you for telling me that, Sarah. That's really important. Let me pull up your recent readings..." },
-  { t: 17500, speaker: "AI", text: "Your weight has increased 2.3 pounds in 48 hours, and your blood pressure is a little higher than your best last week. Combined with the ankle swelling and fatigue, I want to make sure your care team is aware today." },
-  { t: 23000, speaker: "Sarah", text: "Is that serious? Should I be worried?" },
-  { t: 25500, speaker: "AI", text: "We're being careful, not alarmed. I'm letting Rachel Kim know right now so she can follow up with you and your cardiologist today. Are you having any trouble breathing, especially when lying flat?" },
-  { t: 31000, speaker: "Sarah", text: "A little. Had to use an extra pillow last night." },
-  { t: 33500, speaker: "AI", text: "That's helpful. I've sent a priority alert to your coordinator with everything we discussed. Rachel will call you today. In the meantime, please stay on your medications and keep sodium low. Do you have any questions?" },
-  { t: 39000, speaker: "Sarah", text: "No, I think I understand. Thank you." },
-  { t: 41000, speaker: "AI", text: "You're welcome Sarah. We'll be in touch very soon. Take care." },
+  { t: 6200, speaker: "AI", text: "Before we begin, I just need to verify your identity. Can you tell me your date of birth?" },
+  { t: 9200, speaker: "Sarah", text: "July 14th, 1958." },
+  { t: 10800, speaker: "AI", text: "Perfect, thank you Sarah. You're verified." },
+  { t: 13500, speaker: "AI", text: "I'm checking in because I noticed your weight went up a couple of pounds over the last two days. How are you feeling this morning?" },
+  { t: 17500, speaker: "Sarah", text: "Now that you mention it — I do feel more tired than usual. And my ankles look a little puffy." },
+  { t: 21000, speaker: "AI", text: "Thank you for telling me that, Sarah. That's really important. Let me pull up your recent readings..." },
+  { t: 24500, speaker: "AI", text: "Your weight has increased 2.3 pounds in 48 hours, and your blood pressure is a little higher than your best last week. Combined with the ankle swelling and fatigue, I want to make sure your care team is aware today." },
+  { t: 30000, speaker: "Sarah", text: "Is that serious? Should I be worried?" },
+  { t: 32500, speaker: "AI", text: "We're being careful, not alarmed. I'm letting Rachel Kim know right now so she can follow up with you and your cardiologist today. Are you having any trouble breathing, especially when lying flat?" },
+  { t: 38000, speaker: "Sarah", text: "A little. Had to use an extra pillow last night." },
+  { t: 40500, speaker: "AI", text: "That's helpful. I've sent a priority alert to your coordinator with everything we discussed. Rachel will call you today. In the meantime, please stay on your medications and keep sodium low. Do you have any questions?" },
+  { t: 46000, speaker: "Sarah", text: "No, I think I understand. Thank you." },
+  { t: 48000, speaker: "AI", text: "You're welcome Sarah. We'll be in touch very soon. Take care." },
 ];
 
 const FHIR_QUERIES = [
-  { t: 14200, method: "GET", path: "/Patient/sarah-chen-001", result: "Patient demographics loaded", color: "#2563EB" },
-  { t: 15000, method: "GET", path: "/Observation?patient=sarah-chen&code=body-weight&_sort=-date&_count=14", result: "14 weight readings · Latest: 187.7 lbs", color: "#2563EB" },
-  { t: 15700, method: "GET", path: "/Observation?patient=sarah-chen&code=blood-pressure", result: "BP trend: 126/78 → 136/86 mmHg", color: "#D97706" },
-  { t: 16300, method: "GET", path: "/CarePlan?patient=sarah-chen&status=active", result: "Day 15/90 · Phase: Stabilize → Optimize", color: "#2563EB" },
-  { t: 16900, method: "GET", path: "/Condition?patient=sarah-chen", result: "HFrEF, CKD3a, HTN, T2DM", color: "#2563EB" },
-  { t: 34200, method: "POST", path: "/Flag", result: "P1 Alert created · ID: flag-sc-001", color: "#DC2626" },
-  { t: 34800, method: "POST", path: "/Communication", result: "Coordinator alert dispatched → Rachel Kim", color: "#DC2626" },
+  { t: 9400, method: "GET", path: "/Patient?identifier=VRD-2026-001", result: "Identity verified · DOB matches ✓", color: "#059669" },
+  { t: 21200, method: "GET", path: "/Patient/sarah-chen-001", result: "Patient demographics loaded", color: "#2563EB" },
+  { t: 22000, method: "GET", path: "/Observation?patient=sarah-chen&code=body-weight&_sort=-date&_count=14", result: "14 weight readings · Latest: 187.7 lbs", color: "#2563EB" },
+  { t: 22700, method: "GET", path: "/Observation?patient=sarah-chen&code=blood-pressure", result: "BP trend: 126/78 → 136/86 mmHg", color: "#D97706" },
+  { t: 23300, method: "GET", path: "/CarePlan?patient=sarah-chen&status=active", result: "Day 15/90 · Phase: Stabilize → Optimize", color: "#2563EB" },
+  { t: 23900, method: "GET", path: "/Condition?patient=sarah-chen", result: "HFrEF, CKD3a, HTN, T2DM", color: "#2563EB" },
+  { t: 41200, method: "POST", path: "/Flag", result: "P1 Alert created · ID: flag-sc-001", color: "#DC2626" },
+  { t: 41800, method: "POST", path: "/Communication", result: "Coordinator alert dispatched → Rachel Kim", color: "#DC2626" },
 ];
 
-// ── Theme ──
+// ── Design System Tokens ──
+const DS = {
+  fontDisplay: "'DM Serif Display', 'Georgia', serif",
+  fontSans: "'DM Sans', 'system-ui', sans-serif",
+  fontMono: "'IBM Plex Mono', 'Courier New', monospace",
+  space: (n) => `${n * 4}px`,
+  text: {
+    xs:   { fontSize: 11, lineHeight: 1.4, letterSpacing: "0.02em" },
+    sm:   { fontSize: 13, lineHeight: 1.5, letterSpacing: "0.01em" },
+    base: { fontSize: 15, lineHeight: 1.55, letterSpacing: 0 },
+    md:   { fontSize: 17, lineHeight: 1.45, letterSpacing: "-0.01em" },
+    lg:   { fontSize: 20, lineHeight: 1.35, letterSpacing: "-0.015em" },
+    xl:   { fontSize: 24, lineHeight: 1.25, letterSpacing: "-0.02em" },
+    "2xl":{ fontSize: 32, lineHeight: 1.2,  letterSpacing: "-0.025em" },
+    "3xl":{ fontSize: 42, lineHeight: 1.1,  letterSpacing: "-0.03em" },
+  },
+  color: {
+    slate: {
+      950: "#0C1420", 900: "#131E2E", 800: "#1C2B40", 700: "#253550",
+      600: "#3A4F6B", 500: "#556882", 400: "#7A90A8", 300: "#A8BAC8",
+      200: "#D1DCE6", 100: "#EBF0F5", 50: "#F5F7FA",
+    },
+    amber: {
+      700: "#92400E", 600: "#B45309", 500: "#D97706", 400: "#F59E0B",
+      300: "#FCD34D", 100: "#FEF3C7", 50: "#FFFBEB",
+    },
+    jade: {
+      700: "#065F46", 600: "#047857", 500: "#059669", 400: "#34D399",
+      100: "#D1FAE5", 50: "#ECFDF5",
+    },
+    crimson: {
+      700: "#991B1B", 600: "#DC2626", 500: "#EF4444", 100: "#FEE2E2", 50: "#FEF2F2",
+    },
+    canvas: { warm: "#F6F4F0", cool: "#F1F4F8", white: "#FFFFFF" },
+    border: { subtle: "#E4E9EF", default: "#D1D9E0", strong: "#A8BAC8" },
+  },
+  shadow: {
+    xs: "0 1px 2px rgba(12,20,32,0.06)",
+    sm: "0 2px 6px rgba(12,20,32,0.07), 0 1px 2px rgba(12,20,32,0.04)",
+    md: "0 4px 16px rgba(12,20,32,0.08), 0 2px 4px rgba(12,20,32,0.04)",
+    lg: "0 8px 32px rgba(12,20,32,0.10), 0 2px 8px rgba(12,20,32,0.05)",
+    alert: "0 0 0 1px rgba(220,38,38,0.15), 0 8px 32px rgba(220,38,38,0.12)",
+    inset: "inset 0 1px 3px rgba(12,20,32,0.08)",
+  },
+  radius: { sm: 6, md: 10, lg: 16, xl: 20, full: 9999 },
+  transition: { fast: "all 0.12s ease", base: "all 0.2s ease", slow: "all 0.35s ease" },
+};
+
+// ── Theme Compat Layer (maps old c.X to DS values) ──
 const c = {
-  bg: "#F4F5F7",
-  card: "#FFFFFF",
-  navy: "#0F1A2A",
-  navyLight: "#1B2D45",
-  text: "#1A1F36",
-  textMed: "#4E5D78",
-  textLight: "#8492A6",
-  accent: "#2563EB",
-  accentLight: "#EFF4FF",
-  green: "#059669",
-  greenLight: "#ECFDF5",
-  greenBg: "#F0FDF4",
-  orange: "#D97706",
-  orangeLight: "#FEF3C7",
-  orangeBg: "#FFFBEB",
-  red: "#DC2626",
-  redLight: "#FEE2E2",
-  redBg: "#FEF2F2",
-  purple: "#7C3AED",
-  purpleLight: "#F3E8FF",
-  teal: "#0D9488",
-  tealLight: "#CCFBF1",
-  border: "#E2E8F0",
-  borderLight: "#F1F5F9",
-  shadow: "0 1px 3px rgba(0,0,0,0.08)",
-  shadowMd: "0 4px 12px rgba(0,0,0,0.06)",
-  shadowLg: "0 8px 24px rgba(0,0,0,0.08)",
-  radius: 12,
-  font: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+  bg: DS.color.canvas.cool, card: DS.color.canvas.white,
+  navy: DS.color.slate[900], navyLight: DS.color.slate[800],
+  text: DS.color.slate[800], textMed: DS.color.slate[600], textLight: DS.color.slate[400],
+  accent: DS.color.amber[500], accentLight: DS.color.amber[100],
+  green: DS.color.jade[500], greenLight: DS.color.jade[100], greenBg: DS.color.jade[50],
+  orange: DS.color.amber[500], orangeLight: DS.color.amber[100], orangeBg: DS.color.amber[50],
+  red: DS.color.crimson[600], redLight: DS.color.crimson[100], redBg: DS.color.crimson[50],
+  purple: "#8B5CF6", purpleLight: "#EDE9FE",
+  teal: DS.color.jade[500], tealLight: DS.color.jade[100],
+  border: DS.color.border.subtle, borderLight: DS.color.slate[100],
+  shadow: DS.shadow.xs, shadowMd: DS.shadow.sm, shadowLg: DS.shadow.md,
+  radius: DS.radius.lg, font: DS.fontSans,
+};
+
+// ── SVG Icon System ──
+const Icon = ({ name, size = 16, color = "currentColor", strokeWidth = 1.5 }) => {
+  const paths = {
+    home:     <><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></>,
+    phone:    <><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></>,
+    heart:    <><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0l-.9 1-.9-1a5.5 5.5 0 00-7.8 7.8l.9.9L12 21l7.7-7.7.9-.9a5.5 5.5 0 000-7.8z"/></>,
+    chat:     <><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></>,
+    activity: <><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></>,
+    alert:    <><path d="M10.3 3.4L1.4 18a2 2 0 001.7 3h17.8a2 2 0 001.7-3L12.8 3.4a1.9 1.9 0 00-2.5 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>,
+    check:    <><polyline points="20 6 9 17 4 12"/></>,
+    arrow:    <><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></>,
+    pill:     <><path d="M10.5 20H4a2 2 0 01-2-2V6a2 2 0 012-2h16a2 2 0 012 2v4"/><path d="M13.5 17.5a4.5 4.5 0 109 0 4.5 4.5 0 00-9 0z"/><path d="M13.5 17.5h9"/></>,
+    scale:    <><path d="M12 3v1M6 6l-2-2M18 6l2-2M3 12h18M5 12l1.5-4h11L19 12M7 16h10l1 5H6z"/></>,
+    flag:     <><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></>,
+    sun:      <><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></>,
+    trend_up: <><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></>,
+    users:    <><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></>,
+    calendar: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>,
+    clipboard:<><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></>,
+    lock:     <><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></>,
+    flask:    <><path d="M9 3h6M10 3v7.4a2 2 0 01-.5 1.3L4 19a2 2 0 001.5 3h13a2 2 0 001.5-3l-5.5-7.3a2 2 0 01-.5-1.3V3"/></>,
+    shield:   <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></>,
+    stethoscope:<><path d="M4.8 2.6a4 4 0 01.5 7.9v2a4 4 0 008 0v-2a2.5 2.5 0 115 0v1.5"/><circle cx="19.8" cy="16" r="2.5"/></>,
+    droplet:  <><path d="M12 2.7c-4.5 5-7 8.5-7 11.8a7 7 0 0014 0c0-3.3-2.5-6.8-7-11.8z"/></>,
+    smartphone:<><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></>,
+    info:     <><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></>,
+    bar_chart:<><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>,
+    sms:      <><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></>,
+  };
+
+  return (
+    <svg
+      width={size} height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ flexShrink: 0 }}
+    >
+      {paths[name] || <circle cx="12" cy="12" r="10"/>}
+    </svg>
+  );
 };
 
 // ── Utility ──
@@ -105,7 +294,7 @@ function RiskBadge({ level, score }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 6, fontSize: 12, fontWeight: 700, background: s.bg, color: s.text, border: `1px solid ${s.border}` }}>
       <span style={{ width: 6, height: 6, borderRadius: "50%", background: s.text }} />
-      {score}/100
+      <span style={{ fontFamily: DS.fontDisplay }}>{score}</span>/100
     </span>
   );
 }
@@ -121,21 +310,22 @@ function TrendArrow({ trend }) {
 }
 
 // ── Header ──
-function Header({ onBack, patientSelected }) {
+function Header({ onBack, patientSelected, onSwitchRole }) {
   return (
-    <div style={{ background: `linear-gradient(135deg, ${c.navy} 0%, ${c.navyLight} 100%)`, color: "white", padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 100 }}>
+    <div style={{ background: DS.color.slate[950], color: "white", padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 100 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {patientSelected && onBack && (
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "white", borderRadius: 8, padding: "5px 10px", cursor: "pointer", fontSize: 13, fontFamily: c.font, fontWeight: 600 }}>← Back</button>
         )}
-        <span style={{ fontSize: 20, fontWeight: 800, fontFamily: c.font, letterSpacing: "-0.03em" }}>
-          Vardana<span style={{ color: "#38BDF8" }}>.</span>
+        <span style={{ fontSize: 20, fontWeight: 400, fontFamily: DS.fontDisplay, letterSpacing: "-0.02em" }}>
+          Vardana<span style={{ color: DS.color.amber[400] }}>.</span>
         </span>
         <span style={{ fontSize: 12, fontWeight: 500, opacity: 0.5, borderLeft: "1px solid rgba(255,255,255,0.2)", paddingLeft: 12 }}>
           Care Coordinator
         </span>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 13 }}>
+        {onSwitchRole && <button onClick={onSwitchRole} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontSize: 11, fontFamily: c.font, fontWeight: 600 }}>Switch Role</button>}
         <span style={{ opacity: 0.6 }}>Nurse Rachel Kim</span>
         <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12 }}>RK</div>
       </div>
@@ -144,7 +334,7 @@ function Header({ onBack, patientSelected }) {
 }
 
 // ── Roster View ──
-function RosterView({ onSelect }) {
+function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic }) {
   const alertCount = ROSTER.filter(p => p.alert).length;
   return (
     <div style={{ maxWidth: 960, margin: "0 auto", padding: 24 }}>
@@ -160,7 +350,7 @@ function RosterView({ onSelect }) {
 
       {alertCount > 0 && (
         <div style={{ background: c.redBg, border: `1px solid ${c.redLight}`, borderRadius: c.radius, padding: "14px 18px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: c.redLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🔴</div>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: c.redLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="alert" size={18} color={c.red} /></div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: c.red, fontFamily: c.font }}>{alertCount} patient{alertCount !== 1 && "s"} need{alertCount === 1 && "s"} attention</div>
             <div style={{ fontSize: 13, color: c.textMed, fontFamily: c.font }}>AI has flagged clinical concerns requiring coordinator review</div>
@@ -174,12 +364,12 @@ function RosterView({ onSelect }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>{p.name}</span>
-                <span style={{ fontSize: 12, color: c.textLight }}>{p.age}F</span>
+                <span style={{ fontSize: 12, color: c.textLight }}>{p.age}{p.gender || ""}</span>
               </div>
-              {p.alert && <div style={{ fontSize: 13, color: c.red, fontWeight: 600, marginTop: 4 }}>⚡ {p.alertType} — {p.alertTime}</div>}
+              {p.alert && <div style={{ fontSize: 13, color: c.red, fontWeight: 600, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={13} color={c.red} /> {p.alertType} — {p.alertTime}</div>}
               {p.scheduledOutreach && !p.alert && (
                 <div style={{ fontSize: 12, color: c.teal, fontWeight: 600, marginTop: 4 }}>
-                  📅 {p.scheduledOutreach}
+                  <Icon name="calendar" size={12} color={c.teal} style={{ marginRight: 4 }} /> {p.scheduledOutreach}
                 </div>
               )}
             </div>
@@ -190,6 +380,49 @@ function RosterView({ onSelect }) {
             <div style={{ textAlign: "right", minWidth: 80 }}>
               <RiskBadge level={p.riskLevel} score={p.risk} />
               <div style={{ marginTop: 4 }}><TrendArrow trend={p.trend} /></div>
+            </div>
+            <span style={{ fontSize: 16, color: c.textLight }}>›</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Epic EHR Patients */}
+      <div style={{ marginTop: 24 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 16 }}>🏥</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: c.text, fontFamily: c.font }}>Epic EHR Patients</span>
+            <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: c.tealLight, color: c.teal }}>FHIR R4</span>
+          </div>
+          {epicPatients.length === 0 && (
+            <button onClick={onFetchEpic} disabled={epicLoading} style={{ padding: "7px 14px", borderRadius: 8, background: epicLoading ? c.border : DS.color.jade[600], color: "white", border: "none", fontSize: 12, fontWeight: 700, cursor: epicLoading ? "not-allowed" : "pointer", fontFamily: c.font }}>
+              {epicLoading ? "Connecting..." : "Connect to Epic"}
+            </button>
+          )}
+        </div>
+
+        {epicPatients.length === 0 && !epicLoading && (
+          <div style={{ background: c.card, border: `1px dashed ${c.tealLight}`, borderRadius: c.radius, padding: 20, textAlign: "center" }}>
+            <div style={{ fontSize: 13, color: c.textLight }}>Click "Connect to Epic" to import patients from Epic EHR sandbox</div>
+          </div>
+        )}
+        {epicLoading && (
+          <div style={{ background: c.card, border: `1px solid ${c.tealLight}`, borderRadius: c.radius, padding: 20, textAlign: "center" }}>
+            <div style={{ fontSize: 13, color: c.teal, fontWeight: 600 }}>Authenticating via SMART on FHIR...</div>
+          </div>
+        )}
+
+        {epicPatients.map(p => (
+          <button key={p.id} onClick={() => onSelect(p)} style={{ width: "100%", background: c.card, border: `1px solid ${c.tealLight}`, borderLeft: `4px solid ${c.teal}`, borderRadius: c.radius, padding: "16px 20px", cursor: "pointer", fontFamily: c.font, textAlign: "left", boxShadow: c.shadow, display: "flex", alignItems: "center", gap: 16, marginBottom: 8 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>{p.name}</span>
+                {p.age && <span style={{ fontSize: 12, color: c.textLight }}>{p.age}y</span>}
+                <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: c.tealLight, color: c.teal }}>EPIC</span>
+              </div>
+              <div style={{ fontSize: 12, color: c.teal, fontWeight: 600, marginTop: 4 }}>
+                Live EHR data · {p.epicData.conditions.length} conditions · {p.epicData.medications.length} medications
+              </div>
             </div>
             <span style={{ fontSize: 16, color: c.textLight }}>›</span>
           </button>
@@ -209,7 +442,7 @@ function OutreachModal({ patient, onClose, onInitiate }) {
   const channels = [
     {
       id: "voice",
-      icon: "📞",
+      iconName: "phone",
       label: "Voice Call",
       badge: "Demo",
       badgeColor: c.accent,
@@ -218,7 +451,7 @@ function OutreachModal({ patient, onClose, onInitiate }) {
     },
     {
       id: "sms",
-      icon: "💬",
+      iconName: "sms",
       label: "SMS",
       badge: null,
       description: "Patient receives a text with a check-in link. Can complete a structured assessment asynchronously. Message includes an app download link for richer ongoing monitoring.",
@@ -226,7 +459,7 @@ function OutreachModal({ patient, onClose, onInitiate }) {
     },
     {
       id: "app",
-      icon: "📱",
+      iconName: "smartphone",
       label: "App Notification",
       badge: null,
       description: "Push notification to the Vardana patient app. Patient must have the app installed. Opens directly into a guided check-in with full vitals context from Apple/Google Health.",
@@ -241,10 +474,10 @@ function OutreachModal({ patient, onClose, onInitiate }) {
       <div style={{ background: c.card, borderRadius: 16, width: "100%", maxWidth: 560, boxShadow: "0 24px 64px rgba(0,0,0,0.2)", overflow: "hidden", fontFamily: c.font }}>
 
         {/* Header */}
-        <div style={{ background: `linear-gradient(135deg, ${c.navy} 0%, ${c.navyLight} 100%)`, padding: "18px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ background: DS.color.slate[950], padding: "18px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 16, fontWeight: 800, color: "white" }}>Initiate Outreach</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>{patient.name} · Day {patient.day} · Risk {patient.risk}/100</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>{patient.name}{patient.day != null ? ` · Day ${patient.day}` : ""}{patient.risk != null ? ` · Risk ${patient.risk}/100` : ""}</div>
           </div>
           <button onClick={onClose} style={{ background: "rgba(255,255,255,0.12)", border: "none", color: "white", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
         </div>
@@ -252,12 +485,14 @@ function OutreachModal({ patient, onClose, onInitiate }) {
         <div style={{ padding: "20px 24px" }}>
 
           {/* AI Context */}
-          <div style={{ background: c.redBg, border: `1px solid ${c.redLight}`, borderRadius: 10, padding: "12px 14px", marginBottom: 20, display: "flex", gap: 10, alignItems: "flex-start" }}>
-            <span style={{ fontSize: 16, flexShrink: 0 }}>⚡</span>
-            <div style={{ fontSize: 13, color: c.textMed, lineHeight: 1.5 }}>
-              AI recommends contacting this patient within <strong style={{ color: c.red }}>4 hours</strong>. Patient was informed by AI concierge at 7:45 AM that a coordinator would follow up today.
+          {patient.alert && (
+            <div style={{ background: c.redBg, border: `1px solid ${c.redLight}`, borderRadius: 10, padding: "12px 14px", marginBottom: 20, display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <Icon name="alert" size={16} color={c.red} />
+              <div style={{ fontSize: 13, color: c.textMed, lineHeight: 1.5 }}>
+                AI recommends contacting this patient within <strong style={{ color: c.red }}>4 hours</strong>. Patient was informed by AI concierge at 7:45 AM that a coordinator would follow up today.
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Channel selection */}
           <div style={{ fontSize: 12, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Select Channel</div>
@@ -267,7 +502,7 @@ function OutreachModal({ patient, onClose, onInitiate }) {
                 {ch.badge && (
                   <span style={{ position: "absolute", top: -8, right: -4, fontSize: 9, fontWeight: 800, background: ch.badgeColor, color: "white", padding: "2px 6px", borderRadius: 4 }}>{ch.badge}</span>
                 )}
-                <div style={{ fontSize: 20, marginBottom: 4 }}>{ch.icon}</div>
+                <div style={{ marginBottom: 4, display: "flex", justifyContent: "center" }}><Icon name={ch.iconName} size={20} color={channel === ch.id ? c.accent : c.textMed} /></div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: channel === ch.id ? c.accent : c.text }}>{ch.label}</div>
               </button>
             ))}
@@ -284,7 +519,7 @@ function OutreachModal({ patient, onClose, onInitiate }) {
           <div style={{ display: "flex", gap: 8, marginBottom: timing === "scheduled" ? 12 : 20 }}>
             {["now", "scheduled"].map(t => (
               <button key={t} onClick={() => setTiming(t)} style={{ flex: 1, padding: "10px 14px", borderRadius: 10, border: `2px solid ${timing === t ? c.accent : c.border}`, background: timing === t ? c.accentLight : c.card, cursor: "pointer", fontFamily: c.font, fontSize: 13, fontWeight: 700, color: timing === t ? c.accent : c.textMed, transition: "all 0.15s" }}>
-                {t === "now" ? "⚡ Immediately" : "📅 Schedule"}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>{t === "now" ? <><Icon name="alert" size={13} /> Immediately</> : <><Icon name="calendar" size={13} /> Schedule</>}</span>
               </button>
             ))}
           </div>
@@ -303,8 +538,8 @@ function OutreachModal({ patient, onClose, onInitiate }) {
           )}
 
           {/* CTA */}
-          <button onClick={() => onInitiate(channel, timing, schedDate, schedTime)} style={{ width: "100%", padding: "14px", borderRadius: 12, background: channel === "voice" ? `linear-gradient(135deg, ${c.navy} 0%, #1B3A6B 100%)` : `linear-gradient(135deg, ${c.accent} 0%, #1D4ED8 100%)`, color: "white", border: "none", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            {channel === "voice" ? "📞" : channel === "sms" ? "💬" : "📱"}
+          <button onClick={() => onInitiate(channel, timing, schedDate, schedTime)} style={{ width: "100%", padding: "14px", borderRadius: DS.radius.md, background: DS.color.slate[950], color: "white", border: "none", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <Icon name={channel === "voice" ? "phone" : channel === "sms" ? "sms" : "smartphone"} size={16} color="white" />
             {timing === "now" ? `Initiate ${sel.label} Now` : `Schedule ${sel.label} for ${schedTime}`}
           </button>
           <button onClick={onClose} style={{ width: "100%", padding: "10px", marginTop: 8, border: "none", background: "none", color: c.textLight, fontSize: 13, cursor: "pointer", fontFamily: c.font }}>Cancel</button>
@@ -318,24 +553,59 @@ function OutreachModal({ patient, onClose, onInitiate }) {
 function VoiceCallDemo({ patient, onComplete }) {
   // ── state ──
   const [uiState, setUiState] = useState("setup"); // setup|loading|dialing|connected|active|alert|done
-  const [apiKey, setApiKey]   = useState("");
   const [apiError, setApiError] = useState("");
   const [loadProgress, setLoadProgress] = useState(0);
   const [transcript, setTranscript]   = useState([]);
   const [fhirLog, setFhirLog]         = useState([]);
-  const [riskScore, setRiskScore]     = useState(72);
+  const isEpic = patient?.isEpic;
+  const getPatientContext = () => {
+    if (isEpic && patient.epicData) {
+      return {
+        name: patient.name, age: patient.age,
+        gender: patient.epicData.patient?.gender,
+        conditions: patient.epicData.conditions || [],
+        medications: patient.epicData.medications || [],
+        labs: patient.epicData.labs || [],
+        diagnosticReports: patient.epicData.diagnosticReports || [],
+      };
+    }
+    // For non-Epic ROSTER patients (Robert, Maria, James), build context from PATIENT_CLINICAL_DATA
+    const clinicalData = PATIENT_CLINICAL_DATA[patient?.id];
+    if (clinicalData) {
+      return {
+        name: patient.name, age: patient.age,
+        gender: patient.gender === "M" ? "male" : patient.gender === "F" ? "female" : patient.gender,
+        conditions: (clinicalData.conditions || []).map(c => ({ text: c, status: "active" })),
+        medications: (clinicalData.medications || []).map(m => ({ name: m.name, dosage: m.dose })),
+        labs: (clinicalData.labs || []).map(l => ({ name: l.name, value: l.value, unit: "" })),
+      };
+    }
+    // For Sarah Chen (id: 1) — return undefined so the API uses the Sarah-specific prompt
+    return undefined;
+  };
+  const [riskScore, setRiskScore]     = useState(isEpic ? 50 : 72);
   const [alertGenerated, setAlertGenerated] = useState(false);
   const [elapsed, setElapsed]   = useState(0);
   const [waveFrame, setWaveFrame] = useState(0);
   const [muted, setMuted]       = useState(false);
   const [activeSpeaker, setActiveSpeaker] = useState(null);
 
-  const transcriptRef = useRef(null);
-  const audioRef      = useRef(null);   // currently playing Audio element
-  const mutedRef      = useRef(false);
-  const cancelRef     = useRef(false);
-  const blobUrls      = useRef([]);
-  const timersRef     = useRef([]);
+  // ── live demo state ──
+  const [demoMode, setDemoMode]       = useState(null); // "scripted" | "live"
+  const [isListening, setIsListening] = useState(false);
+  const [isThinking, setIsThinking]   = useState(false);
+  const [conversationHistory, setConversationHistory] = useState([]);
+  const [aiAssessment, setAiAssessment] = useState({});
+  const [textInput, setTextInput]     = useState("");
+
+  const transcriptRef   = useRef(null);
+  const audioRef        = useRef(null);   // currently playing Audio element
+  const mutedRef        = useRef(false);
+  const cancelRef       = useRef(false);
+  const blobUrls        = useRef([]);
+  const timersRef       = useRef([]);
+  const recognitionRef  = useRef(null);
+  const failsafeAudio   = useRef(null);   // pre-cached failsafe audio URL
 
   const addTimer = (fn, ms) => { const id = setTimeout(fn, ms); timersRef.current.push(id); return id; };
   const clearTimers = () => { timersRef.current.forEach(clearTimeout); timersRef.current = []; };
@@ -346,6 +616,7 @@ function VoiceCallDemo({ patient, onComplete }) {
     clearTimers();
     audioRef.current?.pause();
     if (window.speechSynthesis) window.speechSynthesis.cancel();
+    if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
     blobUrls.current.forEach(u => URL.revokeObjectURL(u));
   }, []);
 
@@ -362,62 +633,21 @@ function VoiceCallDemo({ patient, onComplete }) {
     if (transcriptRef.current) transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
   }, [transcript]);
 
-  const [showKey, setShowKey]       = useState(false);
-  const [testStatus, setTestStatus] = useState(null); // null | "testing" | "ok" | "error"
-  const [testMsg, setTestMsg]       = useState("");
-
-  // Rachel = calm/clinical AI voice; Charlotte = warm patient voice
-  const EL_VOICES = { AI: "21m00Tcm4TlvDq8ikWAM", Sarah: "XB0fDUnXU5powFXDhCwa" };
-
-  // ── Validate key before burning quota ──
-  const testKey = async (key) => {
-    setTestStatus("testing");
-    setTestMsg("");
-    try {
-      const res = await fetch("https://api.elevenlabs.io/v1/user", {
-        headers: { "xi-api-key": key },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const remaining = data?.subscription?.character_count_limit - data?.subscription?.character_count;
-        setTestStatus("ok");
-        setTestMsg(`✓ Key valid · ${remaining?.toLocaleString() ?? "?"} chars remaining`);
-        return true;
-      }
-      if (res.status === 401) { setTestStatus("error"); setTestMsg("401 Unauthorized — key is invalid or expired."); return false; }
-      if (res.status === 403) { setTestStatus("error"); setTestMsg("403 Forbidden — key may lack TTS permissions."); return false; }
-      setTestStatus("error"); setTestMsg(`HTTP ${res.status} — unexpected response from ElevenLabs.`); return false;
-    } catch (e) {
-      // Network/CORS failure
-      setTestStatus("error");
-      setTestMsg(`Network error: ${e.message}. This environment may block direct API calls — see workaround below.`);
-      return false;
-    }
-  };
-
-  const fetchAudio = async (text, speaker, key) => {
+  // ── Fetch audio via server-side TTS proxy ──
+  const fetchAudioOnce = async (text, speaker) => {
     let res;
     try {
-      res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${EL_VOICES[speaker]}`, {
+      res = await fetch("/api/elevenlabs-tts", {
         method: "POST",
-        headers: { "xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg" },
-        body: JSON.stringify({
-          text,
-          model_id: "eleven_turbo_v2_5",   // faster + cheaper than multilingual_v2
-          voice_settings: {
-            stability:        speaker === "AI" ? 0.70 : 0.55,
-            similarity_boost: 0.80,
-            style:            speaker === "AI" ? 0.10 : 0.35,
-            use_speaker_boost: true,
-          },
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, speaker }),
       });
     } catch (e) {
       throw new Error(`Network error — ${e.message}`);
     }
     if (!res.ok) {
       let detail = "";
-      try { const j = await res.json(); detail = j?.detail?.message || j?.detail || ""; } catch {}
+      try { const j = await res.json(); detail = j?.error || ""; } catch {}
       throw new Error(`HTTP ${res.status}${detail ? ": " + detail : ""}`);
     }
     const url = URL.createObjectURL(await res.blob());
@@ -425,23 +655,46 @@ function VoiceCallDemo({ patient, onComplete }) {
     return url;
   };
 
+  // Retry wrapper — tries ElevenLabs up to 2x before giving up
+  const fetchAudio = async (text, speaker) => {
+    try {
+      return await fetchAudioOnce(text, speaker);
+    } catch (e1) {
+      // Wait briefly then retry once
+      await new Promise(r => setTimeout(r, 800));
+      try {
+        return await fetchAudioOnce(text, speaker);
+      } catch {
+        throw e1; // throw original error so caller can fallback
+      }
+    }
+  };
+
   // ── shared effects that fire at specific line indices ──
+  // Lines: 0=AI greeting, 1=Sarah reply, 2=AI DOB ask, 3=Sarah DOB, 4=AI verified,
+  //        5=AI weight, 6=Sarah symptoms, 7=AI readings, 8=AI analysis, 9=Sarah worried,
+  //        10=AI escalate, 11=Sarah breathing, 12=AI alert+guidance, 13=Sarah thanks, 14=AI goodbye
   const triggerEffects = (idx) => {
-    if (idx === 4) {
+    if (idx === 3) {
+      // DOB verification — show identity check in FHIR log
+      addTimer(() => { if (!cancelRef.current) setFhirLog(p => [...p, FHIR_QUERIES[0]]); }, 200);
+    }
+    if (idx === 7) {
+      // AI pulls up readings — fire clinical FHIR queries
       [0, 520, 1060, 1620, 2200].forEach((d, i) =>
-        addTimer(() => { if (!cancelRef.current) setFhirLog(p => [...p, FHIR_QUERIES[i]]); }, d)
+        addTimer(() => { if (!cancelRef.current) setFhirLog(p => [...p, FHIR_QUERIES[i + 1]]); }, d)
       );
     }
-    if (idx === 5) setRiskScore(78);
-    if (idx === 8) setRiskScore(82);
-    if (idx === 9) {
+    if (idx === 8) setRiskScore(78);
+    if (idx === 11) setRiskScore(82);
+    if (idx === 12) {
       setRiskScore(84);
       addTimer(() => {
         if (cancelRef.current) return;
-        setFhirLog(p => [...p, FHIR_QUERIES[5]]);
+        setFhirLog(p => [...p, FHIR_QUERIES[6]]);
         addTimer(() => {
           if (cancelRef.current) return;
-          setFhirLog(p => [...p, FHIR_QUERIES[6]]);
+          setFhirLog(p => [...p, FHIR_QUERIES[7]]);
           setAlertGenerated(true);
           setUiState("alert");
         }, 900);
@@ -463,9 +716,16 @@ function VoiceCallDemo({ patient, onComplete }) {
       audioRef.current = audio;
 
       await new Promise(resolve => {
-        audio.onended = resolve;
-        audio.onerror = resolve;
-        audio.play().catch(resolve);
+        let done = false;
+        const finish = () => { if (!done) { done = true; resolve(); } };
+        audio.onended = finish;
+        audio.onerror = finish;
+        // Safety: resolve once audio reaches end (backup for onended)
+        audio.ontimeupdate = () => {
+          if (audio.duration > 0 && audio.currentTime >= audio.duration - 0.1) finish();
+        };
+        setTimeout(finish, 30000); // absolute safety — 30s max per line
+        audio.play().catch(finish);
       });
 
       setActiveSpeaker(null);
@@ -476,20 +736,15 @@ function VoiceCallDemo({ patient, onComplete }) {
     if (!cancelRef.current) setUiState("done");
   };
 
-  // ── Start demo with ElevenLabs ──
+  // ── Start demo with ElevenLabs (server-side proxy — no key needed) ──
   const startElevenLabs = async () => {
-    const key = apiKey.trim();
-    if (!key) { setApiError("Paste your ElevenLabs API key above."); return; }
     setApiError("");
-    // Validate key first
-    const valid = await testKey(key);
-    if (!valid) return;
     setUiState("loading");
     try {
       const urls = [];
       for (let i = 0; i < VOICE_TRANSCRIPT.length; i++) {
         if (cancelRef.current) return;
-        urls.push(await fetchAudio(VOICE_TRANSCRIPT[i].text, VOICE_TRANSCRIPT[i].speaker, key));
+        urls.push(await fetchAudio(VOICE_TRANSCRIPT[i].text, VOICE_TRANSCRIPT[i].speaker));
         setLoadProgress(Math.round(((i + 1) / VOICE_TRANSCRIPT.length) * 100));
       }
       launchCall(() => playElevenLabs(urls));
@@ -545,11 +800,371 @@ function VoiceCallDemo({ patient, onComplete }) {
     addTimer(() => { if (!cancelRef.current) { setUiState("active"); playFn(); } }, 3500);
   };
 
+  // ── Live demo functions ──
+  const startListening = () => new Promise((resolve, reject) => {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) return reject(new Error("Speech recognition not available"));
+    const rec = new SpeechRec();
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = "en-US";
+    recognitionRef.current = rec;
+    let gotResult = false;
+    rec.onresult = (e) => { gotResult = true; setIsListening(false); resolve(e.results[0][0].transcript); };
+    rec.onerror = (e) => { setIsListening(false); reject(new Error(e.error)); };
+    rec.onend = () => { setIsListening(false); if (!gotResult) reject(new Error("no-speech")); };
+    setIsListening(true);
+    setActiveSpeaker("Patient");
+    rec.start();
+  });
+
+  const sendToAPI = async (msgs, turn, maxTurns) => {
+    const res = await fetch("/api/voice-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: msgs, patientContext: getPatientContext(), turn, maxTurns }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `API ${res.status}`);
+    }
+    return res.json();
+  };
+
+  const processMetadata = (data) => {
+    if (data.fhirQueries?.length) {
+      data.fhirQueries.forEach((q, i) => {
+        addTimer(() => {
+          if (!cancelRef.current) setFhirLog(p => [...p, { ...q, color: q.method === "POST" ? c.red : "#2563EB" }]);
+        }, i * 400);
+      });
+    }
+    if (data.riskScore) setRiskScore(data.riskScore);
+    if (data.assessment) setAiAssessment(data.assessment);
+    if (data.generateAlert) {
+      setAlertGenerated(true);
+      addTimer(() => { if (!cancelRef.current) setUiState("alert"); }, 600);
+    }
+  };
+
+  // Returns true if Cartesia TTS succeeded, false if it failed
+  // No browser TTS fallback mid-call — voice switching is jarring
+  const speakAI = async (text, allowBrowserFallback = false) => {
+    setActiveSpeaker("AI");
+    try {
+      const url = await fetchAudio(text, "AI");
+      const audio = new Audio(url);
+      audio.volume = mutedRef.current ? 0 : 1;
+      audioRef.current = audio;
+      await new Promise(resolve => {
+        let done = false;
+        const finish = () => { if (!done) { done = true; resolve(); } };
+        audio.onended = finish;
+        audio.onerror = finish;
+        audio.ontimeupdate = () => {
+          if (audio.duration > 0 && audio.currentTime >= audio.duration - 0.1) finish();
+        };
+        setTimeout(finish, 30000);
+        audio.play().catch(finish);
+      });
+      setActiveSpeaker(null);
+      return true;
+    } catch {
+      // Only use browser TTS at the very start of a call (greeting) — never mid-call
+      if (allowBrowserFallback) {
+        const synth = window.speechSynthesis;
+        if (synth) {
+          const utt = new SpeechSynthesisUtterance(text);
+          utt.rate = 0.87; utt.pitch = 0.82;
+          utt.volume = mutedRef.current ? 0 : 1;
+          await new Promise(resolve => { utt.onend = utt.onerror = resolve; synth.cancel(); synth.speak(utt); });
+        }
+        setActiveSpeaker(null);
+        return true; // browser fallback counts as OK for greeting
+      }
+      setActiveSpeaker(null);
+      return false;
+    }
+  };
+
+  // Play the pre-cached failsafe message and end the call gracefully
+  const playFailsafeAndEnd = async () => {
+    const pfName = patient?.name?.split(' ')[0] || 'there';
+    const pfCoord = PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
+    const failsafeText = `I'm sorry ${pfName}, we're experiencing a brief technical issue. Don't worry — I've shared everything from our conversation with your care coordinator ${pfCoord.split(',')[0]}, and they will follow up with you today. Take care.`;
+    setTranscript(p => [...p, { speaker: "AI", text: failsafeText }]);
+    setActiveSpeaker("AI");
+    // Try pre-cached audio first, then fresh fetch, then browser TTS
+    let played = false;
+    if (failsafeAudio.current) {
+      try {
+        const audio = new Audio(failsafeAudio.current);
+        audio.volume = mutedRef.current ? 0 : 1;
+        audioRef.current = audio;
+        await new Promise(resolve => { audio.onended = resolve; audio.onerror = resolve; audio.play().catch(resolve); });
+        played = true;
+      } catch {}
+    }
+    if (!played) {
+      try {
+        const url = await fetchAudioOnce(failsafeText, "AI");
+        const audio = new Audio(url);
+        audio.volume = mutedRef.current ? 0 : 1;
+        await new Promise(resolve => { audio.onended = resolve; audio.onerror = resolve; audio.play().catch(resolve); });
+        played = true;
+      } catch {}
+    }
+    if (!played) {
+      const synth = window.speechSynthesis;
+      if (synth) {
+        const utt = new SpeechSynthesisUtterance(failsafeText);
+        utt.rate = 0.87; utt.pitch = 0.82;
+        utt.volume = mutedRef.current ? 0 : 1;
+        await new Promise(resolve => { utt.onend = utt.onerror = resolve; synth.cancel(); synth.speak(utt); });
+      }
+    }
+    setActiveSpeaker(null);
+    setUiState("done");
+  };
+
+  const runLiveConversation = async () => {
+    const history = [];
+    // Pre-cache failsafe audio in background (don't await — let it load while call runs)
+    const coordinatorName = PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
+    const failsafeMsg = `I'm sorry ${firstName}, we're experiencing a brief technical issue. Don't worry — I've shared everything from our conversation with your care coordinator ${coordinatorName.split(',')[0]}, and they will follow up with you today. Take care.`;
+    fetchAudioOnce(failsafeMsg, "AI")
+      .then(url => { failsafeAudio.current = url; })
+      .catch(() => {}); // silent fail — we'll try again in playFailsafeAndEnd
+
+    // AI opening line
+    const firstName = patient?.name?.split(' ')[0] || 'there';
+    const dayInfo = patient?.day ? ` Day ${patient.day}` : "";
+    const greeting = `Good morning ${firstName}. This is the Vardana care concierge calling for your${dayInfo} check-in. How are you feeling today?`;
+    setTranscript(p => [...p, { speaker: "AI", text: greeting }]);
+    history.push({ role: "assistant", content: greeting });
+    setConversationHistory([...history]);
+    await speakAI(greeting, true); // allow browser fallback for the very first line
+    if (cancelRef.current) return;
+
+    // ── Patient identity verification (DOB) ──
+    // Wait for patient to respond to greeting first
+    let greetReply;
+    try {
+      greetReply = await startListening();
+    } catch {
+      setIsListening(false);
+      setActiveSpeaker(null);
+      greetReply = await new Promise(resolve => { window._liveTextResolve = resolve; });
+    }
+    if (cancelRef.current) return;
+    setActiveSpeaker(null);
+    setTranscript(p => [...p, { speaker: firstName, text: greetReply }]);
+    history.push({ role: "user", content: greetReply });
+    setConversationHistory([...history]);
+
+    // AI asks for DOB — allow up to 3 attempts
+    let dobValid = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const dobAsk = attempt === 0
+        ? `Before we begin, I just need to verify your identity. Can you tell me your date of birth?`
+        : attempt === 1
+          ? `I'm sorry, that didn't match. Could you try your date of birth again?`
+          : `Let me try one more time. What is your date of birth, including the year?`;
+      setTranscript(p => [...p, { speaker: "AI", text: dobAsk }]);
+      history.push({ role: "assistant", content: dobAsk });
+      setConversationHistory([...history]);
+      await speakAI(dobAsk);
+      if (cancelRef.current) return;
+
+      // Listen for DOB response
+      let dobReply;
+      try {
+        dobReply = await startListening();
+      } catch {
+        setIsListening(false);
+        setActiveSpeaker(null);
+        dobReply = await new Promise(resolve => { window._liveTextResolve = resolve; });
+      }
+      if (cancelRef.current) return;
+      setActiveSpeaker(null);
+      setTranscript(p => [...p, { speaker: firstName, text: dobReply }]);
+      history.push({ role: "user", content: dobReply });
+      setConversationHistory([...history]);
+
+      // Validate DOB — use patient-specific DOB
+      const expectedDOB = patient?.dob || { month: 7, day: 14, year: 1958 };
+      const patientIdentifier = (patient?.name || "patient").toLowerCase().replace(/\s+/g, '-');
+      dobValid = validateDOB(dobReply, expectedDOB);
+      setFhirLog(p => [...p, { method: "GET", path: `/Patient?identifier=${patientIdentifier}`, result: dobValid ? "Identity verified · DOB matches ✓" : `Attempt ${attempt + 1}/3 — DOB mismatch ✗`, color: dobValid ? "#059669" : "#DC2626" }]);
+
+      if (dobValid) break;
+    }
+
+    if (!dobValid) {
+      const failMsg = "I wasn't able to verify your identity. For your security, I'm going to connect you with a care team member who can help. Have a good day, and someone will be in touch shortly.";
+      setTranscript(p => [...p, { speaker: "AI", text: failMsg }]);
+      history.push({ role: "assistant", content: failMsg });
+      await speakAI(failMsg);
+      setUiState("done");
+      return;
+    }
+
+    // DOB verified — confirm and transition to check-in (patient-specific opener)
+    let verifiedMsg;
+    if (patient?.id === 1) {
+      verifiedMsg = `Perfect, thank you ${firstName}. You're verified. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. How are you feeling today?`;
+    } else {
+      verifiedMsg = `Perfect, thank you ${firstName}. You're verified. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing. How are you feeling overall?`;
+    }
+    setTranscript(p => [...p, { speaker: "AI", text: verifiedMsg }]);
+    history.push({ role: "assistant", content: verifiedMsg });
+    setConversationHistory([...history]);
+    await speakAI(verifiedMsg);
+    if (cancelRef.current) return;
+
+    // Conversation loop — AI already spoke, so start by listening
+    for (let turn = 0; turn < 12; turn++) {
+      if (cancelRef.current) return;
+
+      // Listen for patient
+      let userText;
+      try {
+        userText = await startListening();
+      } catch {
+        // Speech recognition failed — wait for text input
+        setIsListening(false);
+        setActiveSpeaker(null);
+        userText = await new Promise(resolve => { window._liveTextResolve = resolve; });
+      }
+      if (cancelRef.current) return;
+      setActiveSpeaker(null);
+      setTranscript(p => [...p, { speaker: firstName, text: userText }]);
+      history.push({ role: "user", content: userText });
+      setConversationHistory([...history]);
+
+      // Get AI response
+      setIsThinking(true);
+      let aiData;
+      try {
+        aiData = await sendToAPI(history, turn, 12);
+      } catch (err) {
+        setIsThinking(false);
+        setApiError(`AI error: ${err.message}. Switching to scripted demo.`);
+        addTimer(() => { if (!cancelRef.current) { setApiError(""); startElevenLabs(); } }, 2000);
+        return;
+      }
+      setIsThinking(false);
+      if (cancelRef.current) return;
+
+      // Process metadata
+      processMetadata(aiData);
+      history.push({ role: "assistant", content: aiData.reply });
+      setConversationHistory([...history]);
+      setTranscript(p => [...p, { speaker: "AI", text: aiData.reply }]);
+
+      // Speak response — no browser fallback mid-call
+      const ttsOk = await speakAI(aiData.reply);
+      if (cancelRef.current) return;
+
+      // If TTS failed mid-call, play failsafe exit and end immediately
+      if (!ttsOk) {
+        await playFailsafeAndEnd();
+        return;
+      }
+
+      // Check if done — when AI says goodbye, let patient respond before ending
+      if (aiData.phase === "done") {
+        // Patient gets to say goodbye back
+        if (!cancelRef.current) {
+          try {
+            const finalText = await startListening();
+            if (finalText && !cancelRef.current) {
+              setTranscript(p => [...p, { speaker: firstName, text: finalText }]);
+            }
+          } catch {
+            setIsListening(false);
+            setActiveSpeaker(null);
+          }
+        }
+        break;
+      }
+    }
+    if (!cancelRef.current) setUiState("done");
+  };
+
+  const startLiveDemo = async () => {
+    setDemoMode("live");
+    setApiError("");
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setApiError("Microphone access required for live demo. Please allow mic access and try again.");
+      return;
+    }
+    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+      setApiError("Speech recognition requires Chrome. Please open in Chrome for live demo.");
+      return;
+    }
+    launchCall(() => runLiveConversation());
+  };
+
+  const submitTextInput = () => {
+    const text = textInput.trim();
+    if (!text) return;
+    setTextInput("");
+    if (window._liveTextResolve) { window._liveTextResolve(text); window._liveTextResolve = null; }
+    else {
+      // If speech recognition is active, stop it and use text instead
+      if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
+      setIsListening(false);
+      setActiveSpeaker(null);
+      // Resolve pending listen
+      setTranscript(p => [...p, { speaker: patient?.name?.split(' ')[0] || "Patient", text }]);
+    }
+  };
+
   const toggleMute = () => {
     const next = !muted;
     setMuted(next);
     mutedRef.current = next;
     if (audioRef.current) audioRef.current.volume = next ? 0 : 1;
+  };
+
+  const endCall = () => {
+    cancelRef.current = true;
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
+    clearTimers();
+    setIsListening(false);
+    setIsThinking(false);
+    setActiveSpeaker(null);
+    setUiState("done");
+  };
+
+  const generateSummary = async (lines) => {
+    const text = lines.map(l => `${l.speaker}: ${l.text}`).join("\n");
+    try {
+      const res = await fetch("/api/voice-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [{ role: "user", content: `Summarize this patient call in 2-3 sentences. Focus on findings and actions.\n\n${text}` }], patientContext: getPatientContext() }),
+      });
+      if (res.ok) { const d = await res.json(); return d.reply; }
+    } catch {}
+    return `Call completed (${lines.length} exchanges). Check-in topics discussed.`;
+  };
+
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const handleComplete = async () => {
+    if (transcript.length > 0) {
+      setIsSummarizing(true);
+      const summary = await generateSummary(transcript);
+      setIsSummarizing(false);
+      onComplete({ transcript: [...transcript], summary, timestamp: new Date().toLocaleString(), duration: formatTime(elapsed), riskScore, alertGenerated });
+    } else {
+      onComplete(null);
+    }
   };
 
   const formatTime = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -566,88 +1181,65 @@ function VoiceCallDemo({ patient, onComplete }) {
       <div style={{ width: "100%", maxWidth: 540 }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "white", letterSpacing: "-0.03em" }}>Vardana<span style={{ color: "#38BDF8" }}>.</span></div>
-          <div style={{ fontSize: 13, color: "#475569", marginTop: 5 }}>Voice Demo · AI Concierge Call · Sarah Chen</div>
+          <div style={{ fontSize: 22, fontWeight: 400, color: "white", letterSpacing: "-0.02em", fontFamily: DS.fontDisplay }}>Vardana<span style={{ color: DS.color.amber[400] }}>.</span></div>
+          <div style={{ fontSize: 13, color: "#475569", marginTop: 5 }}>Voice Demo · AI Concierge Call · {patient.name}</div>
         </div>
 
         {/* Scenario card */}
         <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "14px 18px", marginBottom: 20 }}>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <div style={{ fontSize: 28 }}>👩</div>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="users" size={22} color="#A78BFA" /></div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "white" }}>Sarah Chen, 67F — CHF · Day 15/90</div>
-              <div style={{ fontSize: 12, color: "#64748B", marginTop: 3 }}>2.3 lb weight gain. AI calls to assess. Decompensation detected → FHIR alert fires mid-call.</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "white" }}>{patient.name}, {patient.age}{isEpic ? (patient.epicData?.patient?.gender === 'male' ? 'M' : 'F') : (patient.gender || '')}{isEpic ? ` — ${(patient.epicData?.conditions || []).length} active conditions` : ` — CHF · Day ${patient.day || '?'}/90`}</div>
+              <div style={{ fontSize: 12, color: "#64748B", marginTop: 3 }}>{isEpic ? 'Live Epic FHIR data · AI check-in with real patient context' : patient.id === 1 ? '2.3 lb weight gain. AI calls to assess. Decompensation detected → FHIR alert fires mid-call.' : `${patient.phase} phase · AI check-in with full clinical context`}</div>
             </div>
           </div>
         </div>
 
-        {/* ElevenLabs panel */}
-        <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: "20px 22px", marginBottom: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: "linear-gradient(135deg, #F59E0B, #D97706)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>🎙</div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "white" }}>ElevenLabs TTS</div>
-              <div style={{ fontSize: 11, color: "#64748B" }}>Free tier · 10K chars/mo · ~800 chars per demo run</div>
-            </div>
-            <a href="https://elevenlabs.io/app/sign-in" target="_blank" rel="noreferrer"
-              style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, color: "#38BDF8", textDecoration: "none", border: "1px solid rgba(56,189,248,0.3)", borderRadius: 6, padding: "4px 10px" }}>
-              Get API key ↗
-            </a>
+        {/* Error display */}
+        {apiError && (
+          <div style={{ padding: "9px 12px", borderRadius: 8, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", fontSize: 12, color: "#FCA5A5", lineHeight: 1.5, marginBottom: 12, wordBreak: "break-word" }}>
+            {apiError}
           </div>
+        )}
 
-          {/* Key input row */}
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
-            API Key — found at elevenlabs.io → Profile → API Keys
-          </div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-            <div style={{ flex: 1, position: "relative" }}>
-              <input
-                type={showKey ? "text" : "password"}
-                placeholder="Paste your ElevenLabs API key here"
-                value={apiKey}
-                onChange={e => { setApiKey(e.target.value); setApiError(""); setTestStatus(null); }}
-                onKeyDown={e => e.key === "Enter" && apiKey.trim() && startElevenLabs()}
-                autoComplete="off"
-                spellCheck={false}
-                style={{ width: "100%", padding: "10px 38px 10px 12px", borderRadius: 9, border: `1.5px solid ${testStatus === "ok" ? "#22C55E" : testStatus === "error" ? "#EF4444" : "rgba(255,255,255,0.12)"}`, background: "rgba(255,255,255,0.07)", color: "white", fontFamily: "monospace", fontSize: 13, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
-              />
-              <button onClick={() => setShowKey(s => !s)} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#64748B", fontSize: 14, padding: 2 }}>
-                {showKey ? "🙈" : "👁"}
-              </button>
+        {/* Two mode cards */}
+        <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+          {/* Live Demo */}
+          <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(56,189,248,0.2)", borderRadius: 14, padding: "18px 16px", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg, #0EA5E9, #0284C7)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="phone" size={14} color="white" /></div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "white" }}>Live Demo</div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: "#38BDF8", background: "rgba(56,189,248,0.15)", borderRadius: 4, padding: "2px 6px", textTransform: "uppercase" }}>Recommended</div>
             </div>
-            <button onClick={() => apiKey.trim() && testKey(apiKey.trim())}
-              disabled={!apiKey.trim() || testStatus === "testing"}
-              style={{ padding: "10px 14px", borderRadius: 9, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", color: testStatus === "ok" ? "#22C55E" : "#94A3B8", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: c.font, whiteSpace: "nowrap", opacity: !apiKey.trim() ? 0.4 : 1 }}>
-              {testStatus === "testing" ? "Testing..." : testStatus === "ok" ? "✓ Valid" : "Test Key"}
+            <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.5, marginBottom: 14, flex: 1 }}>
+              You speak as {patient.name.split(' ')[0]}. Claude AI responds in real-time as the care concierge. Natural conversation with live FHIR queries.
+            </div>
+            <button onClick={startLiveDemo}
+              style={{ width: "100%", padding: "11px", borderRadius: 9, background: "linear-gradient(135deg, #0EA5E9, #0284C7)", color: "white", border: "none", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: c.font }}>
+              Start Live Demo
             </button>
+            <div style={{ fontSize: 10, color: "#475569", textAlign: "center", marginTop: 6 }}>Requires microphone · Chrome</div>
           </div>
 
-          {/* Test result / error display */}
-          {(testMsg || apiError) && (
-            <div style={{ padding: "9px 12px", borderRadius: 8, background: testStatus === "ok" ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${testStatus === "ok" ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`, fontSize: 12, color: testStatus === "ok" ? "#86EFAC" : "#FCA5A5", lineHeight: 1.5, marginBottom: 12, wordBreak: "break-word" }}>
-              {testMsg || apiError}
+          {/* Scripted Demo — Sarah Chen only */}
+          {!isEpic && (
+          <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: "18px 16px", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg, #F59E0B, #D97706)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>🎙</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "white" }}>Scripted Demo</div>
             </div>
-          )}
-
-          {/* CORS workaround note — shown only on network error */}
-          {testStatus === "error" && testMsg.includes("Network error") && (
-            <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", fontSize: 11, color: "#FCD34D", lineHeight: 1.6, marginBottom: 12 }}>
-              <strong>CORS restriction detected.</strong> This sandbox blocks direct API calls.<br />
-              Workaround: Open this component in a local React app or CodeSandbox where external fetch is unrestricted. Or use the browser TTS fallback below.
+            <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.5, marginBottom: 14, flex: 1 }}>
+              Pre-rendered {VOICE_TRANSCRIPT.length}-line conversation via ElevenLabs TTS. Fully automated — just watch and listen.
             </div>
+            <button onClick={() => { setDemoMode("scripted"); startElevenLabs(); }}
+              style={{ width: "100%", padding: "11px", borderRadius: 9, background: "linear-gradient(135deg, #F59E0B, #D97706)", color: "white", border: "none", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: c.font }}>
+              🎙 Start Scripted Demo
+            </button>
+            <div style={{ fontSize: 10, color: "#475569", textAlign: "center", marginTop: 6 }}>~90 seconds · No mic needed</div>
+          </div>
           )}
-
-          <button onClick={startElevenLabs} disabled={!apiKey.trim() || testStatus === "testing"}
-            style={{ width: "100%", padding: "12px", borderRadius: 10, background: testStatus === "ok" ? "linear-gradient(135deg, #16A34A, #15803D)" : "linear-gradient(135deg, #F59E0B, #D97706)", color: "white", border: "none", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: c.font, opacity: !apiKey.trim() ? 0.5 : 1, transition: "all 0.2s" }}>
-            {testStatus === "ok" ? "✓ Generate Audio & Start Demo" : "🎙 Start Demo with ElevenLabs"}
-          </button>
         </div>
-
-        {/* Browser TTS fallback */}
-        <button onClick={startBrowserTTS}
-          style={{ width: "100%", padding: "11px", borderRadius: 10, background: "transparent", color: "#64748B", border: "1px solid rgba(255,255,255,0.07)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: c.font }}>
-          Use browser voices (robotic but no API key needed)
-        </button>
 
         <button onClick={onComplete}
           style={{ width: "100%", marginTop: 8, padding: "9px", border: "none", background: "none", color: "#334155", fontSize: 12, cursor: "pointer", fontFamily: c.font }}>
@@ -688,11 +1280,14 @@ function VoiceCallDemo({ patient, onComplete }) {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: uiState === "done" ? "#475569" : "#22C55E", boxShadow: isActive ? "0 0 0 4px rgba(34,197,94,0.2)" : "none", transition: "all 0.3s" }} />
           <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>
-            {uiState === "dialing"   ? "Connecting to Sarah Chen..." :
+            {uiState === "dialing"   ? `Connecting to ${patient.name}...` :
              uiState === "connected" ? "Connected · AI Concierge Active" :
              uiState === "done"      ? "Call Completed" :
-             activeSpeaker === "AI"    ? "🤖 Vardana AI speaking..." :
-             activeSpeaker === "Sarah" ? "👩 Sarah responding..." : "Live · AI Concierge"}
+             isThinking              ? "AI thinking..." :
+             isListening             ? `● Listening for ${patient.name.split(' ')[0]}...` :
+             activeSpeaker === "AI"  ? "Vardana AI speaking..." :
+             (activeSpeaker && activeSpeaker !== "AI") ? `${patient.name.split(' ')[0]} responding...` :
+             demoMode === "live"     ? "Live · AI Concierge" : "Live · AI Concierge"}
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -702,8 +1297,13 @@ function VoiceCallDemo({ patient, onComplete }) {
             </button>
           )}
           {isActive && <span style={{ fontSize: 13, color: "#64748B", fontVariantNumeric: "tabular-nums" }}>{formatTime(elapsed)}</span>}
+          {isActive && (
+            <button onClick={endCall} style={{ background: "rgba(220,38,38,0.2)", border: "1px solid rgba(220,38,38,0.4)", color: "#FCA5A5", borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontFamily: c.font, fontSize: 12, fontWeight: 700 }}>End Call</button>
+          )}
           {uiState === "done" && (
-            <button onClick={onComplete} style={{ background: c.accent, border: "none", color: "white", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontFamily: c.font, fontSize: 13, fontWeight: 700 }}>Return to Dashboard</button>
+            <button onClick={handleComplete} disabled={isSummarizing} style={{ background: c.accent, border: "none", color: "white", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontFamily: c.font, fontSize: 13, fontWeight: 700, opacity: isSummarizing ? 0.7 : 1 }}>
+              {isSummarizing ? "Summarizing..." : "Return to Dashboard"}
+            </button>
           )}
         </div>
       </div>
@@ -716,7 +1316,7 @@ function VoiceCallDemo({ patient, onComplete }) {
           {/* AI avatar */}
           <div style={{ position: "relative" }}>
             {activeSpeaker === "AI" && <div style={{ position: "absolute", inset: -10, borderRadius: "50%", border: "2px solid rgba(56,189,248,0.5)", animation: "ping 1s ease-out infinite" }} />}
-            <div style={{ width: 70, height: 70, borderRadius: "50%", background: "linear-gradient(135deg, #1B3A6B, #2563EB)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, border: `3px solid ${activeSpeaker === "AI" ? "rgba(56,189,248,0.7)" : "rgba(255,255,255,0.08)"}`, boxShadow: activeSpeaker === "AI" ? "0 0 24px rgba(56,189,248,0.35)" : "none", transition: "all 0.35s" }}>🤖</div>
+            <div style={{ width: 70, height: 70, borderRadius: "50%", background: "linear-gradient(135deg, #1B3A6B, #2563EB)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "rgba(255,255,255,0.9)", fontFamily: DS.fontDisplay, border: `3px solid ${activeSpeaker === "AI" ? "rgba(56,189,248,0.7)" : "rgba(255,255,255,0.08)"}`, boxShadow: activeSpeaker === "AI" ? "0 0 24px rgba(56,189,248,0.35)" : "none", transition: "all 0.35s" }}>V</div>
           </div>
           <div style={{ fontSize: 11, fontWeight: 700, color: activeSpeaker === "AI" ? "#38BDF8" : "#475569", letterSpacing: "0.04em", transition: "color 0.3s" }}>VARDANA AI</div>
 
@@ -724,16 +1324,19 @@ function VoiceCallDemo({ patient, onComplete }) {
           <div style={{ display: "flex", alignItems: "center", gap: 2.5, height: 32, opacity: waveOn ? 1 : 0.15, transition: "opacity 0.4s" }}>
             {Array.from({ length: 22 }, (_, i) => {
               const h = waveOn ? waveHeights[(i + waveFrame) % 12] : 0.12;
-              return <div key={i} style={{ width: 2.5, height: `${Math.max(3, h * 28)}px`, borderRadius: 2, background: activeSpeaker === "Sarah" ? "#A78BFA" : "#38BDF8", transition: "height 0.11s ease, background 0.3s" }} />;
+              const isPatientSpeaking = activeSpeaker && activeSpeaker !== "AI";
+              return <div key={i} style={{ width: 2.5, height: `${Math.max(3, h * 28)}px`, borderRadius: 2, background: isPatientSpeaking ? "#A78BFA" : "#38BDF8", transition: "height 0.11s ease, background 0.3s" }} />;
             })}
           </div>
 
-          {/* Sarah avatar */}
+          {/* Patient avatar */}
+          {(() => { const isPS = activeSpeaker && activeSpeaker !== "AI"; return (<>
           <div style={{ position: "relative" }}>
-            {activeSpeaker === "Sarah" && <div style={{ position: "absolute", inset: -10, borderRadius: "50%", border: "2px solid rgba(167,139,250,0.5)", animation: "ping 1s ease-out infinite" }} />}
-            <div style={{ width: 70, height: 70, borderRadius: "50%", background: "linear-gradient(135deg, #3730A3, #7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, border: `3px solid ${activeSpeaker === "Sarah" ? "rgba(167,139,250,0.7)" : "rgba(255,255,255,0.08)"}`, boxShadow: activeSpeaker === "Sarah" ? "0 0 24px rgba(124,58,237,0.4)" : "none", transition: "all 0.35s" }}>👩</div>
+            {isPS && <div style={{ position: "absolute", inset: -10, borderRadius: "50%", border: "2px solid rgba(167,139,250,0.5)", animation: "ping 1s ease-out infinite" }} />}
+            <div style={{ width: 70, height: 70, borderRadius: "50%", background: "linear-gradient(135deg, #3730A3, #7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "rgba(255,255,255,0.9)", fontFamily: DS.fontDisplay, border: `3px solid ${isPS ? "rgba(167,139,250,0.7)" : "rgba(255,255,255,0.08)"}`, boxShadow: isPS ? "0 0 24px rgba(124,58,237,0.4)" : "none", transition: "all 0.35s" }}>{patient.name.charAt(0)}</div>
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: activeSpeaker === "Sarah" ? "#A78BFA" : "#475569", letterSpacing: "0.04em", transition: "color 0.3s" }}>SARAH CHEN · 67F</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: isPS ? "#A78BFA" : "#475569", letterSpacing: "0.04em", transition: "color 0.3s" }}>{patient.name.toUpperCase()} · {patient.age}{isEpic ? (patient.epicData?.patient?.gender === 'male' ? 'M' : 'F') : (patient.gender || '')}</div>
+          </>); })()}
 
           {/* Risk gauge */}
           <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: "14px 16px", width: "100%", textAlign: "center", marginTop: 4 }}>
@@ -746,7 +1349,7 @@ function VoiceCallDemo({ patient, onComplete }) {
           {/* Alert */}
           {alertGenerated && (
             <div style={{ background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.35)", borderRadius: 10, padding: "10px 12px", width: "100%", animation: "fadeIn 0.4s ease" }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#F87171", marginBottom: 2 }}>🚨 P1 ALERT GENERATED</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#F87171", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={11} color="#F87171" /> P1 ALERT GENERATED</div>
               <div style={{ fontSize: 10, color: "#FCA5A5", lineHeight: 1.4 }}>FHIR Flag posted · Coordinator notified</div>
             </div>
           )}
@@ -754,12 +1357,12 @@ function VoiceCallDemo({ patient, onComplete }) {
           {/* Controls */}
           <div style={{ display: "flex", gap: 10, marginTop: "auto" }}>
             {[
-              { icon: muted ? "🔇" : "🔊", active: muted, fn: toggleMute },
-              { icon: "⏸", active: false, fn: null },
-              { icon: "📋", active: false, fn: null },
-              { icon: "🔴", active: isActive, fn: null },
+              { iconEl: muted ? "M" : "♪", active: muted, fn: toggleMute },
+              { iconEl: "❚❚", active: false, fn: null },
+              { iconEl: <Icon name="clipboard" size={14} color="currentColor" />, active: false, fn: null },
+              { iconEl: "●", active: isActive, fn: isActive ? endCall : null, isEnd: true },
             ].map((btn, i) => (
-              <div key={i} onClick={btn.fn || undefined} style={{ width: 38, height: 38, borderRadius: "50%", background: btn.active ? (i === 0 ? "rgba(220,38,38,0.25)" : "rgba(220,38,38,0.15)") : "rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, cursor: btn.fn ? "pointer" : "default", border: btn.active && i === 0 ? "1px solid rgba(220,38,38,0.4)" : "1px solid transparent" }}>{btn.icon}</div>
+              <div key={i} onClick={btn.fn || undefined} style={{ width: 38, height: 38, borderRadius: "50%", background: btn.active ? (i === 0 ? "rgba(220,38,38,0.25)" : btn.isEnd ? "rgba(220,38,38,0.3)" : "rgba(220,38,38,0.15)") : "rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: btn.isEnd ? 10 : 14, cursor: btn.fn ? "pointer" : "default", border: btn.active && i === 0 ? "1px solid rgba(220,38,38,0.4)" : "1px solid transparent", color: btn.isEnd ? "#EF4444" : "rgba(255,255,255,0.5)" }}>{btn.iconEl}</div>
             ))}
           </div>
         </div>
@@ -778,14 +1381,14 @@ function VoiceCallDemo({ patient, onComplete }) {
           <div ref={transcriptRef} style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
             {uiState === "dialing" && (
               <div style={{ textAlign: "center", padding: "52px 0", color: "#475569" }}>
-                <div style={{ fontSize: 36, marginBottom: 16 }}>📞</div>
+                <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}><Icon name="phone" size={36} color="#94A3B8" /></div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: "#94A3B8" }}>Initiating AI concierge call...</div>
-                <div style={{ fontSize: 12, marginTop: 6 }}>Ringing Sarah Chen · (206) 555-0142</div>
+                <div style={{ fontSize: 12, marginTop: 6 }}>Ringing {patient.name}{isEpic && patient.epicData?.patient?.phone ? ` · ${patient.epicData.patient.phone}` : !isEpic ? ' · (206) 555-0142' : ''}</div>
               </div>
             )}
             {uiState === "connected" && transcript.length === 0 && (
               <div style={{ textAlign: "center", padding: "52px 0", color: "#475569" }}>
-                <div style={{ fontSize: 36, marginBottom: 16 }}>🟢</div>
+                <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}><Icon name="check" size={36} color="#22C55E" /></div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: "#22C55E" }}>Connected</div>
                 <div style={{ fontSize: 12, color: "#64748B", marginTop: 6 }}>AI concierge beginning structured check-in...</div>
               </div>
@@ -795,11 +1398,11 @@ function VoiceCallDemo({ patient, onComplete }) {
               return (
                 <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", animation: "slideUp 0.25s ease" }}>
                   <div style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: speaking ? (line.speaker === "AI" ? "rgba(56,189,248,0.2)" : "rgba(167,139,250,0.2)") : "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, marginTop: 3, border: speaking ? `1px solid ${line.speaker === "AI" ? "rgba(56,189,248,0.5)" : "rgba(167,139,250,0.5)"}` : "1px solid transparent", transition: "all 0.3s" }}>
-                    {line.speaker === "AI" ? "🤖" : "👩"}
+                    {line.speaker === "AI" ? "V" : patient.name.charAt(0)}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: line.speaker === "AI" ? (speaking ? "#38BDF8" : "#334155") : (speaking ? "#A78BFA" : "#334155"), marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em", transition: "color 0.3s" }}>
-                      {line.speaker === "AI" ? "Vardana AI" : "Sarah Chen"}
+                      {line.speaker === "AI" ? "Vardana AI" : patient.name}
                     </div>
                     <div style={{ fontSize: 13, color: speaking ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.72)", lineHeight: 1.6, background: speaking ? (line.speaker === "AI" ? "rgba(56,189,248,0.08)" : "rgba(167,139,250,0.08)") : "rgba(255,255,255,0.03)", padding: "9px 13px", borderRadius: 10, border: `1px solid ${speaking ? (line.speaker === "AI" ? "rgba(56,189,248,0.25)" : "rgba(167,139,250,0.25)") : "rgba(255,255,255,0.05)"}`, transition: "all 0.35s" }}>
                       {line.text}
@@ -808,13 +1411,50 @@ function VoiceCallDemo({ patient, onComplete }) {
                 </div>
               );
             })}
+            {/* Thinking dots for live mode */}
+            {isThinking && demoMode === "live" && (
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start", animation: "slideUp 0.25s ease" }}>
+                <div style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: "rgba(56,189,248,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#38BDF8", marginTop: 3, border: "1px solid rgba(56,189,248,0.5)" }}>V</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#38BDF8", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em" }}>Vardana AI</div>
+                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", padding: "9px 13px", borderRadius: 10, background: "rgba(56,189,248,0.05)", border: "1px solid rgba(56,189,248,0.15)" }}>
+                    <span style={{ animation: "pulse 1s infinite" }}>Thinking</span>
+                    <span style={{ animation: "pulse 1s infinite 0.2s" }}>.</span>
+                    <span style={{ animation: "pulse 1s infinite 0.4s" }}>.</span>
+                    <span style={{ animation: "pulse 1s infinite 0.6s" }}>.</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Listening indicator for live mode */}
+            {isListening && demoMode === "live" && (
+              <div style={{ textAlign: "center", padding: "8px 0", animation: "fadeIn 0.3s ease" }}>
+                <span style={{ fontSize: 12, color: "#A78BFA", fontWeight: 700 }}>● Listening...</span>
+              </div>
+            )}
             {uiState === "done" && (
               <div style={{ textAlign: "center", padding: "24px 0" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#22C55E" }}>✓ Call completed · {formatTime(elapsed)}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#22C55E", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><Icon name="check" size={14} color="#22C55E" /> Call completed · {formatTime(elapsed)}</div>
                 <div style={{ fontSize: 12, color: "#64748B", marginTop: 5 }}>Transcript saved · Clinical summary generated · Alert dispatched</div>
               </div>
             )}
           </div>
+          {/* Text input fallback for live mode */}
+          {demoMode === "live" && isActive && (
+            <div style={{ padding: "8px 16px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 8 }}>
+              <input
+                value={textInput}
+                onChange={e => setTextInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && submitTextInput()}
+                placeholder={isListening ? `Or type ${patient.name.split(' ')[0]}'s response...` : `Type ${patient.name.split(' ')[0]}'s response...`}
+                style={{ flex: 1, padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "white", fontSize: 12, fontFamily: c.font, outline: "none" }}
+              />
+              <button onClick={submitTextInput} disabled={!textInput.trim()}
+                style={{ padding: "8px 14px", borderRadius: 8, background: textInput.trim() ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.05)", border: "1px solid rgba(167,139,250,0.3)", color: textInput.trim() ? "#A78BFA" : "#475569", fontSize: 12, fontWeight: 700, cursor: textInput.trim() ? "pointer" : "default", fontFamily: c.font }}>
+                Send
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── Right: FHIR + assessment ── */}
@@ -829,25 +1469,36 @@ function VoiceCallDemo({ patient, onComplete }) {
               <div key={i} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 7, padding: "7px 9px", border: `1px solid ${q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.05)"}`, animation: "slideUp 0.25s ease" }}>
                 <div style={{ display: "flex", gap: 5, alignItems: "center", marginBottom: 3 }}>
                   <span style={{ fontSize: 8, fontWeight: 800, background: q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(37,99,235,0.18)", color: q.color, padding: "1px 4px", borderRadius: 3 }}>{q.method}</span>
-                  <span style={{ fontSize: 8, color: "#475569", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{q.path.length > 34 ? q.path.slice(0, 34) + "…" : q.path}</span>
+                  <span style={{ fontSize: 8, color: "#475569", fontFamily: DS.fontMono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{q.path.length > 34 ? q.path.slice(0, 34) + "…" : q.path}</span>
                 </div>
                 <div style={{ fontSize: 10, color: "#94A3B8" }}>→ {q.result}</div>
               </div>
             ))}
           </div>
 
-          {transcript.length >= 6 && (
+          {(demoMode === "live" ? Object.keys(aiAssessment).length > 0 : transcript.length >= 6) && (
             <div style={{ padding: "12px 14px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>AI Assessment</div>
-              {[
+              {(demoMode === "live" ? (isEpic
+                ? Object.entries(aiAssessment).map(([key, value]) => ({
+                    label: key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()),
+                    value: value || "Pending",
+                    flag: value && value !== "Pending" && value !== "Normal" && value !== "None"
+                  }))
+                : [
+                { label: "Weight gain", value: aiAssessment.weightGain || "Pending", flag: aiAssessment.weightGain && aiAssessment.weightGain !== "Pending" },
+                { label: "Orthopnea",   value: aiAssessment.orthopnea || "Pending", flag: aiAssessment.orthopnea === "Confirmed" },
+                { label: "Ankle edema", value: aiAssessment.ankleEdema || "Pending", flag: aiAssessment.ankleEdema === "Confirmed" },
+                { label: "Adherence",   value: aiAssessment.adherence || "Pending", flag: false },
+              ]) : [
                 { label: "Weight gain", value: "+2.3 lbs/48hr", flag: true },
                 { label: "Orthopnea",   value: transcript.length >= 9 ? "Confirmed" : "Pending", flag: transcript.length >= 9 },
                 { label: "Ankle edema", value: "Confirmed", flag: true },
                 { label: "Adherence",   value: "Meds taken", flag: false },
-              ].map((item, i) => (
+              ]).map((item, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 5 }}>
                   <span style={{ color: "#475569" }}>{item.label}</span>
-                  <span style={{ fontWeight: 700, color: item.flag ? "#F87171" : "#34D399" }}>{item.value}</span>
+                  <span style={{ fontWeight: 700, color: item.flag ? "#F87171" : (item.value === "Pending" ? "#64748B" : "#34D399") }}>{item.value}</span>
                 </div>
               ))}
             </div>
@@ -882,7 +1533,7 @@ function SMSPathDemo({ patient, onComplete }) {
     <div style={{ position: "fixed", inset: 0, background: c.bg, zIndex: 300, display: "flex", flexDirection: "column", fontFamily: c.font }}>
 
       {/* Header */}
-      <div style={{ background: `linear-gradient(135deg, ${c.navy} 0%, ${c.navyLight} 100%)`, padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ background: DS.color.slate[950], padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <span style={{ fontSize: 14, fontWeight: 800, color: "white" }}>SMS Outreach Path</span>
           <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginLeft: 12 }}>Sarah Chen → App Onboarding</span>
@@ -896,7 +1547,7 @@ function SMSPathDemo({ patient, onComplete }) {
           <div key={step.id} style={{ display: "flex", alignItems: "center", flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }} onClick={() => setSmsStep(step.id)}>
               <div style={{ width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, background: smsStep >= step.id ? c.accent : c.border, color: smsStep >= step.id ? "white" : c.textLight, flexShrink: 0, transition: "all 0.3s" }}>
-                {smsStep > step.id ? "✓" : step.id + 1}
+                {smsStep > step.id ? <Icon name="check" size={12} color="white" /> : step.id + 1}
               </div>
               <span style={{ fontSize: 12, fontWeight: 600, color: smsStep >= step.id ? c.accent : c.textLight, whiteSpace: "nowrap" }}>{step.label}</span>
             </div>
@@ -912,14 +1563,14 @@ function SMSPathDemo({ patient, onComplete }) {
         {smsStep === 0 && (
           <div style={{ maxWidth: 440, width: "100%" }}>
             <div style={{ background: c.card, borderRadius: 16, border: `1px solid ${c.border}`, boxShadow: c.shadowLg, overflow: "hidden" }}>
-              <div style={{ background: `linear-gradient(135deg, ${c.teal}, #0D7A6E)`, padding: "18px 22px" }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "white" }}>💬 SMS Outreach Initiated</div>
+              <div style={{ background: DS.color.jade[600], padding: "18px 22px" }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "white", display: "flex", alignItems: "center", gap: 8 }}><Icon name="sms" size={18} color="white" /> SMS Outreach Initiated</div>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>Sent via Twilio · March 1, 2026 · 8:24 AM</div>
               </div>
               <div style={{ padding: "20px 22px" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: c.textLight, textTransform: "uppercase", marginBottom: 10 }}>Message Sent To</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: c.accentLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>👩</div>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: c.accentLight, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="users" size={18} color={c.accent} /></div>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: c.text }}>Sarah Chen</div>
                     <div style={{ fontSize: 13, color: c.textLight }}>(206) 555-0142</div>
@@ -1005,13 +1656,13 @@ function SMSPathDemo({ patient, onComplete }) {
                 <div style={{ fontSize: 14, fontWeight: 700, color: c.text, marginBottom: 8 }}>Why the app link matters</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {[
-                    { icon: "🔗", text: "SMS check-in works — but limited to self-reported data only" },
-                    { icon: "📱", text: "App unlocks Apple Health / Google Fit integration — passive vitals, steps, sleep" },
-                    { icon: "⚖️", text: "Smart scale Bluetooth sync: weight logged automatically without daily action" },
-                    { icon: "📊", text: "Richer data = better decompensation detection = fewer missed events" },
+                    { iconName: "arrow", text: "SMS check-in works — but limited to self-reported data only" },
+                    { iconName: "smartphone", text: "App unlocks Apple Health / Google Fit integration — passive vitals, steps, sleep" },
+                    { iconName: "scale", text: "Smart scale Bluetooth sync: weight logged automatically without daily action" },
+                    { iconName: "bar_chart", text: "Richer data = better decompensation detection = fewer missed events" },
                   ].map((item, i) => (
-                    <div key={i} style={{ display: "flex", gap: 10, fontSize: 13, color: c.textMed, lineHeight: 1.4 }}>
-                      <span style={{ flexShrink: 0, fontSize: 15 }}>{item.icon}</span>
+                    <div key={i} style={{ display: "flex", gap: 10, fontSize: 13, color: c.textMed, lineHeight: 1.4, alignItems: "flex-start" }}>
+                      <Icon name={item.iconName} size={15} color={c.accent} />
                       <span>{item.text}</span>
                     </div>
                   ))}
@@ -1042,7 +1693,7 @@ function SMSPathDemo({ patient, onComplete }) {
                   ))}
                 </div>
                 <div style={{ background: "#000", borderRadius: 12, padding: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, cursor: "pointer" }}>
-                  <span style={{ fontSize: 24 }}>🍎</span>
+                  <span style={{ fontSize: 24, color: "white" }}>⌘</span>
                   <div>
                     <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>Download on the</div>
                     <div style={{ fontSize: 15, fontWeight: 800, color: "white" }}>App Store</div>
@@ -1066,7 +1717,7 @@ function SMSPathDemo({ patient, onComplete }) {
             {/* Phone mockup with Health Connect screen */}
             <div style={{ background: c.card, borderRadius: 16, border: `1px solid ${c.border}`, boxShadow: c.shadowLg, overflow: "hidden", marginBottom: 16 }}>
               <div style={{ background: "linear-gradient(135deg, #FF2D55, #FF9500)", padding: "18px 22px", display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ fontSize: 28 }}>❤️</span>
+                <Icon name="heart" size={28} color="white" strokeWidth={2} />
                 <div>
                   <div style={{ fontSize: 16, fontWeight: 800, color: "white" }}>Apple Health</div>
                   <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>Requesting access to your health data</div>
@@ -1076,15 +1727,15 @@ function SMSPathDemo({ patient, onComplete }) {
                 <div style={{ fontSize: 14, fontWeight: 700, color: c.text, marginBottom: 4 }}>Vardana Health would like to read:</div>
                 <div style={{ fontSize: 13, color: c.textMed, marginBottom: 16 }}>Your care team uses this data for daily health monitoring.</div>
                 {[
-                  { icon: "⚖️", name: "Body Weight", source: "Withings scale · daily", active: true },
-                  { icon: "🫀", name: "Heart Rate", source: "Apple Watch · continuous", active: true },
-                  { icon: "🩺", name: "Blood Pressure", source: "Omron BP monitor", active: true },
-                  { icon: "👣", name: "Steps", source: "iPhone · automatic", active: true },
-                  { icon: "😴", name: "Sleep Analysis", source: "Apple Watch", active: false },
-                  { icon: "🩸", name: "Blood Oxygen (SpO2)", source: "Apple Watch", active: true },
+                  { iconName: "scale", name: "Body Weight", source: "Withings scale · daily", active: true },
+                  { iconName: "heart", name: "Heart Rate", source: "Apple Watch · continuous", active: true },
+                  { iconName: "stethoscope", name: "Blood Pressure", source: "Omron BP monitor", active: true },
+                  { iconName: "activity", name: "Steps", source: "iPhone · automatic", active: true },
+                  { iconName: "sun", name: "Sleep Analysis", source: "Apple Watch", active: false },
+                  { iconName: "droplet", name: "Blood Oxygen (SpO2)", source: "Apple Watch", active: true },
                 ].map((item, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: i < 5 ? `1px solid ${c.borderLight}` : "none" }}>
-                    <span style={{ fontSize: 18, width: 24 }}>{item.icon}</span>
+                    <div style={{ width: 24, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name={item.iconName} size={18} color={c.textMed} /></div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{item.name}</div>
                       <div style={{ fontSize: 11, color: c.textLight }}>{item.source}</div>
@@ -1106,8 +1757,8 @@ function SMSPathDemo({ patient, onComplete }) {
         {smsStep === 4 && (
           <div style={{ maxWidth: 520, width: "100%" }}>
             <div style={{ background: c.card, borderRadius: 16, border: `1px solid ${c.border}`, boxShadow: c.shadowLg, overflow: "hidden", marginBottom: 16 }}>
-              <div style={{ background: `linear-gradient(135deg, ${c.teal}, #0D7A6E)`, padding: "20px 24px", display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>✓</div>
+              <div style={{ background: DS.color.jade[600], padding: "20px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="check" size={22} color="white" strokeWidth={2.5} /></div>
                 <div>
                   <div style={{ fontSize: 16, fontWeight: 800, color: "white" }}>Health Data Connected</div>
                   <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>First sync complete · March 1, 2026</div>
@@ -1117,14 +1768,14 @@ function SMSPathDemo({ patient, onComplete }) {
                 <div style={{ fontSize: 13, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Synced to Sarah's Profile</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
                   {[
-                    { icon: "⚖️", label: "Weight (14 days)", value: "187.7 lbs", subtext: "+2.3 lbs trend flagged", color: c.red },
-                    { icon: "🫀", label: "Resting Heart Rate", value: "82 bpm", subtext: "Avg over 7 days", color: c.orange },
-                    { icon: "👣", label: "Daily Steps", value: "1,840", subtext: "↓ 67% vs last week", color: c.orange },
-                    { icon: "🩸", label: "SpO2", value: "95%", subtext: "Last reading: 7:12 AM", color: c.orange },
+                    { iconName: "scale", label: "Weight (14 days)", value: "187.7 lbs", subtext: "+2.3 lbs trend flagged", color: c.red },
+                    { iconName: "heart", label: "Resting Heart Rate", value: "82 bpm", subtext: "Avg over 7 days", color: c.orange },
+                    { iconName: "activity", label: "Daily Steps", value: "1,840", subtext: "↓ 67% vs last week", color: c.orange },
+                    { iconName: "droplet", label: "SpO2", value: "95%", subtext: "Last reading: 7:12 AM", color: c.orange },
                   ].map((item, i) => (
                     <div key={i} style={{ background: c.borderLight, borderRadius: 10, padding: "12px 14px" }}>
                       <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
-                        <span style={{ fontSize: 14 }}>{item.icon}</span>
+                        <Icon name={item.iconName} size={14} color={item.color} />
                         <span style={{ fontSize: 11, fontWeight: 700, color: c.textLight }}>{item.label}</span>
                       </div>
                       <div style={{ fontSize: 18, fontWeight: 800, color: item.color }}>{item.value}</div>
@@ -1141,7 +1792,7 @@ function SMSPathDemo({ patient, onComplete }) {
                 </div>
               </div>
             </div>
-            <button onClick={onComplete} style={{ width: "100%", padding: "12px", borderRadius: 10, background: `linear-gradient(135deg, ${c.navy}, #1B3A6B)`, color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font }}>Return to Coordinator Dashboard</button>
+            <button onClick={onComplete} style={{ width: "100%", padding: "12px", borderRadius: 10, background: DS.color.slate[950], color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font }}>Return to Coordinator Dashboard</button>
           </div>
         )}
       </div>
@@ -1154,54 +1805,63 @@ function AIReasoningCard({ onOutreach }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div style={{ background: c.card, borderRadius: c.radius, boxShadow: c.shadowLg, border: `1.5px solid #FECACA`, overflow: "hidden" }}>
-      <div style={{ background: "linear-gradient(135deg, #991B1B 0%, #B91C1C 100%)", color: "white", padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 16 }}>⚡</span>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700 }}>AI Clinical Assessment — Action Required</div>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>Generated 38 min ago · Confidence: High</div>
+    <div style={{ background: c.card, borderRadius: DS.radius.lg, boxShadow: DS.shadow.alert, borderLeft: `4px solid ${DS.color.crimson[600]}`, overflow: "hidden" }}>
+      {/* Hero header — flat white with crimson accent */}
+      <div style={{ padding: "20px 24px", borderBottom: `1px solid ${DS.color.border.subtle}` }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: DS.radius.md, background: DS.color.crimson[50], border: `1.5px solid ${DS.color.crimson[100]}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon name="alert" size={22} color={DS.color.crimson[600]} />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: DS.color.crimson[600], textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Decompensation Risk · Action Required</div>
+              <div style={{ fontSize: 18, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay, lineHeight: 1.3 }}>Early decompensation pattern detected</div>
+              <div style={{ fontSize: 13, color: c.textLight, marginTop: 4 }}>Generated 38 min ago · Confidence: High</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+            <span style={{ fontSize: 28, fontWeight: 400, color: DS.color.crimson[600], fontFamily: DS.fontDisplay, lineHeight: 1 }}>72</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: DS.color.crimson[600] }}>/ 100</span>
+            <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: DS.radius.sm, background: DS.color.crimson[50], color: DS.color.crimson[600], border: `1px solid ${DS.color.crimson[100]}` }}>P2 — Urgent</span>
           </div>
         </div>
-        <div style={{ background: "rgba(255,255,255,0.2)", padding: "4px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>P2 — Urgent</div>
       </div>
 
-      <div style={{ padding: "18px 20px", borderBottom: `1px solid ${c.border}` }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: c.text, marginBottom: 10, lineHeight: 1.4 }}>Early decompensation pattern detected — fluid reaccumulation likely</div>
-        <div style={{ fontSize: 14, color: c.textMed, lineHeight: 1.6 }}>
-          Sarah's weight increased 2.3 lbs over 48 hours (185.4 → 187.7 lbs), coinciding with the end of the Stabilize phase (Day 14). Blood pressure has reversed from a best of 126/78 to 136/86. Patient self-reported increased fatigue yesterday and ankle edema this morning via the AI concierge.
+      <div style={{ padding: "18px 24px", borderBottom: `1px solid ${DS.color.border.subtle}` }}>
+        <div style={{ fontSize: 14, color: c.textMed, lineHeight: 1.65 }}>
+          Sarah's weight increased <strong style={{ color: c.text, fontFamily: DS.fontMono }}>2.3 lbs</strong> over 48 hours (<span style={{ fontFamily: DS.fontMono }}>185.4 → 187.7</span> lbs), coinciding with the end of the Stabilize phase (Day 14). Blood pressure has reversed from a best of <span style={{ fontFamily: DS.fontMono }}>126/78</span> to <span style={{ fontFamily: DS.fontMono }}>136/86</span>. Patient self-reported increased fatigue yesterday and ankle edema this morning via the AI concierge.
         </div>
       </div>
 
-      <div style={{ padding: "16px 20px", borderBottom: `1px solid ${c.border}` }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>Corroborating Signals</div>
+      <div style={{ padding: "16px 24px", borderBottom: `1px solid ${DS.color.border.subtle}`, background: DS.color.crimson[50] }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: DS.color.slate[500], textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Evidence Chain</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {[
-            { icon: "⚖️", label: "Weight", value: "+2.3 lbs / 48hr", status: "critical", detail: "Exceeded 2 lb/48hr threshold" },
-            { icon: "🩺", label: "Blood Pressure", value: "136/86 mmHg", status: "warning", detail: "Reversed from 126/78 best" },
-            { icon: "💬", label: "Patient Report", value: "Fatigue + edema", status: "critical", detail: "Ankle swelling confirmed today" },
-            { icon: "📊", label: "Trajectory", value: "3-day reversal", status: "warning", detail: "Trend inflection after 12-day decline" },
+            { iconName: "scale", label: "Weight", value: "+2.3 lbs / 48hr", status: "critical", detail: "Exceeded 2 lb/48hr threshold" },
+            { iconName: "stethoscope", label: "Blood Pressure", value: "136/86 mmHg", status: "warning", detail: "Reversed from 126/78 best" },
+            { iconName: "chat", label: "Patient Report", value: "Fatigue + edema", status: "critical", detail: "Ankle swelling confirmed today" },
+            { iconName: "trend_up", label: "Trajectory", value: "3-day reversal", status: "warning", detail: "Trend inflection after 12-day decline" },
           ].map((s, i) => (
-            <div key={i} style={{ padding: "10px 12px", borderRadius: 10, background: s.status === "critical" ? c.redBg : c.orangeBg, border: `1px solid ${s.status === "critical" ? c.redLight : c.orangeLight}` }}>
+            <div key={i} style={{ padding: "10px 12px", borderRadius: DS.radius.md, background: DS.color.canvas.white, border: `1px solid ${DS.color.border.subtle}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                <span style={{ fontSize: 14 }}>{s.icon}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: c.textMed }}>{s.label}</span>
+                <Icon name={s.iconName} size={14} color={s.status === "critical" ? DS.color.crimson[600] : DS.color.amber[500]} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: DS.color.slate[500] }}>{s.label}</span>
               </div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: s.status === "critical" ? c.red : c.orange }}>{s.value}</div>
-              <div style={{ fontSize: 11, color: c.textMed, marginTop: 2 }}>{s.detail}</div>
+              <div style={{ fontSize: 15, fontWeight: 400, fontFamily: DS.fontDisplay, color: s.status === "critical" ? DS.color.crimson[600] : DS.color.amber[600] }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: DS.color.slate[400], marginTop: 2 }}>{s.detail}</div>
             </div>
           ))}
         </div>
       </div>
 
-      <div style={{ padding: "16px 20px", borderBottom: `1px solid ${c.border}`, background: c.purpleLight + "40" }}>
-        <div style={{ fontSize: 13, color: c.textMed, lineHeight: 1.6 }}>
-          Patient is at Day 15 — transitioning from <strong style={{ color: c.text }}>Stabilize → Optimize</strong> phase. Weight reversal at phase transition occurs in approximately <strong style={{ color: c.text }}>23% of CHF post-discharge patients</strong> and is associated with suboptimal diuretic dosing in 68% of cases.
+      <div style={{ padding: "14px 24px", borderBottom: `1px solid ${DS.color.border.subtle}`, background: DS.color.slate[50] }}>
+        <div style={{ fontSize: 13, color: DS.color.slate[500], lineHeight: 1.6 }}>
+          Patient is at <span style={{ fontFamily: DS.fontDisplay }}>Day 15</span> — transitioning from <strong style={{ color: c.text }}>Stabilize → Optimize</strong> phase. Weight reversal at phase transition occurs in approximately <strong style={{ color: c.text }}>23% of CHF post-discharge patients</strong> and is associated with suboptimal diuretic dosing in <strong style={{ color: c.text }}>68%</strong> of cases.
         </div>
       </div>
 
-      <div style={{ padding: "16px 20px", borderBottom: `1px solid ${c.border}`, background: c.accentLight }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: c.accent, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Recommended Actions</div>
+      <div style={{ padding: "16px 24px", borderBottom: `1px solid ${DS.color.border.subtle}` }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: DS.color.slate[500], textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Recommended Actions</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {[
             { priority: "1", action: "Contact patient within 4 hours", detail: "Assess edema severity, dyspnea at rest, medication adherence. Patient expects outreach — AI concierge informed her this morning.", tag: "Coordinator" },
@@ -1209,7 +1869,7 @@ function AIReasoningCard({ onOutreach }) {
             { priority: "3", action: "Schedule weight check follow-up at 48 hours", detail: "If weight does not decrease by ≥1 lb post-adjustment, escalate to cardiology appointment.", tag: "Follow-up" },
           ].map((r, i) => (
             <div key={i} style={{ display: "flex", gap: 12, padding: "12px 14px", background: c.card, borderRadius: 10, border: `1px solid ${c.border}` }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: c.accent, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800 }}>{r.priority}</div>
+              <div style={{ width: 28, height: 28, borderRadius: DS.radius.sm, flexShrink: 0, background: DS.color.slate[900], color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, fontFamily: DS.fontDisplay }}>{r.priority}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: c.text }}>{r.action}</span>
@@ -1224,7 +1884,7 @@ function AIReasoningCard({ onOutreach }) {
 
       <button onClick={() => setExpanded(!expanded)} style={{ width: "100%", padding: "14px 20px", border: "none", background: "none", cursor: "pointer", fontFamily: c.font, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: expanded ? `1px solid ${c.border}` : "none" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 14 }}>💬</span>
+          <Icon name="chat" size={14} color={c.textMed} />
           <span style={{ fontSize: 13, fontWeight: 700, color: c.textMed }}>AI Concierge Conversation Log (2 exchanges)</span>
         </div>
         <span style={{ fontSize: 14, color: c.textLight, transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "rotate(0)" }}>⌄</span>
@@ -1250,12 +1910,12 @@ function AIReasoningCard({ onOutreach }) {
       )}
 
       {/* Action buttons */}
-      <div style={{ padding: "16px 20px", display: "flex", gap: 10, background: c.borderLight }}>
-        <button onClick={onOutreach} style={{ flex: 2, padding: "13px 16px", borderRadius: 10, background: `linear-gradient(135deg, ${c.navy}, #1B3A6B)`, color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          📞 Initiate Outreach
+      <div style={{ padding: "16px 24px", display: "flex", gap: 10, background: DS.color.slate[50] }}>
+        <button onClick={onOutreach} style={{ flex: 2, padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.slate[950], color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: DS.transition.fast }}>
+          <Icon name="phone" size={14} color="white" /> Initiate Outreach
         </button>
-        <button style={{ flex: 1, padding: "13px 16px", borderRadius: 10, background: c.accent, color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font }}>📋 Open in EHR</button>
-        <button style={{ padding: "13px 16px", borderRadius: 10, background: c.card, color: c.textMed, border: `1px solid ${c.border}`, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font }}>Dismiss</button>
+        <button style={{ flex: 1, padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.canvas.white, color: c.text, border: `1px solid ${DS.color.border.default}`, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon name="clipboard" size={14} color={c.textMed} /> Open in EHR</button>
+        <button style={{ padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.canvas.white, color: c.textLight, border: `1px solid ${DS.color.border.subtle}`, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: c.font }}>Dismiss</button>
       </div>
     </div>
   );
@@ -1292,7 +1952,7 @@ function EpicFHIRSection() {
     <div style={{ background: c.card, borderRadius: c.radius, border: `1.5px solid ${c.tealLight}`, boxShadow: c.shadowMd, overflow: "hidden" }}>
       <button onClick={fetchEpicData} style={{ width: "100%", padding: "14px 18px", border: "none", background: expanded ? "linear-gradient(135deg, #0D3B66 0%, #0F766E 100%)" : "linear-gradient(135deg, #F0FDFA 0%, #CCFBF1 100%)", cursor: "pointer", fontFamily: c.font, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.3s" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ width: 28, height: 28, borderRadius: 8, background: expanded ? "rgba(255,255,255,0.15)" : c.teal, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🏥</span>
+          <span style={{ width: 28, height: 28, borderRadius: 8, background: expanded ? "rgba(255,255,255,0.15)" : c.teal, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>EHR</span>
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: expanded ? "white" : c.text }}>Epic EHR Integration</div>
             <div style={{ fontSize: 11, color: expanded ? "rgba(255,255,255,0.7)" : c.textLight }}>Live FHIR R4 · Backend Systems API</div>
@@ -1399,7 +2059,7 @@ function EpicFHIRSection() {
           )}
 
           <div style={{ marginTop: 12, padding: "8px 12px", background: c.tealLight + "60", borderRadius: 8, fontSize: 11, color: c.teal, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-            <span>🔒</span> Authenticated via SMART on FHIR Backend Services · JWT + RS384 · FHIR R4
+            <Icon name="lock" size={12} color={c.teal} /> Authenticated via SMART on FHIR Backend Services · JWT + RS384 · FHIR R4
           </div>
         </div>
       )}
@@ -1417,9 +2077,9 @@ function SupportingData() {
       <div style={{ fontSize: 12, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 8 }}>Supporting Data</div>
       <div style={{ background: c.card, borderRadius: c.radius, border: `1px solid ${c.border}`, boxShadow: c.shadow, overflow: "hidden" }}>
         <button onClick={() => toggle("weight")} style={{ width: "100%", padding: "14px 18px", border: "none", background: "none", cursor: "pointer", fontFamily: c.font, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: c.text }}>⚖️ Weight Trend — 14 days</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: c.text, display: "flex", alignItems: "center", gap: 6 }}><Icon name="scale" size={14} color={c.textMed} /> Weight Trend — 14 days</span>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: c.red }}>187.7 lbs (+2.3)</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: c.red, fontFamily: DS.fontDisplay }}>187.7 lbs (+2.3)</span>
             <span style={{ fontSize: 14, color: c.textLight }}>⌄</span>
           </div>
         </button>
@@ -1449,9 +2109,9 @@ function SupportingData() {
 
       <div style={{ background: c.card, borderRadius: c.radius, border: `1px solid ${c.border}`, boxShadow: c.shadow, overflow: "hidden" }}>
         <button onClick={() => toggle("bp")} style={{ width: "100%", padding: "14px 18px", border: "none", background: "none", cursor: "pointer", fontFamily: c.font, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: c.text }}>🩺 Blood Pressure Trend</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: c.text, display: "flex", alignItems: "center", gap: 6 }}><Icon name="stethoscope" size={14} color={c.textMed} /> Blood Pressure Trend</span>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: c.orange }}>136/86 mmHg</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: c.orange, fontFamily: DS.fontDisplay }}>136/86 mmHg</span>
             <span style={{ fontSize: 14, color: c.textLight }}>⌄</span>
           </div>
         </button>
@@ -1475,7 +2135,7 @@ function SupportingData() {
 
       <div style={{ background: c.card, borderRadius: c.radius, border: `1px solid ${c.border}`, boxShadow: c.shadow, overflow: "hidden" }}>
         <button onClick={() => toggle("labs")} style={{ width: "100%", padding: "14px 18px", border: "none", background: "none", cursor: "pointer", fontFamily: c.font, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: c.text }}>🧪 Lab Results (Feb 14)</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: c.text, display: "flex", alignItems: "center", gap: 6 }}><Icon name="flask" size={14} color={c.textMed} /> Lab Results (Feb 14)</span>
           <span style={{ fontSize: 14, color: c.textLight }}>⌄</span>
         </button>
         {openSection === "labs" && (
@@ -1498,9 +2158,9 @@ function SupportingData() {
                   { test: "HbA1c", val: "7.8%", ref: "<7%", status: "High", color: c.red },
                 ].map((l, i) => (
                   <tr key={i} style={{ borderBottom: `1px solid ${c.borderLight}` }}>
-                    <td style={{ padding: "8px 4px", fontWeight: 600, color: c.text }}>{l.test}</td>
-                    <td style={{ padding: "8px 4px", color: l.color, fontWeight: 700 }}>{l.val}</td>
-                    <td style={{ padding: "8px 4px", color: c.textLight }}>{l.ref}</td>
+                    <td style={{ padding: "8px 4px", fontWeight: 600, color: c.text, fontFamily: DS.fontMono, fontSize: 12 }}>{l.test}</td>
+                    <td style={{ padding: "8px 4px", color: l.color, fontWeight: 700, fontFamily: DS.fontMono, fontSize: 12 }}>{l.val}</td>
+                    <td style={{ padding: "8px 4px", color: c.textLight, fontFamily: DS.fontMono, fontSize: 12 }}>{l.ref}</td>
                     <td style={{ padding: "8px 4px" }}>
                       <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: l.color === c.green ? c.greenLight : l.color === c.orange ? c.orangeLight : c.redLight, color: l.color }}>{l.status}</span>
                     </td>
@@ -1518,7 +2178,7 @@ function SupportingData() {
           {["Carvedilol 12.5mg BID", "Lisinopril 10mg daily", "Furosemide 40mg daily AM", "Metformin 1000mg BID", "Spironolactone 25mg daily"].map((m, i) => (
             <div key={i} style={{ fontSize: 13, color: c.textMed, padding: "4px 0", borderBottom: i < 4 ? `1px solid ${c.borderLight}` : "none" }}>{m}</div>
           ))}
-          <div style={{ marginTop: 8, fontSize: 12, color: c.red, fontWeight: 600 }}>⚠ Allergy: Sulfa drugs</div>
+          <div style={{ marginTop: 8, fontSize: 12, color: c.red, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={12} color={c.red} /> Allergy: Sulfa drugs</div>
         </div>
         <div style={{ background: c.card, borderRadius: c.radius, border: `1px solid ${c.border}`, boxShadow: c.shadow, padding: "14px 18px" }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Conditions (5)</div>
@@ -1528,38 +2188,501 @@ function SupportingData() {
         </div>
       </div>
 
-      <EpicFHIRSection />
     </div>
   );
 }
 
 // ── Patient Detail View ──
-function PatientDetail({ patient, onBack, onOutreach }) {
+function RecentCallCard({ callData }) {
+  const [showTranscript, setShowTranscript] = useState(false);
+  return (
+    <div style={{ marginTop: 20, background: c.card, borderRadius: c.radius, border: `1.5px solid ${c.tealLight}`, boxShadow: c.shadowMd, overflow: "hidden" }}>
+      <div style={{ background: DS.color.slate[900], padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Icon name="phone" size={16} color="white" />
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "white" }}>Recent AI Concierge Call</div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>{callData.timestamp} · Duration: {callData.duration}</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {callData.alertGenerated && (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: "rgba(220,38,38,0.2)", color: "#F87171", border: "1px solid rgba(220,38,38,0.3)" }}>Alert Generated</span>
+          )}
+          <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: "rgba(14,165,233,0.15)", color: c.teal }}>Risk: {callData.riskScore}/100</span>
+        </div>
+      </div>
+      <div style={{ padding: "16px 20px", borderBottom: `1px solid ${c.border}` }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: c.textLight, textTransform: "uppercase", marginBottom: 8, letterSpacing: "0.05em" }}>AI Summary</div>
+        <div style={{ fontSize: 14, color: c.textMed, lineHeight: 1.6 }}>{callData.summary}</div>
+      </div>
+      <div style={{ padding: "12px 20px" }}>
+        <button onClick={() => setShowTranscript(!showTranscript)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: c.font, fontSize: 13, fontWeight: 600, color: c.teal, padding: 0 }}>
+          {showTranscript ? "▾ Hide Transcript" : "▸ Show Full Transcript"} ({callData.transcript.length} messages)
+        </button>
+        {showTranscript && (
+          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8, maxHeight: 300, overflowY: "auto" }}>
+            {callData.transcript.map((line, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: line.speaker === "AI" ? c.teal : "#7C3AED", minWidth: 48 }}>{line.speaker === "AI" ? "Vardana" : "Patient"}</span>
+                <span style={{ fontSize: 13, color: c.textMed, lineHeight: 1.5 }}>{line.text}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EpicPatientDetail({ patient, onOutreach, callData }) {
+  const d = patient.epicData;
+  const sectionHead = { fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 };
   return (
     <div style={{ maxWidth: 960, margin: "0 auto", padding: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: c.text, margin: 0, fontFamily: c.font }}>{patient.name}</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <h1 style={{ fontSize: 26, fontWeight: 400, color: c.text, margin: 0, fontFamily: DS.fontDisplay }}>{patient.name}</h1>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: c.tealLight, color: c.teal, border: `1px solid ${c.teal}30` }}>EPIC FHIR</span>
+          </div>
           <p style={{ fontSize: 14, color: c.textLight, margin: "4px 0 0", fontFamily: c.font }}>
-            {patient.age}F · Dr. James Harrington · Day {patient.day} of 90 · {patient.phase}
+            {d.patient?.gender} · DOB: {d.patient?.dob} · {d.patient?.address || ""}
           </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <RiskBadge level={patient.riskLevel} score={patient.risk} />
+        <button onClick={onOutreach} style={{ padding: "10px 18px", borderRadius: 10, background: DS.color.slate[950], color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", gap: 6, boxShadow: c.shadowMd }}>
+          <Icon name="phone" size={14} color="white" /> Contact Patient
+        </button>
+      </div>
+
+      {/* AI Check-in Section */}
+      {callData ? (
+        <RecentCallCard callData={callData} />
+      ) : (
+        <div style={{ background: c.card, borderRadius: c.radius, border: `1px solid ${c.border}`, boxShadow: c.shadow, padding: "20px", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <Icon name="chat" size={16} color={c.accent} />
+            <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>AI Check-in</span>
+          </div>
+          <div style={{ fontSize: 13, color: c.textMed, lineHeight: 1.6, marginBottom: 14 }}>
+            No AI check-in has been conducted yet. Initiate a voice call to have the AI concierge assess this patient using their live Epic FHIR data.
+          </div>
+          <button onClick={onOutreach} style={{ padding: "10px 16px", borderRadius: DS.radius.md, background: DS.color.slate[900], color: "white", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", gap: 6 }}>
+            <Icon name="chat" size={14} color="white" /> Start AI Check-in
+          </button>
+        </div>
+      )}
+
+      {/* Clinical Profile Summary */}
+      <div style={{ background: c.card, borderRadius: c.radius, border: `1px solid ${c.border}`, boxShadow: c.shadow, padding: "20px", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <Icon name="bar_chart" size={16} color={c.accent} />
+          <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>Clinical Profile Summary</span>
+          <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: c.tealLight, color: c.teal }}>FROM EPIC</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
+          {[
+            { label: "Active Conditions", value: (d.conditions || []).filter(x => x.status === 'active').length },
+            { label: "Medications", value: (d.medications || []).length },
+            { label: "Lab Results", value: (d.labs || []).length },
+            { label: "Reports", value: (d.diagnosticReports || []).length },
+          ].map((item, i) => (
+            <div key={i} style={{ padding: "10px 12px", borderRadius: 10, background: c.borderLight }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, marginBottom: 4 }}>{item.label}</div>
+              <div style={{ fontSize: 22, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>{item.value}</div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <AIReasoningCard onOutreach={onOutreach} />
-      <div style={{ marginTop: 20 }}><SupportingData /></div>
+      <div style={{ background: c.card, borderRadius: c.radius, border: `1.5px solid ${c.tealLight}`, boxShadow: c.shadowMd, padding: "20px", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <span style={{ fontSize: 16 }}>🏥</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>Live EHR Data</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: c.greenLight, color: c.green, border: "1px solid #A7F3D0" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} />LIVE
+          </span>
+        </div>
+
+        {/* Demographics */}
+        <div style={{ padding: "12px 14px", background: c.borderLight, borderRadius: 10, marginBottom: 14 }}>
+          <div style={sectionHead}>Patient Demographics</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+            {[
+              { label: "Name", value: d.patient?.name },
+              { label: "DOB", value: d.patient?.dob },
+              { label: "Gender", value: d.patient?.gender },
+              { label: "Location", value: d.patient?.address },
+              { label: "Phone", value: d.patient?.phone },
+              { label: "Race", value: d.patient?.race },
+            ].map((f, i) => (
+              <div key={i} style={{ fontSize: 12 }}>
+                <span style={{ color: c.textLight }}>{f.label}: </span>
+                <span style={{ fontWeight: 600, color: c.text }}>{f.value || "—"}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Conditions */}
+        {d.conditions.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={sectionHead}>Conditions ({d.conditions.length})</div>
+            {d.conditions.map((cond, i) => (
+              <div key={i} style={{ fontSize: 13, color: c.textMed, padding: "4px 0", borderBottom: i < d.conditions.length - 1 ? `1px solid ${c.borderLight}` : "none", display: "flex", justifyContent: "space-between" }}>
+                <span>{cond.text}</span>
+                <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 4, background: cond.status === "active" ? c.redLight : c.greenLight, color: cond.status === "active" ? c.red : c.green, fontWeight: 600 }}>{cond.status}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Medications */}
+        {d.medications.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={sectionHead}>Medications ({d.medications.length})</div>
+            {d.medications.map((med, i) => (
+              <div key={i} style={{ fontSize: 13, color: c.textMed, padding: "4px 0", borderBottom: i < d.medications.length - 1 ? `1px solid ${c.borderLight}` : "none" }}>
+                <span style={{ fontWeight: 600, color: c.text }}>{med.name}</span>
+                {med.dosage && <div style={{ fontSize: 11, color: c.textLight, marginTop: 2 }}>{med.dosage}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Labs */}
+        {d.labs.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={sectionHead}>Lab Results ({d.labs.length})</div>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: c.font }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${c.border}` }}>
+                  {["Test", "Value", "Date"].map((h, i) => (
+                    <th key={i} style={{ padding: "6px 4px", textAlign: "left", fontSize: 10, fontWeight: 700, color: c.textLight, textTransform: "uppercase" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {d.labs.map((lab, i) => (
+                  <tr key={i} style={{ borderBottom: `1px solid ${c.borderLight}` }}>
+                    <td style={{ padding: "6px 4px", fontWeight: 600, color: c.text }}>{lab.name}</td>
+                    <td style={{ padding: "6px 4px", color: c.accent, fontWeight: 700 }}>{lab.value} {lab.unit}</td>
+                    <td style={{ padding: "6px 4px", color: c.textLight }}>{lab.date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Diagnostic Reports */}
+        {d.diagnosticReports.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={sectionHead}>Diagnostic Reports ({d.diagnosticReports.length})</div>
+            {d.diagnosticReports.map((dr, i) => (
+              <div key={i} style={{ fontSize: 12, color: c.textMed, padding: "4px 0", borderBottom: i < d.diagnosticReports.length - 1 ? `1px solid ${c.borderLight}` : "none", display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontWeight: 600, color: c.text }}>{dr.name}</span>
+                <span style={{ color: c.textLight }}>{dr.date}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ padding: "8px 12px", background: c.tealLight + "60", borderRadius: 8, fontSize: 11, color: c.teal, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+          <Icon name="lock" size={12} color={c.teal} /> Authenticated via SMART on FHIR Backend Services · JWT + RS384 · FHIR R4
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Generic Patient Summary (non-Sarah roster patients) ──
+function GenericPatientSummary({ patient, onOutreach }) {
+  const trendColors = { worsening: c.red, stable: c.teal, improving: "#10B981" };
+  const trendIcons = { worsening: "↗", stable: "→", improving: "↘" };
+  const phaseColors = { Stabilize: "#10B981", "Stabilize → Optimize": "#10B981", Optimize: "#3B82F6", Maintain: "#8B5CF6" };
+  const data = PATIENT_CLINICAL_DATA[patient.id];
+  const cardStyle = { background: c.card, borderRadius: c.radius, border: `1px solid ${c.border}`, boxShadow: c.shadow, overflow: "hidden" };
+  const sectionHead = { fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 };
+  const statusColor = (s) => s === "good" ? c.green : s === "elevated" ? c.red : c.orange;
+
+  return (
+    <div style={{ marginTop: 20, display: "grid", gap: 16 }}>
+      {/* Journey Progress */}
+      <div style={{ ...cardStyle, overflow: "hidden" }}>
+        <div style={{ background: DS.color.slate[950], padding: "14px 20px", display: "flex", alignItems: "center", gap: 10 }}>
+          <Icon name="flag" size={16} color="white" />
+          <div style={{ fontSize: 14, fontWeight: 700, color: "white" }}>Recovery Journey</div>
+        </div>
+        <div style={{ padding: "18px 20px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Day</div>
+              <div style={{ fontSize: 24, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>{patient.day}<span style={{ fontSize: 14, fontWeight: 500, color: c.textLight, fontFamily: DS.fontSans }}> / 90</span></div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Phase</div>
+              <div style={{ display: "inline-block", padding: "4px 10px", borderRadius: 6, fontSize: 13, fontWeight: 700, background: (phaseColors[patient.phase] || c.teal) + "18", color: phaseColors[patient.phase] || c.teal }}>{patient.phase}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Trend</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 18, color: trendColors[patient.trend] || c.textMed }}>{trendIcons[patient.trend] || "→"}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: trendColors[patient.trend] || c.textMed, textTransform: "capitalize" }}>{patient.trend || "—"}</span>
+              </div>
+            </div>
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <div style={{ height: 8, borderRadius: 4, background: c.borderLight, overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: 4, width: `${Math.min(100, (patient.day / 90) * 100)}%`, background: `linear-gradient(90deg, #10B981, ${phaseColors[patient.phase] || "#3B82F6"})`, transition: "width 0.5s ease" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 11, color: c.textLight }}>
+              <span>Day 1</span><span>Day 14</span><span>Day 60</span><span>Day 90</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Scheduled Outreach */}
+      {patient.scheduledOutreach && (
+        <div style={{ ...cardStyle, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Icon name="calendar" size={16} color={c.accent} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>Scheduled Outreach</div>
+              <div style={{ fontSize: 12, color: c.textLight }}>{patient.scheduledOutreach}</div>
+            </div>
+          </div>
+          <button onClick={onOutreach} style={{ padding: "8px 14px", borderRadius: 8, background: c.teal, color: "white", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: c.font }}>Contact Now</button>
+        </div>
+      )}
+
+      {data ? (
+        <>
+          {/* Current Vitals */}
+          <div style={{ ...cardStyle, padding: "20px 24px" }}>
+            <div style={sectionHead}>Current Vitals</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {/* Weight */}
+              <div style={{ padding: "14px 16px", background: c.borderLight, borderRadius: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, marginBottom: 6 }}>WEIGHT</div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                  <span style={{ fontSize: 24, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>{data.vitals.weight.current}</span>
+                  <span style={{ fontSize: 12, color: c.textLight }}>{data.vitals.weight.unit}</span>
+                </div>
+                <div style={{ fontSize: 12, color: statusColor(data.vitals.weight.status), fontWeight: 600, marginTop: 4, textTransform: "capitalize" }}>{data.vitals.weight.trend}</div>
+              </div>
+              {/* BP */}
+              <div style={{ padding: "14px 16px", background: c.borderLight, borderRadius: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, marginBottom: 6 }}>BLOOD PRESSURE</div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                  <span style={{ fontSize: 24, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>{data.vitals.bp.sys}/{data.vitals.bp.dia}</span>
+                  <span style={{ fontSize: 12, color: c.textLight }}>mmHg</span>
+                </div>
+                <div style={{ fontSize: 12, color: statusColor(data.vitals.bp.status), fontWeight: 600, marginTop: 4 }}>{data.vitals.bp.note}</div>
+              </div>
+              {/* HR */}
+              <div style={{ padding: "14px 16px", background: c.borderLight, borderRadius: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, marginBottom: 6 }}>HEART RATE</div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                  <span style={{ fontSize: 24, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>{data.vitals.hr.value}</span>
+                  <span style={{ fontSize: 12, color: c.textLight }}>bpm</span>
+                </div>
+                <div style={{ fontSize: 12, color: statusColor(data.vitals.hr.status), fontWeight: 600, marginTop: 4 }}>{data.vitals.hr.note}</div>
+              </div>
+              {/* SpO2 */}
+              <div style={{ padding: "14px 16px", background: c.borderLight, borderRadius: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, marginBottom: 6 }}>OXYGEN SATURATION</div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                  <span style={{ fontSize: 24, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>{data.vitals.spo2.value}</span>
+                  <span style={{ fontSize: 12, color: c.textLight }}>%</span>
+                </div>
+                <div style={{ fontSize: 12, color: statusColor(data.vitals.spo2.status), fontWeight: 600, marginTop: 4 }}>{data.vitals.spo2.status === "good" ? "Normal" : "Monitor"}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Conditions */}
+          <div style={{ ...cardStyle, padding: "20px 24px" }}>
+            <div style={sectionHead}>Active Conditions</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {data.conditions.map((cond, i) => (
+                <span key={i} style={{ padding: "6px 12px", borderRadius: 8, background: c.borderLight, fontSize: 13, fontWeight: 600, color: c.text, border: `1px solid ${c.border}` }}>{cond}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Medications */}
+          <div style={{ ...cardStyle, padding: "20px 24px" }}>
+            <div style={sectionHead}>Medications</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {data.medications.map((med, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 14px", background: c.borderLight, borderRadius: 10 }}>
+                  <Icon name="pill" size={18} color={c.accent} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: c.text }}>{med.name} <span style={{ fontWeight: 500, color: c.textLight }}>{med.dose}</span></div>
+                    <div style={{ fontSize: 12, color: c.textLight, marginTop: 2 }}>{med.timing}</div>
+                  </div>
+                  <div style={{ width: 28, height: 28, borderRadius: 8, background: c.greenLight, border: `1.5px solid ${c.green}`, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="check" size={14} color={c.green} /></div>
+                </div>
+              ))}
+            </div>
+            {data.allergy && (
+              <div style={{ marginTop: 12, padding: "10px 14px", background: "#FEF3C7", borderRadius: 10, fontSize: 12, color: c.orange, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+                <Icon name="alert" size={12} color={c.orange} /> Allergy: {data.allergy}
+              </div>
+            )}
+          </div>
+
+          {/* Labs */}
+          <div style={{ ...cardStyle, padding: "20px 24px" }}>
+            <div style={sectionHead}>Recent Lab Results</div>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, fontFamily: c.font }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${c.border}` }}>
+                  {["Test", "Value", "Date", "Status"].map((h, i) => (
+                    <th key={i} style={{ padding: "8px 6px", textAlign: "left", fontSize: 10, fontWeight: 700, color: c.textLight, textTransform: "uppercase" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.labs.map((lab, i) => (
+                  <tr key={i} style={{ borderBottom: `1px solid ${c.borderLight}` }}>
+                    <td style={{ padding: "8px 6px", fontWeight: 600, color: c.text }}>{lab.name}</td>
+                    <td style={{ padding: "8px 6px", color: c.textMed }}>{lab.value}</td>
+                    <td style={{ padding: "8px 6px", color: c.textLight }}>{lab.date}</td>
+                    <td style={{ padding: "8px 6px" }}>
+                      <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700, background: statusColor(lab.status) + "18", color: statusColor(lab.status), textTransform: "capitalize" }}>{lab.status}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Recent AI Check-ins */}
+          <div style={{ ...cardStyle, padding: "20px 24px" }}>
+            <div style={sectionHead}>Recent AI Check-ins</div>
+            {data.recentCheckins.map((item, i) => (
+              <div key={i} style={{ padding: "14px 16px", background: i === 0 ? `${c.purple}08` : c.borderLight, borderRadius: 10, marginBottom: i < data.recentCheckins.length - 1 ? 8 : 0, border: i === 0 ? `1px solid ${c.purple}20` : "none" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: i === 0 ? c.purple : c.textLight, marginBottom: 6 }}>{item.date}</div>
+                <div style={{ fontSize: 13, color: c.textMed, lineHeight: 1.6 }}>{item.summary}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Care Team */}
+          <div style={{ ...cardStyle, padding: "20px 24px" }}>
+            <div style={sectionHead}>Care Team</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {[
+                { name: data.coordinator, role: "Care Coordinator", initials: data.coordinator.split(' ').map(w => w[0]).join('').substring(0, 2), color: c.teal },
+                { name: patient.doctor, role: "Physician", initials: patient.doctor.replace("Dr. ", "").split(' ').map(w => w[0]).join(''), color: c.accent },
+                { name: "Vardana AI", role: "Care Concierge", initials: "V", color: c.purple },
+              ].map((member, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: c.borderLight, borderRadius: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: `${member.color}15`, border: `2px solid ${member.color}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: member.color, fontFamily: DS.fontSans }}>{member.initials}</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>{member.name}</div>
+                    <div style={{ fontSize: 12, color: c.textLight }}>{member.role}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div style={{ background: c.tealLight + "30", borderRadius: c.radius, border: `1px solid ${c.tealLight}`, padding: "14px 18px", display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <Icon name="info" size={14} color={c.teal} />
+          <div style={{ fontSize: 13, color: c.teal, lineHeight: 1.5 }}>
+            <strong>EHR Integration Required</strong> — Detailed clinical data will be available after connecting this patient's electronic health record.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PatientDetail({ patient, onBack, onOutreach, callData }) {
+  if (patient.isEpic) return <EpicPatientDetail patient={patient} onOutreach={onOutreach} callData={callData} />;
+
+  const isSarahChen = patient.id === 1;
+
+  return (
+    <div style={{ maxWidth: 960, margin: "0 auto", padding: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+        <div>
+          <h1 style={{ fontSize: 26, fontWeight: 400, color: c.text, margin: 0, fontFamily: DS.fontDisplay }}>{patient.name}</h1>
+          <p style={{ fontSize: 14, color: c.textLight, margin: "4px 0 0", fontFamily: c.font }}>
+            {patient.age}{patient.gender || ""} · {patient.doctor ? patient.doctor + " · " : ""}<span style={{ fontFamily: DS.fontDisplay }}>Day {patient.day}</span> of 90 · {patient.phase}
+          </p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={onOutreach} style={{ padding: "10px 18px", borderRadius: 10, background: DS.color.slate[950], color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", gap: 6, boxShadow: c.shadowMd }}>
+            <Icon name="phone" size={14} color="white" /> Contact Patient
+          </button>
+          {patient.risk != null && <RiskBadge level={patient.riskLevel} score={patient.risk} />}
+        </div>
+      </div>
+
+      {isSarahChen ? (
+        <>
+          <AIReasoningCard onOutreach={onOutreach} />
+          {callData && <RecentCallCard callData={callData} />}
+          <div style={{ marginTop: 20 }}><SupportingData /></div>
+        </>
+      ) : (
+        <>
+          {callData && <RecentCallCard callData={callData} />}
+          <GenericPatientSummary patient={patient} onOutreach={onOutreach} />
+        </>
+      )}
     </div>
   );
 }
 
 // ── Main App ──
-export default function CareCoordinatorView() {
+function CareCoordinatorView({ onSwitchRole }) {
   const [view, setView] = useState("roster"); // roster | patient | voiceCall | smsPath
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showOutreachModal, setShowOutreachModal] = useState(false);
+  const [callTranscripts, setCallTranscripts] = useState({});
+  const [epicPatients, setEpicPatients] = useState([]);
+  const [epicLoading, setEpicLoading] = useState(false);
+
+  const fetchEpicPatients = async () => {
+    if (epicPatients.length > 0 || epicLoading) return;
+    setEpicLoading(true);
+    const epicIds = [
+      "erXuFYUfucBZaryVksYEcMg3",       // Camila Lopez
+      "eq081-VQEgP8drUUqCWzHfw3",       // Jason Argonaut
+    ];
+    try {
+      const results = await Promise.allSettled(
+        epicIds.map(id => fetch(`/api/epic-fhir?patientId=${id}&resource=all`).then(r => r.ok ? r.json() : null))
+      );
+      const patients = results
+        .filter(r => r.status === "fulfilled" && r.value?.patient)
+        .map(r => {
+          const data = r.value;
+          const age = data.patient.dob ? Math.floor((Date.now() - new Date(data.patient.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : null;
+          return {
+            id: `epic-${data.patient.id}`,
+            name: data.patient.name || "Epic Patient",
+            age,
+            day: null, phase: null, risk: null, riskLevel: null,
+            alert: false, trend: null, scheduledOutreach: null,
+            isEpic: true,
+            epicData: data,
+          };
+        });
+      if (patients.length > 0) setEpicPatients(patients);
+    } catch (e) {
+      console.error("Epic fetch failed:", e);
+    } finally {
+      setEpicLoading(false);
+    }
+  };
 
   const handleInitiate = (channel, timing) => {
     setShowOutreachModal(false);
@@ -1574,7 +2697,10 @@ export default function CareCoordinatorView() {
   };
 
   if (view === "voiceCall") {
-    return <VoiceCallDemo patient={selectedPatient} onComplete={() => { setView("patient"); }} />;
+    return <VoiceCallDemo patient={selectedPatient} onComplete={(data) => {
+      if (data) setCallTranscripts(prev => ({ ...prev, [selectedPatient.id]: data }));
+      setView("patient");
+    }} />;
   }
 
   if (view === "smsPath") {
@@ -1590,15 +2716,16 @@ export default function CareCoordinatorView() {
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: ${c.border}; border-radius: 3px; }
       `}</style>
-      <Header patientSelected={view === "patient"} onBack={() => setView("roster")} />
+      <Header patientSelected={view === "patient"} onBack={() => setView("roster")} onSwitchRole={onSwitchRole} />
       {view === "patient" && selectedPatient ? (
         <PatientDetail
           patient={selectedPatient}
           onBack={() => setView("roster")}
           onOutreach={() => setShowOutreachModal(true)}
+          callData={callTranscripts[selectedPatient?.id]}
         />
       ) : (
-        <RosterView onSelect={(p) => { setSelectedPatient(p); setView("patient"); }} />
+        <RosterView onSelect={(p) => { setSelectedPatient(p); setView("patient"); }} epicPatients={epicPatients} epicLoading={epicLoading} onFetchEpic={fetchEpicPatients} />
       )}
       {showOutreachModal && selectedPatient && (
         <OutreachModal
@@ -1607,6 +2734,433 @@ export default function CareCoordinatorView() {
           onInitiate={handleInitiate}
         />
       )}
+    </div>
+  );
+}
+
+// ── Patient Header ──
+function PatientHeader({ onSwitchRole }) {
+  return (
+    <div style={{ background: DS.color.slate[950], color: "white", padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 100 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ fontSize: 20, fontWeight: 400, fontFamily: DS.fontDisplay, letterSpacing: "-0.02em" }}>
+          Vardana<span style={{ color: DS.color.amber[400] }}>.</span>
+        </span>
+        <span style={{ fontSize: 12, fontWeight: 500, opacity: 0.5, borderLeft: "1px solid rgba(255,255,255,0.2)", paddingLeft: 12 }}>
+          Patient Portal
+        </span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 13 }}>
+        {onSwitchRole && <button onClick={onSwitchRole} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontSize: 11, fontFamily: c.font, fontWeight: 600 }}>Switch Role</button>}
+        <span style={{ opacity: 0.6 }}>Sarah Chen</span>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12 }}>SC</div>
+      </div>
+    </div>
+  );
+}
+
+// ── Patient Contact Modal (Voice / Chat selection) ──
+function PatientContactModal({ onClose, onVoice, onChat }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15,26,42,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(4px)" }}>
+      <div style={{ background: c.card, borderRadius: 16, width: "100%", maxWidth: 480, boxShadow: "0 24px 64px rgba(0,0,0,0.2)", overflow: "hidden", fontFamily: c.font }}>
+        <div style={{ background: DS.color.slate[950], padding: "18px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "white" }}>Talk to Vardana AI</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>Your care concierge is ready to help</div>
+          </div>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.12)", border: "none", color: "white", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+        </div>
+        <div style={{ padding: "20px 24px" }}>
+          <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+            {/* Voice Call */}
+            <div style={{ flex: 1, background: c.borderLight, border: `2px solid ${c.accent}30`, borderRadius: 14, padding: "20px 16px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: "linear-gradient(135deg, #0EA5E9, #0284C7)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}><Icon name="phone" size={22} color="white" /></div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: c.text, marginBottom: 4 }}>Voice Call</div>
+              <div style={{ fontSize: 11, color: c.textLight, lineHeight: 1.5, marginBottom: 14, flex: 1 }}>Speak directly with Vardana. Natural conversation about how you're feeling.</div>
+              <button onClick={onVoice} style={{ width: "100%", padding: "10px", borderRadius: 9, background: "linear-gradient(135deg, #0EA5E9, #0284C7)", color: "white", border: "none", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: c.font }}>Start Voice Call</button>
+              <div style={{ fontSize: 10, color: c.textLight, marginTop: 6 }}>Requires microphone</div>
+            </div>
+            {/* Chat */}
+            <div style={{ flex: 1, background: c.borderLight, border: `2px solid ${c.purple}30`, borderRadius: 14, padding: "20px 16px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: `linear-gradient(135deg, ${c.purple}, #7C3AED)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}><Icon name="sms" size={22} color="white" /></div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: c.text, marginBottom: 4 }}>Chat</div>
+              <div style={{ fontSize: 11, color: c.textLight, lineHeight: 1.5, marginBottom: 14, flex: 1 }}>Type your questions. Same AI concierge, at your own pace.</div>
+              <button onClick={onChat} style={{ width: "100%", padding: "10px", borderRadius: 9, background: `linear-gradient(135deg, ${c.purple}, #7C3AED)`, color: "white", border: "none", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: c.font }}>Start Chat</button>
+              <div style={{ fontSize: 10, color: c.textLight, marginTop: 6 }}>No mic needed</div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ width: "100%", padding: "10px", border: "none", background: "none", color: c.textLight, fontSize: 13, cursor: "pointer", fontFamily: c.font }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Patient Chat Component ──
+function PatientChat({ patient, onBack }) {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [history, setHistory] = useState([]);
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // AI greeting on mount
+  useEffect(() => {
+    const greeting = `Hi ${patient.name.split(' ')[0]}, I'm your Vardana care concierge. How can I help you today?`;
+    setMessages([{ role: "ai", text: greeting }]);
+    setHistory([{ role: "assistant", content: greeting }]);
+  }, [patient.name]);
+
+  // Auto-scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const sendMessage = async () => {
+    const text = input.trim();
+    if (!text || isTyping) return;
+    setInput("");
+    setMessages(prev => [...prev, { role: "user", text }]);
+    const newHistory = [...history, { role: "user", content: text }];
+    setHistory(newHistory);
+    setIsTyping(true);
+
+    try {
+      const res = await fetch("/api/voice-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: newHistory, turn: Math.floor(newHistory.length / 2), maxTurns: 20 }),
+      });
+      if (!res.ok) throw new Error(`API ${res.status}`);
+      const data = await res.json();
+      setMessages(prev => [...prev, { role: "ai", text: data.reply }]);
+      setHistory(prev => [...prev, { role: "assistant", content: data.reply }]);
+    } catch (err) {
+      setMessages(prev => [...prev, { role: "ai", text: "I'm sorry, I'm having trouble connecting right now. Please try again." }]);
+    }
+    setIsTyping(false);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: DS.color.slate[950], zIndex: 300, display: "flex", flexDirection: "column", fontFamily: c.font }}>
+      {/* Header */}
+      <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={onBack} style={{ background: "rgba(255,255,255,0.08)", border: "none", color: "white", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: c.font }}>← Back</button>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg, ${c.purple}, #7C3AED)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: "white" }}>V</div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "white" }}>Vardana AI</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Care Concierge</div>
+          </div>
+        </div>
+        <button onClick={onBack} style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", color: "#FCA5A5", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: c.font }}>End Chat</button>
+      </div>
+
+      {/* Messages */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 10px" }}>
+        <div style={{ maxWidth: 600, margin: "0 auto" }}>
+          {messages.map((msg, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", marginBottom: 12 }}>
+              {msg.role === "ai" && (
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: `${c.purple}25`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: c.purple, marginRight: 8, flexShrink: 0, marginTop: 2 }}>V</div>
+              )}
+              <div style={{
+                maxWidth: "75%",
+                padding: "10px 14px",
+                borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+                background: msg.role === "user" ? "linear-gradient(135deg, #0EA5E9, #0284C7)" : "rgba(255,255,255,0.06)",
+                border: msg.role === "user" ? "none" : "1px solid rgba(255,255,255,0.08)",
+                color: "white",
+                fontSize: 13,
+                lineHeight: 1.6,
+              }}>
+                {msg.text}
+              </div>
+            </div>
+          ))}
+          {isTyping && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: `${c.purple}25`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: c.purple }}>V</div>
+              <div style={{ padding: "10px 14px", borderRadius: "14px 14px 14px 4px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)", fontSize: 13 }}>Typing...</div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+
+      {/* Input */}
+      <div style={{ padding: "12px 20px 20px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", gap: 8 }}>
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && sendMessage()}
+            placeholder="Type your message..."
+            style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "white", fontSize: 14, fontFamily: c.font, outline: "none" }}
+          />
+          <button onClick={sendMessage} disabled={isTyping || !input.trim()} style={{ padding: "12px 20px", borderRadius: 12, background: isTyping || !input.trim() ? "rgba(255,255,255,0.06)" : "linear-gradient(135deg, #0EA5E9, #0284C7)", color: "white", border: "none", fontSize: 14, fontWeight: 800, cursor: isTyping ? "default" : "pointer", fontFamily: c.font, opacity: isTyping || !input.trim() ? 0.4 : 1 }}>Send</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Patient Experience View ──
+function PatientExperienceView({ onSwitchRole }) {
+  const patient = ROSTER[0]; // Sarah Chen
+  const [view, setView] = useState("dashboard"); // dashboard | voiceCall | chat
+  const [showContactModal, setShowContactModal] = useState(false);
+  const latestWeight = WEIGHT_DATA[WEIGHT_DATA.length - 1];
+  const prevWeight = WEIGHT_DATA[WEIGHT_DATA.length - 3];
+  const latestBP = BP_DATA[BP_DATA.length - 1];
+  const journeyPct = (patient.day / 90) * 100;
+
+  const sarahPatient = { ...patient, isEpic: false, alert: false };
+
+  if (view === "voiceCall") {
+    return <VoiceCallDemo patient={sarahPatient} onComplete={() => setView("dashboard")} />;
+  }
+  if (view === "chat") {
+    return <PatientChat patient={sarahPatient} onBack={() => setView("dashboard")} />;
+  }
+
+  const medications = [
+    { name: "Carvedilol", dose: "12.5mg", timing: "Twice daily (morning & evening)", iconName: "pill" },
+    { name: "Lisinopril", dose: "10mg", timing: "Once daily (morning)", iconName: "pill" },
+    { name: "Furosemide", dose: "40mg", timing: "Once daily (morning)", icon: "💧" },
+    { name: "Metformin", dose: "1000mg", timing: "Twice daily (with meals)", iconName: "pill" },
+    { name: "Spironolactone", dose: "25mg", timing: "Once daily", iconName: "pill" },
+  ];
+
+  const cardStyle = { background: c.card, borderRadius: c.radius, border: `1px solid ${c.border}`, boxShadow: c.shadow, overflow: "hidden" };
+  const sectionHead = { fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 };
+
+  return (
+    <div style={{ fontFamily: c.font, background: DS.color.canvas.warm, minHeight: "100vh" }}>
+      <style>{`
+        * { box-sizing: border-box; margin: 0; }
+        button:active { opacity: 0.9; }
+      `}</style>
+      <PatientHeader onSwitchRole={onSwitchRole} />
+
+      <div style={{ maxWidth: 800, margin: "0 auto", padding: 24 }}>
+
+        {/* Welcome */}
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 400, color: c.text, margin: 0, fontFamily: DS.fontDisplay }}>Welcome back, Sarah</h1>
+          <p style={{ fontSize: 14, color: c.textLight, margin: "4px 0 0", fontFamily: c.font }}>Here's your recovery progress for today</p>
+        </div>
+
+        {/* Journey Progress */}
+        <div style={{ ...cardStyle, padding: "20px 24px", marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: c.text }}>Recovery Journey</div>
+              <div style={{ fontSize: 13, color: c.textLight, marginTop: 2 }}>Day {patient.day} of 90</div>
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 700, color: c.purple, background: c.purpleLight, padding: "4px 12px", borderRadius: 8 }}>
+              {patient.phase}
+            </span>
+          </div>
+          {/* Progress bar */}
+          <div style={{ position: "relative", height: 10, background: c.borderLight, borderRadius: 6, overflow: "hidden", marginBottom: 10 }}>
+            <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${journeyPct}%`, background: "linear-gradient(90deg, #059669, #2563EB)", borderRadius: 6, transition: "width 1s ease" }} />
+          </div>
+          {/* Phase labels */}
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: c.textLight }}>
+            <span style={{ color: c.green, fontWeight: 700 }}>Stabilize (1–14)</span>
+            <span style={{ color: c.accent, fontWeight: 700 }}>Optimize (15–60)</span>
+            <span style={{ color: c.purple, fontWeight: 600 }}>Maintain (61–90)</span>
+          </div>
+        </div>
+
+        {/* Vitals Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+          {/* Weight */}
+          <div style={{ ...cardStyle, padding: "18px 20px" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Your Weight</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <span style={{ fontSize: 28, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>{latestWeight.weight}</span>
+              <span style={{ fontSize: 13, color: c.textLight }}>lbs</span>
+            </div>
+            <div style={{ fontSize: 12, color: c.red, fontWeight: 600, marginTop: 4 }}>
+              +{(latestWeight.weight - prevWeight.weight).toFixed(1)} lbs in 48hrs
+            </div>
+            <div style={{ fontSize: 11, color: c.textLight, marginTop: 6 }}>Your care team has been notified about this change.</div>
+          </div>
+
+          {/* Blood Pressure */}
+          <div style={{ ...cardStyle, padding: "18px 20px" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Blood Pressure</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+              <span style={{ fontSize: 28, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>{latestBP.sys}/{latestBP.dia}</span>
+              <span style={{ fontSize: 13, color: c.textLight }}>mmHg</span>
+            </div>
+            <div style={{ fontSize: 12, color: c.orange, fontWeight: 600, marginTop: 4 }}>
+              Slightly elevated
+            </div>
+            <div style={{ fontSize: 11, color: c.textLight, marginTop: 6 }}>Target: below 130/80 mmHg</div>
+          </div>
+
+          {/* Heart Rate */}
+          <div style={{ ...cardStyle, padding: "18px 20px" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Heart Rate</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <span style={{ fontSize: 28, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>82</span>
+              <span style={{ fontSize: 13, color: c.textLight }}>bpm</span>
+            </div>
+            <div style={{ fontSize: 12, color: c.green, fontWeight: 600, marginTop: 4 }}>
+              Normal range
+            </div>
+          </div>
+
+          {/* Next Check-in */}
+          <div style={{ ...cardStyle, padding: "18px 20px", background: DS.color.amber[50] }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: DS.color.amber[600], textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Next Check-in</div>
+            <div style={{ fontSize: 18, fontWeight: 400, color: DS.color.amber[700], fontFamily: DS.fontDisplay }}>Today</div>
+            <div style={{ fontSize: 12, color: c.textMed, fontWeight: 600, marginTop: 4 }}>
+              AI Concierge call scheduled
+            </div>
+            <div style={{ fontSize: 11, color: c.textLight, marginTop: 6 }}>Vardana will call to check on your progress.</div>
+          </div>
+        </div>
+
+        {/* Talk to Vardana CTA */}
+        <div style={{ ...cardStyle, padding: 0, marginBottom: 16, background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)", border: "none", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(14,165,233,0.08)" }} />
+          <div style={{ position: "absolute", bottom: -20, left: -20, width: 80, height: 80, borderRadius: "50%", background: "rgba(168,85,247,0.08)" }} />
+          <div style={{ padding: "24px 28px", position: "relative", zIndex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #0EA5E9, #A855F7)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon name="sms" size={18} color="white" />
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "white", fontFamily: DS.fontDisplay }}>Have a question?</div>
+            </div>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, margin: "0 0 16px", maxWidth: 340 }}>
+              Talk to your Vardana AI care concierge anytime — by voice or text.
+            </p>
+            <button
+              onClick={() => setShowContactModal(true)}
+              style={{
+                padding: "12px 28px", borderRadius: 10,
+                background: "linear-gradient(135deg, #0EA5E9, #0284C7)",
+                color: "white", border: "none", fontSize: 14, fontWeight: 800,
+                cursor: "pointer", fontFamily: c.font,
+                boxShadow: "0 4px 16px rgba(14,165,233,0.3)",
+                display: "flex", alignItems: "center", gap: 8,
+              }}
+            >
+              <Icon name="phone" size={16} color="white" /> Start a Conversation
+            </button>
+          </div>
+        </div>
+
+        {/* Medications */}
+        <div style={{ ...cardStyle, padding: "20px 24px", marginBottom: 16 }}>
+          <div style={sectionHead}>Your Medications</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {medications.map((med, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 14px", background: c.borderLight, borderRadius: 10 }}>
+                <Icon name={med.iconName} size={20} color={c.accent} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: c.text }}>{med.name} <span style={{ fontWeight: 500, color: c.textLight }}>{med.dose}</span></div>
+                  <div style={{ fontSize: 12, color: c.textLight, marginTop: 2 }}>{med.timing}</div>
+                </div>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: c.greenLight, border: `1.5px solid ${c.green}`, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="check" size={14} color={c.green} /></div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 12, padding: "10px 14px", background: "#FEF3C7", borderRadius: 10, fontSize: 12, color: c.orange, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+            <Icon name="alert" size={12} color={c.orange} /> Allergy: Sulfa drugs — Always remind your doctor before any new prescriptions.
+          </div>
+        </div>
+
+        {/* Recent AI Check-ins */}
+        <div style={{ ...cardStyle, padding: "20px 24px", marginBottom: 16 }}>
+          <div style={sectionHead}>Recent Check-ins with Vardana AI</div>
+          {[
+            { date: "Yesterday, 8:00 AM", summary: "Discussed how you've been feeling. Noted increased fatigue and some ankle swelling. Vardana shared this with your care team." },
+            { date: "Today, 7:45 AM", summary: "Checked in about weight change (+2.3 lbs). Asked about breathing and swelling. Your care coordinator Rachel Kim will follow up today." },
+          ].map((item, i) => (
+            <div key={i} style={{ padding: "14px 16px", background: i === 1 ? c.purpleLight : c.borderLight, borderRadius: 10, marginBottom: i < 1 ? 8 : 0, border: i === 1 ? `1px solid ${c.purple}30` : "none" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: i === 1 ? c.purple : c.textLight, marginBottom: 6 }}>{item.date}</div>
+              <div style={{ fontSize: 13, color: c.textMed, lineHeight: 1.6 }}>{item.summary}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Care Team */}
+        <div style={{ ...cardStyle, padding: "20px 24px", marginBottom: 24 }}>
+          <div style={sectionHead}>Your Care Team</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {[
+              { name: "Rachel Kim, RN", role: "Care Coordinator", initials: "RK", color: c.teal },
+              { name: "Dr. James Harrington", role: "Cardiologist", initials: "JH", color: c.accent },
+              { name: "Vardana AI", role: "Care Concierge", initials: "V", color: c.purple },
+            ].map((member, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 14px", background: c.borderLight, borderRadius: 10 }}>
+                <div style={{ width: 40, height: 40, borderRadius: "50%", background: `${member.color}15`, border: `2px solid ${member.color}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: member.color, fontFamily: DS.fontSans }}>{member.initials}</div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: c.text }}>{member.name}</div>
+                  <div style={{ fontSize: 12, color: c.textLight }}>{member.role}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+      {showContactModal && (
+        <PatientContactModal
+          onClose={() => setShowContactModal(false)}
+          onVoice={() => { setShowContactModal(false); setView("voiceCall"); }}
+          onChat={() => { setShowContactModal(false); setView("chat"); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Role Selector & App Entry ──
+export default function App() {
+  const [role, setRole] = useState(null);
+
+  if (role === "coordinator") return <CareCoordinatorView onSwitchRole={() => setRole(null)} />;
+  if (role === "patient") return <PatientExperienceView onSwitchRole={() => setRole(null)} />;
+
+  // Role picker
+  return (
+    <div style={{ fontFamily: c.font, background: c.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <style>{`* { box-sizing: border-box; margin: 0; }`}</style>
+      <div style={{ maxWidth: 720, width: "100%", padding: 24 }}>
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <div style={{ fontSize: 36, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay, letterSpacing: "-0.02em" }}>
+            Vardana<span style={{ color: DS.color.amber[400] }}>.</span>
+          </div>
+          <p style={{ fontSize: 15, color: c.textLight, marginTop: 8, fontFamily: c.font }}>AI Care Concierge Platform — Select a view</p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          {/* Coordinator Card */}
+          <button onClick={() => setRole("coordinator")} style={{ background: DS.color.slate[950], border: "none", borderRadius: DS.radius.xl, padding: "32px 24px", cursor: "pointer", textAlign: "left", color: "white", fontFamily: c.font, boxShadow: DS.shadow.lg, transition: DS.transition.base }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>👩‍⚕️</div>
+            <div style={{ fontSize: 18, fontWeight: 400, marginBottom: 6, fontFamily: DS.fontDisplay }}>Care Coordinator</div>
+            <div style={{ fontSize: 13, opacity: 0.7, lineHeight: 1.5 }}>Nurse Rachel Kim</div>
+            <div style={{ fontSize: 12, opacity: 0.5, lineHeight: 1.5, marginTop: 8 }}>Monitor patients, review AI alerts, initiate voice & SMS outreach</div>
+          </button>
+
+          {/* Patient Card */}
+          <button onClick={() => setRole("patient")} style={{ background: DS.color.slate[900], border: "none", borderRadius: DS.radius.xl, padding: "32px 24px", cursor: "pointer", textAlign: "left", color: "white", fontFamily: c.font, boxShadow: DS.shadow.lg, transition: DS.transition.base }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>👩</div>
+            <div style={{ fontSize: 18, fontWeight: 400, marginBottom: 6, fontFamily: DS.fontDisplay }}>Patient Portal</div>
+            <div style={{ fontSize: 13, opacity: 0.7, lineHeight: 1.5 }}>Sarah Chen, 67F</div>
+            <div style={{ fontSize: 12, opacity: 0.5, lineHeight: 1.5, marginTop: 8 }}>Recovery journey, vitals, medications, AI check-in history</div>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

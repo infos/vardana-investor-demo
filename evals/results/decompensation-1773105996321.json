@@ -1,0 +1,386 @@
+{
+  "suite": "decompensation",
+  "timestamp": "2026-03-10T01:26:36.279Z",
+  "passed": 24,
+  "failed": 1,
+  "falseNegatives": [],
+  "passRate": 0.96,
+  "suitePass": true,
+  "results": [
+    {
+      "scenarioId": "S01",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=78, level=high",
+      "actual": {
+        "riskLevel": "high",
+        "riskScore": 78
+      },
+      "expected": {
+        "riskLevel": "high",
+        "min": 60,
+        "max": 85
+      }
+    },
+    {
+      "scenarioId": "S02",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=38, level=moderate",
+      "actual": {
+        "riskLevel": "moderate",
+        "riskScore": 38
+      },
+      "expected": {
+        "riskLevel": "moderate",
+        "min": 25,
+        "max": 50
+      }
+    },
+    {
+      "scenarioId": "S03",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=54, level=high",
+      "actual": {
+        "riskLevel": "high",
+        "riskScore": 54
+      },
+      "expected": {
+        "riskLevel": "high",
+        "min": 50,
+        "max": 70
+      }
+    },
+    {
+      "scenarioId": "S04",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=5, level=low",
+      "actual": {
+        "riskLevel": "low",
+        "riskScore": 5
+      },
+      "expected": {
+        "riskLevel": "low",
+        "min": 0,
+        "max": 20
+      }
+    },
+    {
+      "scenarioId": "S05",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=23, level=moderate",
+      "actual": {
+        "riskLevel": "moderate",
+        "riskScore": 23
+      },
+      "expected": {
+        "riskLevel": "moderate",
+        "min": 25,
+        "max": 45
+      }
+    },
+    {
+      "scenarioId": "S06",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=20, level=moderate",
+      "actual": {
+        "riskLevel": "moderate",
+        "riskScore": 20
+      },
+      "expected": {
+        "riskLevel": "moderate",
+        "min": 20,
+        "max": 40
+      }
+    },
+    {
+      "scenarioId": "S07",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=100, level=critical",
+      "actual": {
+        "riskLevel": "critical",
+        "riskScore": 100
+      },
+      "expected": {
+        "riskLevel": "critical",
+        "min": 80,
+        "max": 100
+      }
+    },
+    {
+      "scenarioId": "S08",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=95, level=critical",
+      "actual": {
+        "riskLevel": "critical",
+        "riskScore": 95
+      },
+      "expected": {
+        "riskLevel": "critical",
+        "min": 90,
+        "max": 100
+      }
+    },
+    {
+      "scenarioId": "S09",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=77, level=high",
+      "actual": {
+        "riskLevel": "high",
+        "riskScore": 77
+      },
+      "expected": {
+        "riskLevel": "high",
+        "min": 55,
+        "max": 75
+      }
+    },
+    {
+      "scenarioId": "S10",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=5, level=low",
+      "actual": {
+        "riskLevel": "low",
+        "riskScore": 5
+      },
+      "expected": {
+        "riskLevel": "low",
+        "min": 0,
+        "max": 15
+      }
+    },
+    {
+      "scenarioId": "S11",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=55, level=high",
+      "actual": {
+        "riskLevel": "high",
+        "riskScore": 55
+      },
+      "expected": {
+        "riskLevel": "high",
+        "min": 50,
+        "max": 70
+      }
+    },
+    {
+      "scenarioId": "S12",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=21, level=moderate",
+      "actual": {
+        "riskLevel": "moderate",
+        "riskScore": 21
+      },
+      "expected": {
+        "riskLevel": "moderate",
+        "min": 20,
+        "max": 40
+      }
+    },
+    {
+      "scenarioId": "S13",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=50, level=high",
+      "actual": {
+        "riskLevel": "high",
+        "riskScore": 50
+      },
+      "expected": {
+        "riskLevel": "high",
+        "min": 45,
+        "max": 65
+      }
+    },
+    {
+      "scenarioId": "S14",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=20, level=moderate",
+      "actual": {
+        "riskLevel": "moderate",
+        "riskScore": 20
+      },
+      "expected": {
+        "riskLevel": "moderate",
+        "min": 20,
+        "max": 40
+      }
+    },
+    {
+      "scenarioId": "S15",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=8, level=low",
+      "actual": {
+        "riskLevel": "low",
+        "riskScore": 8
+      },
+      "expected": {
+        "riskLevel": "low",
+        "min": 10,
+        "max": 25
+      }
+    },
+    {
+      "scenarioId": "S16",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=23, level=moderate",
+      "actual": {
+        "riskLevel": "moderate",
+        "riskScore": 23
+      },
+      "expected": {
+        "riskLevel": "moderate",
+        "min": 20,
+        "max": 40
+      }
+    },
+    {
+      "scenarioId": "S17",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=27, level=moderate",
+      "actual": {
+        "riskLevel": "moderate",
+        "riskScore": 27
+      },
+      "expected": {
+        "riskLevel": "moderate",
+        "min": 15,
+        "max": 35
+      }
+    },
+    {
+      "scenarioId": "S18",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=38, level=moderate",
+      "actual": {
+        "riskLevel": "moderate",
+        "riskScore": 38
+      },
+      "expected": {
+        "riskLevel": "moderate",
+        "min": 30,
+        "max": 55
+      }
+    },
+    {
+      "scenarioId": "S19",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=8, level=low",
+      "actual": {
+        "riskLevel": "low",
+        "riskScore": 8
+      },
+      "expected": {
+        "riskLevel": "low",
+        "min": 0,
+        "max": 15
+      }
+    },
+    {
+      "scenarioId": "S20",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=50, level=high",
+      "actual": {
+        "riskLevel": "high",
+        "riskScore": 50
+      },
+      "expected": {
+        "riskLevel": "high",
+        "min": 45,
+        "max": 65
+      }
+    },
+    {
+      "scenarioId": "S21",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=53, level=high",
+      "actual": {
+        "riskLevel": "high",
+        "riskScore": 53
+      },
+      "expected": {
+        "riskLevel": "high",
+        "min": 55,
+        "max": 75
+      }
+    },
+    {
+      "scenarioId": "S22",
+      "passed": false,
+      "isFalseNegative": false,
+      "details": "FAIL — got score=8/low, expected 20-40/moderate",
+      "actual": {
+        "riskLevel": "low",
+        "riskScore": 8
+      },
+      "expected": {
+        "riskLevel": "moderate",
+        "min": 20,
+        "max": 40
+      }
+    },
+    {
+      "scenarioId": "S23",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=57, level=high",
+      "actual": {
+        "riskLevel": "high",
+        "riskScore": 57
+      },
+      "expected": {
+        "riskLevel": "high",
+        "min": 50,
+        "max": 70
+      }
+    },
+    {
+      "scenarioId": "S24",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=5, level=low",
+      "actual": {
+        "riskLevel": "low",
+        "riskScore": 5
+      },
+      "expected": {
+        "riskLevel": "low",
+        "min": 0,
+        "max": 10
+      }
+    },
+    {
+      "scenarioId": "S25",
+      "passed": true,
+      "isFalseNegative": false,
+      "details": "score=95, level=critical",
+      "actual": {
+        "riskLevel": "critical",
+        "riskScore": 95
+      },
+      "expected": {
+        "riskLevel": "critical",
+        "min": 90,
+        "max": 100
+      }
+    }
+  ]
+}

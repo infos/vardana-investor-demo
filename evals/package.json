@@ -1,0 +1,28 @@
+{
+  "name": "vardana-evals",
+  "version": "1.0.0",
+  "description": "Eval suite for Vardana Health platform",
+  "scripts": {
+    "eval": "npx tsx evals/run-evals.ts",
+    "eval:decompensation": "npx tsx evals/run-evals.ts --suite decompensation",
+    "eval:reasoning": "npx tsx evals/run-evals.ts --suite reasoning",
+    "eval:safety": "npx tsx evals/run-evals.ts --suite safety"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.20.0",
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": ["**/evals/runners/*.test.ts"],
+    "transform": {
+      "^.+\\.tsx?$": ["ts-jest", { "tsconfig": "tsconfig.eval.json" }]
+    }
+  }
+}

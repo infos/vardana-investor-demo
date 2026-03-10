@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "outDir": "./dist-eval",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "../src/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "evals/**/*.ts",
+    "src/lib/clinical-skills/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

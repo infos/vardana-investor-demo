@@ -3,3 +3,4 @@ dist
 .vite
 .vercel
 epic-private-key.pem
+.env*.local
