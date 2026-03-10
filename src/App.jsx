@@ -929,6 +929,7 @@ function VoiceCallDemo({ patient, onComplete }) {
 
   const runLiveConversation = async () => {
     const history = [];
+    const firstName = patient?.name?.split(' ')[0] || 'there';
     // Pre-cache failsafe audio in background (don't await — let it load while call runs)
     const coordinatorName = PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
     const failsafeMsg = `I'm sorry ${firstName}, we're experiencing a brief technical issue. Don't worry — I've shared everything from our conversation with your care coordinator ${coordinatorName.split(',')[0]}, and they will follow up with you today. Take care.`;
@@ -937,7 +938,6 @@ function VoiceCallDemo({ patient, onComplete }) {
       .catch(() => {}); // silent fail — we'll try again in playFailsafeAndEnd
 
     // AI opening line
-    const firstName = patient?.name?.split(' ')[0] || 'there';
     const dayInfo = patient?.day ? ` Day ${patient.day}` : "";
     const greeting = `Good morning ${firstName}. This is the Vardana care concierge calling for your${dayInfo} check-in. How are you feeling today?`;
     setTranscript(p => [...p, { speaker: "AI", text: greeting }]);
