@@ -57,7 +57,37 @@ const ROSTER = [
 
 // ── Patient Clinical Data (Robert, Maria, James) ──
 const PATIENT_CLINICAL_DATA = {
+  1: {
+    dob: "July 14, 1958",
+    conditions: ["HFpEF (EF 45%)", "Hypertension", "Type 2 Diabetes", "CKD Stage 3a"],
+    medications: [
+      { name: "Carvedilol", dose: "12.5mg", timing: "Twice daily (morning & evening)" },
+      { name: "Lisinopril", dose: "10mg", timing: "Once daily (morning)" },
+      { name: "Furosemide", dose: "40mg", timing: "Once daily (morning)" },
+      { name: "Metformin", dose: "1000mg", timing: "Twice daily (with meals)" },
+      { name: "Spironolactone", dose: "25mg", timing: "Once daily" },
+    ],
+    vitals: {
+      weight: { current: 187.7, previous: 185.4, unit: "lbs", trend: "worsening", status: "warning" },
+      bp: { sys: 136, dia: 86, status: "borderline", note: "Reversed from 126/78 best" },
+      hr: { value: 82, status: "good", note: "Normal sinus rhythm" },
+      spo2: { value: 96, status: "good" },
+    },
+    labs: [
+      { name: "BNP", value: "485 pg/mL", date: "Mar 6", status: "elevated" },
+      { name: "Creatinine", value: "1.4 mg/dL", date: "Mar 6", status: "borderline" },
+      { name: "eGFR", value: "48 mL/min", date: "Mar 6", status: "warning" },
+      { name: "Potassium", value: "4.5 mEq/L", date: "Mar 6", status: "good" },
+    ],
+    recentCheckins: [
+      { date: "Today, 7:45 AM", summary: "AI concierge detected 2.3 lb weight gain over 48hrs. Patient reports increased fatigue and ankle swelling. Escalated to care coordinator." },
+      { date: "Yesterday, 8:00 AM", summary: "Routine check-in. Weight 186.2 lbs (+1.1 from baseline). Patient reported feeling 'a little more tired.' Furosemide adherence confirmed." },
+    ],
+    allergy: "Aspirin",
+    coordinator: "Rachel Kim, RN",
+  },
   2: {
+    dob: "March 22, 1951",
     conditions: ["HFpEF (EF 52%)", "Hypertension", "Atrial Fibrillation", "Hyperlipidemia"],
     medications: [
       { name: "Metoprolol Succinate", dose: "50mg", timing: "Once daily (morning)" },
@@ -86,6 +116,7 @@ const PATIENT_CLINICAL_DATA = {
     coordinator: "Rachel Kim, RN",
   },
   3: {
+    dob: "November 5, 1964",
     conditions: ["HFrEF (EF 35%)", "Type 2 Diabetes", "COPD (mild)", "Chronic Kidney Disease Stage 2"],
     medications: [
       { name: "Entresto", dose: "49/51mg", timing: "Twice daily" },
@@ -115,6 +146,7 @@ const PATIENT_CLINICAL_DATA = {
     coordinator: "David Park, RN",
   },
   4: {
+    dob: "September 18, 1946",
     conditions: ["HFpEF (EF 48%)", "Hypertension (controlled)", "Type 2 Diabetes (controlled)", "Osteoarthritis"],
     medications: [
       { name: "Losartan", dose: "50mg", timing: "Once daily (morning)" },
@@ -1508,53 +1540,175 @@ function VoiceCallDemo({ patient, onComplete }) {
           )}
         </div>
 
-        {/* ── Right: FHIR + assessment ── */}
-        <div style={{ width: 272, flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ padding: "13px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>FHIR Activity</div>
-          </div>
-          <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
-            {fhirLog.length === 0 ? (
-              <div style={{ fontSize: 12, color: "#334155", textAlign: "center", marginTop: 28, lineHeight: 1.6 }}>Waiting for AI to<br />begin querying...</div>
-            ) : fhirLog.map((q, i) => (
-              <div key={i} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 7, padding: "7px 9px", border: `1px solid ${q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.05)"}`, animation: "slideUp 0.25s ease" }}>
-                <div style={{ display: "flex", gap: 5, alignItems: "center", marginBottom: 3 }}>
-                  <span style={{ fontSize: 8, fontWeight: 800, background: q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(37,99,235,0.18)", color: q.color, padding: "1px 4px", borderRadius: 3 }}>{q.method}</span>
-                  <span style={{ fontSize: 8, color: "#475569", fontFamily: DS.fontMono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{q.path.length > 34 ? q.path.slice(0, 34) + "…" : q.path}</span>
-                </div>
-                <div style={{ fontSize: 10, color: "#94A3B8" }}>→ {q.result}</div>
-              </div>
-            ))}
-          </div>
+        {/* ── Right: Patient Chart + FHIR + assessment ── */}
+        {(() => {
+          const chartData = PATIENT_CLINICAL_DATA[patient?.id];
+          const statusColor = (s) => s === "good" ? "#34D399" : s === "borderline" ? "#F59E0B" : "#F87171";
+          const sectionHead = { fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 };
+          return (
+        <div style={{ width: 300, flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ flex: 1, overflowY: "auto" }}>
 
-          {(demoMode === "live" ? Object.keys(aiAssessment).length > 0 : transcript.length >= 6) && (
-            <div style={{ padding: "12px 14px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>AI Assessment</div>
-              {(demoMode === "live" ? (isEpic
-                ? Object.entries(aiAssessment).map(([key, value]) => ({
-                    label: key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()),
-                    value: value || "Pending",
-                    flag: value && value !== "Pending" && value !== "Normal" && value !== "None"
-                  }))
-                : [
-                { label: "Weight gain", value: aiAssessment.weightGain || "Pending", flag: aiAssessment.weightGain && aiAssessment.weightGain !== "Pending" },
-                { label: "Orthopnea",   value: aiAssessment.orthopnea || "Pending", flag: aiAssessment.orthopnea === "Confirmed" },
-                { label: "Ankle edema", value: aiAssessment.ankleEdema || "Pending", flag: aiAssessment.ankleEdema === "Confirmed" },
-                { label: "Adherence",   value: aiAssessment.adherence || "Pending", flag: false },
-              ]) : [
-                { label: "Weight gain", value: "+2.3 lbs/48hr", flag: true },
-                { label: "Orthopnea",   value: transcript.length >= 9 ? "Confirmed" : "Pending", flag: transcript.length >= 9 },
-                { label: "Ankle edema", value: "Confirmed", flag: true },
-                { label: "Adherence",   value: "Meds taken", flag: false },
-              ]).map((item, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 5 }}>
-                  <span style={{ color: "#475569" }}>{item.label}</span>
-                  <span style={{ fontWeight: 700, color: item.flag ? "#F87171" : (item.value === "Pending" ? "#64748B" : "#34D399") }}>{item.value}</span>
+            {/* Patient Chart */}
+            {chartData && (
+              <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#CBD5E1", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ fontSize: 13 }}>&#128203;</span> Patient Chart
+                </div>
+
+                {/* DOB & Allergy */}
+                <div style={{ marginBottom: 10 }}>
+                  {chartData.dob && (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 4 }}>
+                      <span style={{ color: "#475569" }}>DOB</span>
+                      <span style={{ color: "#94A3B8", fontWeight: 600 }}>{chartData.dob}</span>
+                    </div>
+                  )}
+                  {chartData.allergy && (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10 }}>
+                      <span style={{ color: "#475569" }}>Allergy</span>
+                      <span style={{ color: chartData.allergy === "None known" ? "#34D399" : "#F59E0B", fontWeight: 600, fontSize: 10 }}>{chartData.allergy}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Conditions */}
+                <div style={{ marginBottom: 10 }}>
+                  <div style={sectionHead}>Conditions</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                    {chartData.conditions.map((cond, i) => (
+                      <span key={i} style={{ fontSize: 9, fontWeight: 600, color: "#94A3B8", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, padding: "2px 6px" }}>{cond}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Medications */}
+                <div style={{ marginBottom: 10 }}>
+                  <div style={sectionHead}>Medications</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    {chartData.medications.map((med, i) => (
+                      <div key={i} style={{ fontSize: 10, display: "flex", justifyContent: "space-between", gap: 4 }}>
+                        <span style={{ color: "#CBD5E1", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{med.name}</span>
+                        <span style={{ color: "#64748B", fontWeight: 600, flexShrink: 0 }}>{med.dose}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Vitals — 2x2 grid */}
+                <div style={{ marginBottom: 10 }}>
+                  <div style={sectionHead}>Current Vitals</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                    {/* Weight */}
+                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 6, padding: "6px 8px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginBottom: 2 }}>Weight</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.weight.status) }}>
+                        {chartData.vitals.weight.current}
+                        <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>{chartData.vitals.weight.unit}</span>
+                      </div>
+                      {chartData.vitals.weight.trend !== "stable" && (
+                        <div style={{ fontSize: 8, color: statusColor(chartData.vitals.weight.status), marginTop: 1 }}>
+                          {chartData.vitals.weight.trend === "worsening" ? "↑" : chartData.vitals.weight.trend === "improving" ? "↓" : "→"} {chartData.vitals.weight.trend}
+                        </div>
+                      )}
+                    </div>
+                    {/* BP */}
+                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 6, padding: "6px 8px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginBottom: 2 }}>Blood Pressure</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.bp.status) }}>
+                        {chartData.vitals.bp.sys}/{chartData.vitals.bp.dia}
+                      </div>
+                      <div style={{ fontSize: 8, color: "#475569", marginTop: 1 }}>{chartData.vitals.bp.note}</div>
+                    </div>
+                    {/* HR */}
+                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 6, padding: "6px 8px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginBottom: 2 }}>Heart Rate</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.hr.status) }}>
+                        {chartData.vitals.hr.value}
+                        <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>bpm</span>
+                      </div>
+                    </div>
+                    {/* SpO2 */}
+                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 6, padding: "6px 8px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginBottom: 2 }}>SpO2</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.spo2.status) }}>
+                        {chartData.vitals.spo2.value}
+                        <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Labs */}
+                {chartData.labs && (
+                  <div>
+                    <div style={sectionHead}>Recent Labs</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {chartData.labs.map((lab, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", fontSize: 10, gap: 6 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor(lab.status), flexShrink: 0 }} />
+                          <span style={{ color: "#94A3B8", fontWeight: 600, minWidth: 55 }}>{lab.name}</span>
+                          <span style={{ color: "#CBD5E1", fontWeight: 500, flex: 1 }}>{lab.value}</span>
+                          <span style={{ color: "#334155", fontSize: 9 }}>{lab.date}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* FHIR Activity */}
+            <div style={{ padding: "13px 16px 4px", borderBottom: "none" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>FHIR Activity</div>
+            </div>
+            <div style={{ padding: "6px 12px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+              {fhirLog.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#334155", textAlign: "center", marginTop: 12, marginBottom: 12, lineHeight: 1.6 }}>Waiting for AI to<br />begin querying...</div>
+              ) : fhirLog.map((q, i) => (
+                <div key={i} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 7, padding: "7px 9px", border: `1px solid ${q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.05)"}`, animation: "slideUp 0.25s ease" }}>
+                  <div style={{ display: "flex", gap: 5, alignItems: "center", marginBottom: 3 }}>
+                    <span style={{ fontSize: 8, fontWeight: 800, background: q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(37,99,235,0.18)", color: q.color, padding: "1px 4px", borderRadius: 3 }}>{q.method}</span>
+                    <span style={{ fontSize: 8, color: "#475569", fontFamily: DS.fontMono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{q.path.length > 34 ? q.path.slice(0, 34) + "…" : q.path}</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: "#94A3B8" }}>→ {q.result}</div>
                 </div>
               ))}
             </div>
-          )}
+
+            {/* AI Assessment */}
+            {(demoMode === "live" ? Object.keys(aiAssessment).length > 0 : transcript.length >= 6) && (
+              <div style={{ padding: "12px 14px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>AI Assessment</div>
+                {(demoMode === "live" ? (isEpic
+                  ? Object.entries(aiAssessment).map(([key, value]) => ({
+                      label: key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()),
+                      value: value || "Pending",
+                      flag: value && value !== "Pending" && value !== "Normal" && value !== "None"
+                    }))
+                  : [
+                  { label: "Weight gain", value: aiAssessment.weightGain || "Pending", flag: aiAssessment.weightGain && aiAssessment.weightGain !== "Pending" },
+                  { label: "Orthopnea",   value: aiAssessment.orthopnea || "Pending", flag: aiAssessment.orthopnea === "Confirmed" },
+                  { label: "Ankle edema", value: aiAssessment.ankleEdema || "Pending", flag: aiAssessment.ankleEdema === "Confirmed" },
+                  { label: "Adherence",   value: aiAssessment.adherence || "Pending", flag: false },
+                ]) : [
+                  { label: "Weight gain", value: "+2.3 lbs/48hr", flag: true },
+                  { label: "Orthopnea",   value: transcript.length >= 9 ? "Confirmed" : "Pending", flag: transcript.length >= 9 },
+                  { label: "Ankle edema", value: "Confirmed", flag: true },
+                  { label: "Adherence",   value: "Meds taken", flag: false },
+                ]).map((item, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 5 }}>
+                    <span style={{ color: "#475569" }}>{item.label}</span>
+                    <span style={{ fontWeight: 700, color: item.flag ? "#F87171" : (item.value === "Pending" ? "#64748B" : "#34D399") }}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+          </div>
         </div>
+          );
+        })()}
       </div>
 
       <style>{`
