@@ -269,6 +269,17 @@ const c = {
   radius: DS.radius.lg, font: DS.fontSans,
 };
 
+// ── Responsive Hook ──
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < breakpoint : false);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 // ── SVG Icon System ──
 const Icon = ({ name, size = 16, color = "currentColor", strokeWidth = 1.5 }) => {
   const paths = {
@@ -343,22 +354,25 @@ function TrendArrow({ trend }) {
 
 // ── Header ──
 function Header({ onBack, patientSelected, onSwitchRole }) {
+  const isMobile = useIsMobile();
   return (
-    <div style={{ background: DS.color.slate[950], color: "white", padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 100 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+    <div style={{ background: DS.color.slate[950], color: "white", padding: isMobile ? "10px 14px" : "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 100, gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 12, minWidth: 0 }}>
         {patientSelected && onBack && (
-          <button onClick={onBack} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "white", borderRadius: 8, padding: "5px 10px", cursor: "pointer", fontSize: 13, fontFamily: c.font, fontWeight: 600 }}>← Back</button>
+          <button onClick={onBack} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "white", borderRadius: 8, padding: "5px 10px", cursor: "pointer", fontSize: 13, fontFamily: c.font, fontWeight: 600, flexShrink: 0 }}>←{!isMobile && " Back"}</button>
         )}
-        <span style={{ fontSize: 20, fontWeight: 400, fontFamily: DS.fontDisplay, letterSpacing: "-0.02em" }}>
+        <span style={{ fontSize: isMobile ? 17 : 20, fontWeight: 400, fontFamily: DS.fontDisplay, letterSpacing: "-0.02em", flexShrink: 0 }}>
           Vardana<span style={{ color: DS.color.amber[400] }}>.</span>
         </span>
-        <span style={{ fontSize: 12, fontWeight: 500, opacity: 0.5, borderLeft: "1px solid rgba(255,255,255,0.2)", paddingLeft: 12 }}>
-          Care Coordinator
-        </span>
+        {!isMobile && (
+          <span style={{ fontSize: 12, fontWeight: 500, opacity: 0.5, borderLeft: "1px solid rgba(255,255,255,0.2)", paddingLeft: 12 }}>
+            Care Coordinator
+          </span>
+        )}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 13 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 16, fontSize: 13, flexShrink: 0 }}>
         {onSwitchRole && <button onClick={onSwitchRole} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontSize: 11, fontFamily: c.font, fontWeight: 600 }}>Switch Role</button>}
-        <span style={{ opacity: 0.6 }}>Nurse Rachel Kim</span>
+        {!isMobile && <span style={{ opacity: 0.6 }}>Nurse Rachel Kim</span>}
         <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12 }}>RK</div>
       </div>
     </div>
@@ -367,17 +381,18 @@ function Header({ onBack, patientSelected, onSwitchRole }) {
 
 // ── Roster View ──
 function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic }) {
+  const isMobile = useIsMobile();
   const alertCount = ROSTER.filter(p => p.alert).length;
   return (
-    <div style={{ maxWidth: 960, margin: "0 auto", padding: 24 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 20 }}>
+    <div style={{ maxWidth: 960, margin: "0 auto", padding: isMobile ? 14 : 24 }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "baseline", marginBottom: 20, gap: isMobile ? 4 : 0 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: c.text, margin: 0, fontFamily: c.font }}>Patient Roster</h1>
-          <p style={{ fontSize: 13, color: c.textLight, margin: "4px 0 0", fontFamily: c.font }}>
-            {ROSTER.length} patients · {alertCount} pending alert{alertCount !== 1 && "s"} · 2 outreach scheduled today
+          <h1 style={{ fontSize: isMobile ? 19 : 22, fontWeight: 800, color: c.text, margin: 0, fontFamily: c.font }}>Patient Roster</h1>
+          <p style={{ fontSize: isMobile ? 12 : 13, color: c.textLight, margin: "4px 0 0", fontFamily: c.font }}>
+            {ROSTER.length} patients · {alertCount} pending alert{alertCount !== 1 && "s"}
           </p>
         </div>
-        <div style={{ fontSize: 12, color: c.textLight, fontFamily: c.font }}>March 1, 2026 · 8:23 AM</div>
+        {!isMobile && <div style={{ fontSize: 12, color: c.textLight, fontFamily: c.font }}>March 1, 2026 · 8:23 AM</div>}
       </div>
 
       {alertCount > 0 && (
@@ -583,6 +598,8 @@ function OutreachModal({ patient, onClose, onInitiate }) {
 
 // ── Voice Call Demo ──
 function VoiceCallDemo({ patient, onComplete }) {
+  const isMobileView = useIsMobile();
+  const [mobilePanel, setMobilePanel] = useState("transcript"); // transcript | chart (mobile only)
   // ── state ──
   const [uiState, setUiState] = useState("setup"); // setup|loading|dialing|connected|active|alert|done
   const [apiError, setApiError] = useState("");
@@ -1328,8 +1345,8 @@ function VoiceCallDemo({ patient, onComplete }) {
   // SETUP SCREEN
   // ─────────────────────────────────────────────
   if (uiState === "setup") return (
-    <div style={{ position: "fixed", inset: 0, background: c.navy, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: c.font, padding: 24 }}>
-      <div style={{ width: "100%", maxWidth: 540 }}>
+    <div style={{ position: "fixed", inset: 0, background: c.navy, zIndex: 300, display: "flex", alignItems: isMobileView ? "flex-start" : "center", justifyContent: "center", fontFamily: c.font, padding: isMobileView ? 16 : 24, overflowY: "auto" }}>
+      <div style={{ width: "100%", maxWidth: 540, ...(isMobileView ? { paddingTop: 20 } : {}) }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <div style={{ fontSize: 22, fontWeight: 400, color: "white", letterSpacing: "-0.02em", fontFamily: DS.fontDisplay }}>Vardana<span style={{ color: DS.color.amber[400] }}>.</span></div>
@@ -1355,7 +1372,7 @@ function VoiceCallDemo({ patient, onComplete }) {
         )}
 
         {/* Two mode cards */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+        <div style={{ display: "flex", flexDirection: isMobileView ? "column" : "row", gap: 12, marginBottom: 12 }}>
           {/* Live Demo */}
           <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(56,189,248,0.2)", borderRadius: 14, padding: "18px 16px", display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -1427,41 +1444,81 @@ function VoiceCallDemo({ patient, onComplete }) {
     <div style={{ position: "fixed", inset: 0, background: c.navy, zIndex: 300, display: "flex", flexDirection: "column", fontFamily: c.font }}>
 
       {/* Top bar */}
-      <div style={{ padding: "14px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: uiState === "done" ? "#475569" : "#22C55E", boxShadow: isActive ? "0 0 0 4px rgba(34,197,94,0.2)" : "none", transition: "all 0.3s" }} />
-          <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>
-            {uiState === "dialing"   ? `Connecting to ${patient.name}...` :
-             uiState === "connected" ? "Connected · AI Concierge Active" :
+      <div style={{ padding: isMobileView ? "10px 12px" : "14px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.08)", gap: 8, flexWrap: isMobileView ? "wrap" : "nowrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: isMobileView ? 6 : 10, minWidth: 0, flex: isMobileView ? "1 1 auto" : "none" }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: uiState === "done" ? "#475569" : "#22C55E", boxShadow: isActive ? "0 0 0 4px rgba(34,197,94,0.2)" : "none", transition: "all 0.3s", flexShrink: 0 }} />
+          <span style={{ fontSize: isMobileView ? 12 : 14, fontWeight: 700, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {uiState === "dialing"   ? (isMobileView ? "Connecting..." : `Connecting to ${patient.name}...`) :
+             uiState === "connected" ? "Connected" :
              uiState === "done"      ? "Call Completed" :
              isThinking              ? "AI thinking..." :
-             isListening             ? `● Listening for ${patient.name.split(' ')[0]}...` :
-             activeSpeaker === "AI"  ? "Vardana AI speaking..." :
-             (activeSpeaker && activeSpeaker !== "AI") ? `${patient.name.split(' ')[0]} responding...` :
+             isListening             ? (isMobileView ? "Listening..." : `● Listening for ${patient.name.split(' ')[0]}...`) :
+             activeSpeaker === "AI"  ? "AI speaking..." :
+             (activeSpeaker && activeSpeaker !== "AI") ? (isMobileView ? "Patient..." : `${patient.name.split(' ')[0]} responding...`) :
              demoMode === "live"     ? "Live · AI Concierge" : "Live · AI Concierge"}
           </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {isActive && (
+        <div style={{ display: "flex", alignItems: "center", gap: isMobileView ? 6 : 10, flexShrink: 0 }}>
+          {isActive && !isMobileView && (
             <button onClick={toggleMute} style={{ background: muted ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.08)", border: `1px solid ${muted ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.12)"}`, color: muted ? "#FCA5A5" : "#CBD5E1", borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontFamily: c.font, fontSize: 12, fontWeight: 700 }}>
               {muted ? "🔇 Muted" : "🔊 Audio On"}
             </button>
           )}
-          {isActive && <span style={{ fontSize: 13, color: "#64748B", fontVariantNumeric: "tabular-nums" }}>{formatTime(elapsed)}</span>}
+          {isActive && <span style={{ fontSize: isMobileView ? 11 : 13, color: "#64748B", fontVariantNumeric: "tabular-nums" }}>{formatTime(elapsed)}</span>}
+          {isActive && isMobileView && (
+            <button onClick={toggleMute} style={{ background: muted ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.08)", border: `1px solid ${muted ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.12)"}`, color: muted ? "#FCA5A5" : "#CBD5E1", borderRadius: 8, padding: "5px 8px", cursor: "pointer", fontFamily: c.font, fontSize: 11, fontWeight: 700 }}>
+              {muted ? "🔇" : "🔊"}
+            </button>
+          )}
           {isActive && (
-            <button onClick={endCall} style={{ background: "rgba(220,38,38,0.2)", border: "1px solid rgba(220,38,38,0.4)", color: "#FCA5A5", borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontFamily: c.font, fontSize: 12, fontWeight: 700 }}>End Call</button>
+            <button onClick={endCall} style={{ background: "rgba(220,38,38,0.2)", border: "1px solid rgba(220,38,38,0.4)", color: "#FCA5A5", borderRadius: 8, padding: isMobileView ? "5px 10px" : "5px 12px", cursor: "pointer", fontFamily: c.font, fontSize: 12, fontWeight: 700 }}>End{!isMobileView && " Call"}</button>
           )}
           {uiState === "done" && (
-            <button onClick={handleComplete} disabled={isSummarizing} style={{ background: c.accent, border: "none", color: "white", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontFamily: c.font, fontSize: 13, fontWeight: 700, opacity: isSummarizing ? 0.7 : 1 }}>
-              {isSummarizing ? "Summarizing..." : "Return to Dashboard"}
+            <button onClick={handleComplete} disabled={isSummarizing} style={{ background: c.accent, border: "none", color: "white", borderRadius: 8, padding: isMobileView ? "6px 10px" : "7px 14px", cursor: "pointer", fontFamily: c.font, fontSize: isMobileView ? 11 : 13, fontWeight: 700, opacity: isSummarizing ? 0.7 : 1 }}>
+              {isSummarizing ? "Summarizing..." : (isMobileView ? "Dashboard" : "Return to Dashboard")}
             </button>
           )}
         </div>
       </div>
 
+      {/* Mobile: compact status bar with risk score + speaker avatars + panel toggle */}
+      {isMobileView && isActive && (
+        <div style={{ padding: "8px 12px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* AI avatar small */}
+            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #1B3A6B, #2563EB)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.9)", fontFamily: DS.fontDisplay, border: `2px solid ${activeSpeaker === "AI" ? "rgba(56,189,248,0.7)" : "rgba(255,255,255,0.08)"}`, transition: "all 0.3s" }}>V</div>
+            {/* Waveform mini */}
+            <div style={{ display: "flex", alignItems: "center", gap: 1.5, height: 20, opacity: waveOn ? 1 : 0.15, transition: "opacity 0.4s" }}>
+              {Array.from({ length: 10 }, (_, i) => {
+                const h = waveOn ? waveHeights[(i + waveFrame) % 12] : 0.12;
+                const isPatientSpeaking = activeSpeaker && activeSpeaker !== "AI";
+                return <div key={i} style={{ width: 2, height: `${Math.max(2, h * 18)}px`, borderRadius: 1, background: isPatientSpeaking ? "#A78BFA" : "#38BDF8", transition: "height 0.11s ease" }} />;
+              })}
+            </div>
+            {/* Patient avatar small */}
+            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #3730A3, #7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.9)", fontFamily: DS.fontDisplay, border: `2px solid ${activeSpeaker && activeSpeaker !== "AI" ? "rgba(167,139,250,0.7)" : "rgba(255,255,255,0.08)"}`, transition: "all 0.3s" }}>{patient.name.charAt(0)}</div>
+          </div>
+          {/* Risk score compact */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>Risk</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: riskColor, fontVariantNumeric: "tabular-nums", transition: "all 0.9s" }}>{riskScore}</div>
+          </div>
+          {/* Alert indicator */}
+          {alertGenerated && (
+            <div style={{ fontSize: 9, fontWeight: 800, color: "#F87171", background: "rgba(220,38,38,0.15)", borderRadius: 4, padding: "2px 6px" }}>P1 ALERT</div>
+          )}
+          {/* Panel toggle */}
+          <div style={{ display: "flex", gap: 4 }}>
+            <button onClick={() => setMobilePanel("transcript")} style={{ padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: c.font, border: "none", background: mobilePanel === "transcript" ? "rgba(56,189,248,0.2)" : "rgba(255,255,255,0.06)", color: mobilePanel === "transcript" ? "#38BDF8" : "#475569" }}>Chat</button>
+            <button onClick={() => setMobilePanel("chart")} style={{ padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: c.font, border: "none", background: mobilePanel === "chart" ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.06)", color: mobilePanel === "chart" ? "#A78BFA" : "#475569" }}>Chart</button>
+          </div>
+        </div>
+      )}
+
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
 
-        {/* ── Left: speakers + gauge ── */}
+        {/* ── Left: speakers + gauge ── (hidden on mobile) */}
+        {!isMobileView && (
         <div style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", padding: "28px 18px", borderRight: "1px solid rgba(255,255,255,0.08)", gap: 18 }}>
 
           {/* AI avatar */}
@@ -1517,9 +1574,12 @@ function VoiceCallDemo({ patient, onComplete }) {
             ))}
           </div>
         </div>
+        )}
 
-        {/* ── Center: transcript ── */}
+        {/* ── Center: transcript ── (shown on mobile when mobilePanel==="transcript") */}
+        {(!isMobileView || mobilePanel === "transcript") && (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          {!isMobileView && (
           <div style={{ padding: "13px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>Live Transcript</div>
             {activeSpeaker && (
@@ -1529,7 +1589,8 @@ function VoiceCallDemo({ patient, onComplete }) {
               </div>
             )}
           </div>
-          <div ref={transcriptRef} style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+          )}
+          <div ref={transcriptRef} style={{ flex: 1, overflowY: "auto", padding: isMobileView ? "12px 12px" : "16px 20px", display: "flex", flexDirection: "column", gap: isMobileView ? 10 : 12 }}>
             {uiState === "dialing" && (
               <div style={{ textAlign: "center", padding: "52px 0", color: "#475569" }}>
                 <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}><Icon name="phone" size={36} color="#94A3B8" /></div>
@@ -1607,14 +1668,16 @@ function VoiceCallDemo({ patient, onComplete }) {
             </div>
           )}
         </div>
+        )}
 
-        {/* ── Right: Patient Chart + FHIR + assessment ── */}
-        {(() => {
+        {/* ── Right: Patient Chart + FHIR + assessment ── (on mobile: shown when mobilePanel==="chart") */}
+        {(!isMobileView || mobilePanel === "chart") && (
+        (() => {
           const chartData = PATIENT_CLINICAL_DATA[patient?.id];
           const statusColor = (s) => s === "good" ? "#34D399" : s === "borderline" ? "#F59E0B" : "#F87171";
           const sectionHead = { fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 };
           return (
-        <div style={{ width: 300, flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ width: isMobileView ? "100%" : 300, flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderLeft: isMobileView ? "none" : "1px solid rgba(255,255,255,0.08)" }}>
           <div style={{ flex: 1, overflowY: "auto" }}>
 
             {/* Patient Chart */}
@@ -1776,7 +1839,8 @@ function VoiceCallDemo({ patient, onComplete }) {
           </div>
         </div>
           );
-        })()}
+        })()
+        )}
       </div>
 
       <style>{`
@@ -3401,34 +3465,35 @@ function PatientExperienceView({ onSwitchRole }) {
 // ── Role Selector & App Entry ──
 export default function App() {
   const [role, setRole] = useState(null);
+  const isMobile = useIsMobile();
 
   if (role === "coordinator") return <CareCoordinatorView onSwitchRole={() => setRole(null)} />;
   if (role === "patient") return <PatientExperienceView onSwitchRole={() => setRole(null)} />;
 
   // Role picker
   return (
-    <div style={{ fontFamily: c.font, background: c.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ fontFamily: c.font, background: c.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? 16 : 0 }}>
       <style>{`* { box-sizing: border-box; margin: 0; }`}</style>
-      <div style={{ maxWidth: 720, width: "100%", padding: 24 }}>
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <div style={{ fontSize: 36, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay, letterSpacing: "-0.02em" }}>
+      <div style={{ maxWidth: 720, width: "100%", padding: isMobile ? 16 : 24 }}>
+        <div style={{ textAlign: "center", marginBottom: isMobile ? 28 : 40 }}>
+          <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay, letterSpacing: "-0.02em" }}>
             Vardana<span style={{ color: DS.color.amber[400] }}>.</span>
           </div>
-          <p style={{ fontSize: 15, color: c.textLight, marginTop: 8, fontFamily: c.font }}>AI Care Concierge Platform — Select a view</p>
+          <p style={{ fontSize: isMobile ? 13 : 15, color: c.textLight, marginTop: 8, fontFamily: c.font }}>AI Care Concierge Platform — Select a view</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
           {/* Coordinator Card */}
-          <button onClick={() => setRole("coordinator")} style={{ background: DS.color.slate[950], border: "none", borderRadius: DS.radius.xl, padding: "32px 24px", cursor: "pointer", textAlign: "left", color: "white", fontFamily: c.font, boxShadow: DS.shadow.lg, transition: DS.transition.base }}>
+          <button onClick={() => setRole("coordinator")} style={{ background: DS.color.slate[950], border: "none", borderRadius: DS.radius.xl, padding: isMobile ? "24px 20px" : "32px 24px", cursor: "pointer", textAlign: "left", color: "white", fontFamily: c.font, boxShadow: DS.shadow.lg, transition: DS.transition.base }}>
             <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>👩‍⚕️</div>
-            <div style={{ fontSize: 18, fontWeight: 400, marginBottom: 6, fontFamily: DS.fontDisplay }}>Care Coordinator</div>
+            <div style={{ fontSize: isMobile ? 17 : 18, fontWeight: 400, marginBottom: 6, fontFamily: DS.fontDisplay }}>Care Coordinator</div>
             <div style={{ fontSize: 13, opacity: 0.7, lineHeight: 1.5 }}>Nurse Rachel Kim</div>
             <div style={{ fontSize: 12, opacity: 0.5, lineHeight: 1.5, marginTop: 8 }}>Monitor patients, review AI alerts, initiate voice & SMS outreach</div>
           </button>
 
           {/* Patient Card */}
-          <button onClick={() => setRole("patient")} style={{ background: DS.color.slate[900], border: "none", borderRadius: DS.radius.xl, padding: "32px 24px", cursor: "pointer", textAlign: "left", color: "white", fontFamily: c.font, boxShadow: DS.shadow.lg, transition: DS.transition.base }}>
+          <button onClick={() => setRole("patient")} style={{ background: DS.color.slate[900], border: "none", borderRadius: DS.radius.xl, padding: isMobile ? "24px 20px" : "32px 24px", cursor: "pointer", textAlign: "left", color: "white", fontFamily: c.font, boxShadow: DS.shadow.lg, transition: DS.transition.base }}>
             <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>👩</div>
-            <div style={{ fontSize: 18, fontWeight: 400, marginBottom: 6, fontFamily: DS.fontDisplay }}>Patient Portal</div>
+            <div style={{ fontSize: isMobile ? 17 : 18, fontWeight: 400, marginBottom: 6, fontFamily: DS.fontDisplay }}>Patient Portal</div>
             <div style={{ fontSize: 13, opacity: 0.7, lineHeight: 1.5 }}>Sarah Chen, 67F</div>
             <div style={{ fontSize: 12, opacity: 0.5, lineHeight: 1.5, marginTop: 8 }}>Recovery journey, vitals, medications, AI check-in history</div>
           </button>
