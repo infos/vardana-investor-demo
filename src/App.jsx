@@ -631,16 +631,87 @@ function VoiceCallDemo({ patient, onComplete }) {
   const [textInput, setTextInput]     = useState("");
 
   const transcriptRef   = useRef(null);
-  const audioRef        = useRef(null);   // currently playing Audio element
+  const audioRef        = useRef(null);   // currently playing Audio element/source
   const mutedRef        = useRef(false);
   const cancelRef       = useRef(false);
   const blobUrls        = useRef([]);
   const timersRef       = useRef([]);
   const recognitionRef  = useRef(null);
   const failsafeAudio   = useRef(null);   // pre-cached failsafe audio URL
+  const audioCtxRef     = useRef(null);    // Web Audio API context (iOS-safe)
+  const gainRef         = useRef(null);    // gain node for volume control
 
   const addTimer = (fn, ms) => { const id = setTimeout(fn, ms); timersRef.current.push(id); return id; };
   const clearTimers = () => { timersRef.current.forEach(clearTimeout); timersRef.current = []; };
+
+  // ── iOS/Safari Audio Unlock ──
+  // iOS Safari requires audio to be initiated during a user gesture.
+  // Call this in button click handlers BEFORE any async work.
+  const unlockAudio = () => {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!audioCtxRef.current && AudioCtx) {
+      audioCtxRef.current = new AudioCtx();
+      gainRef.current = audioCtxRef.current.createGain();
+      gainRef.current.connect(audioCtxRef.current.destination);
+    }
+    if (audioCtxRef.current?.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+    // Play a tiny silent buffer to fully unlock audio on iOS
+    if (audioCtxRef.current) {
+      try {
+        const buf = audioCtxRef.current.createBuffer(1, 1, 22050);
+        const src = audioCtxRef.current.createBufferSource();
+        src.buffer = buf;
+        src.connect(audioCtxRef.current.destination);
+        src.start(0);
+      } catch {}
+    }
+  };
+
+  // ── Play audio from a blob URL using Web Audio API (iOS-safe) ──
+  // Falls back to HTML5 Audio if Web Audio API is unavailable.
+  const playAudioUrl = (url) => {
+    return new Promise(async (resolve) => {
+      const ctx = audioCtxRef.current;
+      if (ctx && ctx.state !== 'closed') {
+        try {
+          // Resume context if suspended (extra safety for iOS)
+          if (ctx.state === 'suspended') await ctx.resume();
+          const response = await fetch(url);
+          const arrayBuffer = await response.arrayBuffer();
+          const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+          const source = ctx.createBufferSource();
+          source.buffer = audioBuffer;
+          gainRef.current.gain.value = mutedRef.current ? 0 : 1;
+          source.connect(gainRef.current);
+          // Store source for pause/cancel
+          audioRef.current = { pause: () => { try { source.stop(); } catch {} }, _src: source };
+          let done = false;
+          const finish = () => { if (!done) { done = true; resolve(); } };
+          source.onended = finish;
+          setTimeout(finish, 30000); // safety timeout
+          source.start(0);
+          return;
+        } catch {
+          // Fall through to HTML5 Audio fallback
+        }
+      }
+      // HTML5 Audio fallback (non-iOS or AudioContext failed)
+      const audio = new Audio(url);
+      audio.volume = mutedRef.current ? 0 : 1;
+      audioRef.current = audio;
+      let done = false;
+      const finish = () => { if (!done) { done = true; resolve(); } };
+      audio.onended = finish;
+      audio.onerror = finish;
+      audio.ontimeupdate = () => {
+        if (audio.duration > 0 && audio.currentTime >= audio.duration - 0.1) finish();
+      };
+      setTimeout(finish, 30000);
+      audio.play().catch(finish);
+    });
+  };
 
   // cleanup on unmount / navigation away
   useEffect(() => () => {
@@ -650,6 +721,10 @@ function VoiceCallDemo({ patient, onComplete }) {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
     blobUrls.current.forEach(u => URL.revokeObjectURL(u));
+    // Close Web Audio API context (iOS)
+    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+      try { audioCtxRef.current.close(); } catch {}
+    }
   }, []);
 
   // elapsed + wave animation while call is live
@@ -743,22 +818,7 @@ function VoiceCallDemo({ patient, onComplete }) {
       setActiveSpeaker(line.speaker);
       triggerEffects(i);
 
-      const audio = new Audio(urls[i]);
-      audio.volume = mutedRef.current ? 0 : 1;
-      audioRef.current = audio;
-
-      await new Promise(resolve => {
-        let done = false;
-        const finish = () => { if (!done) { done = true; resolve(); } };
-        audio.onended = finish;
-        audio.onerror = finish;
-        // Safety: resolve once audio reaches end (backup for onended)
-        audio.ontimeupdate = () => {
-          if (audio.duration > 0 && audio.currentTime >= audio.duration - 0.1) finish();
-        };
-        setTimeout(finish, 30000); // absolute safety — 30s max per line
-        audio.play().catch(finish);
-      });
+      await playAudioUrl(urls[i]);
 
       setActiveSpeaker(null);
       if (cancelRef.current) return;
@@ -885,20 +945,7 @@ function VoiceCallDemo({ patient, onComplete }) {
     setActiveSpeaker("AI");
     try {
       const url = await fetchAudio(text, "AI");
-      const audio = new Audio(url);
-      audio.volume = mutedRef.current ? 0 : 1;
-      audioRef.current = audio;
-      await new Promise(resolve => {
-        let done = false;
-        const finish = () => { if (!done) { done = true; resolve(); } };
-        audio.onended = finish;
-        audio.onerror = finish;
-        audio.ontimeupdate = () => {
-          if (audio.duration > 0 && audio.currentTime >= audio.duration - 0.1) finish();
-        };
-        setTimeout(finish, 30000);
-        audio.play().catch(finish);
-      });
+      await playAudioUrl(url);
       setActiveSpeaker(null);
       return true;
     } catch {
@@ -930,19 +977,14 @@ function VoiceCallDemo({ patient, onComplete }) {
     let played = false;
     if (failsafeAudio.current) {
       try {
-        const audio = new Audio(failsafeAudio.current);
-        audio.volume = mutedRef.current ? 0 : 1;
-        audioRef.current = audio;
-        await new Promise(resolve => { audio.onended = resolve; audio.onerror = resolve; audio.play().catch(resolve); });
+        await playAudioUrl(failsafeAudio.current);
         played = true;
       } catch {}
     }
     if (!played) {
       try {
         const url = await fetchAudioOnce(failsafeText, "AI");
-        const audio = new Audio(url);
-        audio.volume = mutedRef.current ? 0 : 1;
-        await new Promise(resolve => { audio.onended = resolve; audio.onerror = resolve; audio.play().catch(resolve); });
+        await playAudioUrl(url);
         played = true;
       } catch {}
     }
@@ -994,11 +1036,38 @@ function VoiceCallDemo({ patient, onComplete }) {
     history.push({ role: "user", content: greetReply });
     setConversationHistory([...history]);
 
+    // AI acknowledges greeting response, then asks for DOB
+    // Use the API to generate a natural acknowledgment based on what the patient actually said
+    let ackAndDobMsg;
+    try {
+      setIsThinking(true);
+      const ackRes = await fetch("/api/voice-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            ...history,
+            { role: "user", content: `[SYSTEM: The patient just responded to your greeting. Acknowledge their response warmly and briefly (one short sentence), then transition to identity verification by asking for their date of birth. Keep it to 2 sentences max. Example: "I'm glad to hear that, Sarah. Before we get started, I just need to verify your identity — could you tell me your date of birth?"]` }
+          ],
+          patientContext: getPatientContext(),
+        }),
+      });
+      setIsThinking(false);
+      if (ackRes.ok) {
+        const ackData = await ackRes.json();
+        ackAndDobMsg = ackData.reply;
+      }
+    } catch { setIsThinking(false); }
+    // Fallback if API call fails
+    if (!ackAndDobMsg) {
+      ackAndDobMsg = `Thank you for sharing that, ${firstName}. Before we get started, I just need to verify your identity. Could you tell me your date of birth?`;
+    }
+
     // AI asks for DOB — allow up to 3 attempts
     let dobValid = false;
     for (let attempt = 0; attempt < 3; attempt++) {
       const dobAsk = attempt === 0
-        ? `Before we begin, I just need to verify your identity. Can you tell me your date of birth?`
+        ? ackAndDobMsg
         : attempt === 1
           ? `I'm sorry, that didn't match. Could you try your date of birth again?`
           : `Let me try one more time. What is your date of birth, including the year?`;
@@ -1055,6 +1124,7 @@ function VoiceCallDemo({ patient, onComplete }) {
     if (cancelRef.current) return;
 
     // Conversation loop — AI already spoke, so start by listening
+    let conversationEnded = false;
     for (let turn = 0; turn < 12; turn++) {
       if (cancelRef.current) return;
 
@@ -1119,6 +1189,7 @@ function VoiceCallDemo({ patient, onComplete }) {
 
       // Check if done — when AI says goodbye, let patient respond before ending
       if (aiData.phase === "done") {
+        conversationEnded = true;
         // Patient gets to say goodbye back
         if (!cancelRef.current) {
           try {
@@ -1131,12 +1202,13 @@ function VoiceCallDemo({ patient, onComplete }) {
             setActiveSpeaker(null);
           }
         }
+        setUiState("done");
         break;
       }
     }
 
-    // Graceful ending when max turns reached without AI saying goodbye
-    if (!cancelRef.current) {
+    // Graceful ending ONLY when max turns reached without AI already saying goodbye
+    if (!conversationEnded && !cancelRef.current) {
       const coordName = PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
       const closingMsg = `Well ${firstName}, it was great checking in with you today. I've noted everything from our conversation, and your care coordinator ${coordName.split(',')[0]} will have a full summary. If anything changes or you have concerns before your next check-in, don't hesitate to reach out. Take care!`;
       setTranscript(p => [...p, { speaker: "AI", text: closingMsg }]);
@@ -1148,6 +1220,7 @@ function VoiceCallDemo({ patient, onComplete }) {
   };
 
   const startLiveDemo = async () => {
+    unlockAudio();   // iOS: must unlock AudioContext during user gesture
     setDemoMode("live");
     setApiError("");
     try {
@@ -1182,7 +1255,10 @@ function VoiceCallDemo({ patient, onComplete }) {
     const next = !muted;
     setMuted(next);
     mutedRef.current = next;
-    if (audioRef.current) audioRef.current.volume = next ? 0 : 1;
+    // Web Audio API gain node (iOS path)
+    if (gainRef.current) gainRef.current.gain.value = next ? 0 : 1;
+    // HTML5 Audio fallback
+    if (audioRef.current?.volume !== undefined) audioRef.current.volume = next ? 0 : 1;
   };
 
   const endCall = async () => {
@@ -1202,15 +1278,7 @@ function VoiceCallDemo({ patient, onComplete }) {
     setActiveSpeaker("AI");
     try {
       const url = await fetchAudio(goodbyeMsg, "AI");
-      const audio = new Audio(url);
-      audio.volume = mutedRef.current ? 0 : 1;
-      audioRef.current = audio;
-      await new Promise(resolve => {
-        audio.onended = resolve;
-        audio.onerror = resolve;
-        setTimeout(resolve, 15000);
-        audio.play().catch(resolve);
-      });
+      await playAudioUrl(url);
     } catch {
       // If TTS fails, try browser fallback
       const synth = window.speechSynthesis;
@@ -1315,7 +1383,7 @@ function VoiceCallDemo({ patient, onComplete }) {
             <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.5, marginBottom: 14, flex: 1 }}>
               Pre-rendered {VOICE_TRANSCRIPT.length}-line conversation via ElevenLabs TTS. Fully automated — just watch and listen.
             </div>
-            <button onClick={() => { setDemoMode("scripted"); startElevenLabs(); }}
+            <button onClick={() => { unlockAudio(); setDemoMode("scripted"); startElevenLabs(); }}
               style={{ width: "100%", padding: "11px", borderRadius: 9, background: "linear-gradient(135deg, #F59E0B, #D97706)", color: "white", border: "none", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: c.font }}>
               🎙 Start Scripted Demo
             </button>
