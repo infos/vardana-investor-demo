@@ -948,7 +948,7 @@ function VoiceCallDemo({ patient, onComplete }) {
         }, i * 400);
       });
     }
-    if (data.riskScore) setRiskScore(data.riskScore);
+    if (data.riskScore && data.riskScore > riskScore) setRiskScore(data.riskScore);
     if (data.assessment) setAiAssessment(data.assessment);
     if (data.generateAlert) {
       setAlertGenerated(true);
@@ -1409,7 +1409,7 @@ function VoiceCallDemo({ patient, onComplete }) {
           )}
         </div>
 
-        <button onClick={onComplete}
+        <button onClick={() => onComplete(null)}
           style={{ width: "100%", marginTop: 8, padding: "9px", border: "none", background: "none", color: "#334155", fontSize: 12, cursor: "pointer", fontFamily: c.font }}>
           ← Return to Dashboard
         </button>
