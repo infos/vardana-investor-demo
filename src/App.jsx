@@ -954,7 +954,7 @@ function VoiceCallDemo({ patient, onComplete }) {
         }, i * 400);
       });
     }
-    if (data.riskScore) setRiskScore(data.riskScore);
+    if (data.riskScore && data.riskScore > riskScore) setRiskScore(data.riskScore);
     if (data.assessment) setAiAssessment(data.assessment);
     if (data.generateAlert) {
       setAlertGenerated(true);
