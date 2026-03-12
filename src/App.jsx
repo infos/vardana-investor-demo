@@ -380,7 +380,7 @@ function Header({ onBack, patientSelected, onSwitchRole }) {
 }
 
 // ── Roster View ──
-function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic }) {
+function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, riskOverrides = {} }) {
   const isMobile = useIsMobile();
   const alertCount = ROSTER.filter(p => p.alert).length;
   return (
@@ -406,7 +406,11 @@ function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic }) {
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {ROSTER.sort((a, b) => (b.alert ? 1 : 0) - (a.alert ? 1 : 0) || b.risk - a.risk).map(p => (
+        {ROSTER.sort((a, b) => (b.alert ? 1 : 0) - (a.alert ? 1 : 0) || b.risk - a.risk).map(p => {
+          const ro = riskOverrides[p.id];
+          const displayRisk = ro ? ro.score : p.risk;
+          const displayLevel = ro ? ro.level : p.riskLevel;
+          return (
           <button key={p.id} onClick={() => onSelect(p)} style={{ width: "100%", background: c.card, border: `1px solid ${p.alert ? "#FECACA" : c.border}`, borderRadius: c.radius, padding: "16px 20px", cursor: "pointer", fontFamily: c.font, textAlign: "left", boxShadow: c.shadow, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 16, borderLeft: p.alert ? `4px solid ${c.red}` : `4px solid transparent` }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -425,12 +429,14 @@ function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic }) {
               <div style={{ fontSize: 11, color: c.textLight }}>{p.phase}</div>
             </div>
             <div style={{ textAlign: "right", minWidth: 80 }}>
-              <RiskBadge level={p.riskLevel} score={p.risk} />
-              <div style={{ marginTop: 4 }}><TrendArrow trend={p.trend} /></div>
+              <RiskBadge level={displayLevel} score={displayRisk} />
+              {ro && <div style={{ fontSize: 10, color: c.teal, fontWeight: 600, marginTop: 2 }}>Assessed during call</div>}
+              {!ro && <div style={{ marginTop: 4 }}><TrendArrow trend={p.trend} /></div>}
             </div>
             <span style={{ fontSize: 16, color: c.textLight }}>›</span>
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {/* Epic EHR Patients */}
@@ -1409,7 +1415,7 @@ function VoiceCallDemo({ patient, onComplete }) {
           )}
         </div>
 
-        <button onClick={onComplete}
+        <button onClick={() => onComplete(null)}
           style={{ width: "100%", marginTop: 8, padding: "9px", border: "none", background: "none", color: "#334155", fontSize: 12, cursor: "pointer", fontFamily: c.font }}>
           ← Return to Dashboard
         </button>
@@ -2193,7 +2199,7 @@ function AIReasoningCard({ onOutreach }) {
 
       <div style={{ padding: "14px 24px", borderBottom: `1px solid ${DS.color.border.subtle}`, background: DS.color.slate[50] }}>
         <div style={{ fontSize: 13, color: DS.color.slate[500], lineHeight: 1.6 }}>
-          Patient is at <span style={{ fontFamily: DS.fontDisplay }}>Day 15</span> — transitioning from <strong style={{ color: c.text }}>Stabilize → Optimize</strong> phase. Weight reversal at phase transition occurs in approximately <strong style={{ color: c.text }}>23% of CHF post-discharge patients</strong> and is associated with suboptimal diuretic dosing in <strong style={{ color: c.text }}>68%</strong> of cases.
+          Patient is at <span style={{ fontFamily: DS.fontDisplay }}>Day 15</span> — transitioning from <strong style={{ color: c.text }}>Stabilize → Optimize</strong> phase. Weight reversal at phase transition is a recognized pattern in CHF post-discharge populations, often associated with <strong style={{ color: c.text }}>suboptimal diuretic titration</strong> during care transitions.
         </div>
       </div>
 
@@ -2222,7 +2228,7 @@ function AIReasoningCard({ onOutreach }) {
       <button onClick={() => setExpanded(!expanded)} style={{ width: "100%", padding: "14px 20px", border: "none", background: "none", cursor: "pointer", fontFamily: c.font, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: expanded ? `1px solid ${c.border}` : "none" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Icon name="chat" size={14} color={c.textMed} />
-          <span style={{ fontSize: 13, fontWeight: 700, color: c.textMed }}>AI Concierge Conversation Log (2 exchanges)</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: c.textMed }}>What Sarah told Vardana today →</span>
         </div>
         <span style={{ fontSize: 14, color: c.textLight, transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "rotate(0)" }}>⌄</span>
       </button>
@@ -2407,7 +2413,7 @@ function EpicFHIRSection() {
 
 // ── Supporting Data ──
 function SupportingData() {
-  const [openSection, setOpenSection] = useState(null);
+  const [openSection, setOpenSection] = useState("weight");
   const toggle = (id) => setOpenSection(openSection === id ? null : id);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -2958,21 +2964,43 @@ function PatientDetail({ patient, onBack, onOutreach, callData }) {
           <button onClick={onOutreach} style={{ padding: "10px 18px", borderRadius: 10, background: DS.color.slate[950], color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", gap: 6, boxShadow: c.shadowMd }}>
             <Icon name="phone" size={14} color="white" /> Contact Patient
           </button>
-          {patient.risk != null && <RiskBadge level={patient.riskLevel} score={patient.risk} />}
+          {patient.risk != null && (
+            <div style={{ textAlign: "right" }}>
+              <RiskBadge level={patient.riskLevel} score={patient.risk} />
+              {patient.riskAssessedDuringCall && <div style={{ fontSize: 10, color: c.teal, fontWeight: 600, marginTop: 3 }}>Risk assessed during call</div>}
+            </div>
+          )}
         </div>
       </div>
 
-      {isSarahChen ? (
-        <>
-          <AIReasoningCard onOutreach={onOutreach} />
-          {callData && <RecentCallCard callData={callData} />}
-          <div style={{ marginTop: 20 }}><SupportingData /></div>
-        </>
-      ) : (
-        <>
-          {callData && <RecentCallCard callData={callData} />}
-          <GenericPatientSummary patient={patient} onOutreach={onOutreach} />
-        </>
+      <div style={{ paddingBottom: patient.alert ? 80 : 0 }}>
+        {isSarahChen ? (
+          <>
+            <AIReasoningCard onOutreach={onOutreach} />
+            {callData && <RecentCallCard callData={callData} />}
+            <div style={{ marginTop: 20 }}><SupportingData /></div>
+          </>
+        ) : (
+          <>
+            {callData && <RecentCallCard callData={callData} />}
+            <GenericPatientSummary patient={patient} onOutreach={onOutreach} />
+          </>
+        )}
+      </div>
+
+      {/* Sticky bottom action bar for alerted patients */}
+      {patient.alert && (
+        <div style={{ position: "sticky", bottom: 0, background: "white", borderTop: `1px solid ${c.border}`, padding: "12px 24px", display: "flex", gap: 12, boxShadow: "0 -4px 20px rgba(0,0,0,0.08)", zIndex: 10 }}>
+          <button onClick={onOutreach} style={{ flex: 1, background: DS.color.slate[950], color: "white", border: "none", padding: "12px 16px", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <Icon name="phone" size={14} color="white" /> Initiate Outreach
+          </button>
+          <button style={{ flex: 1, background: "white", color: c.text, border: `1px solid ${c.border}`, padding: "12px 16px", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font }}>
+            Open in EHR
+          </button>
+          <button onClick={onBack} style={{ padding: "12px 16px", background: "white", color: c.textLight, border: `1px solid ${c.border}`, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: c.font }}>
+            Dismiss
+          </button>
+        </div>
       )}
     </div>
   );
@@ -2984,8 +3012,16 @@ function CareCoordinatorView({ onSwitchRole }) {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showOutreachModal, setShowOutreachModal] = useState(false);
   const [callTranscripts, setCallTranscripts] = useState({});
+  const [riskOverrides, setRiskOverrides] = useState({}); // { patientId: { score, level } }
   const [epicPatients, setEpicPatients] = useState([]);
   const [epicLoading, setEpicLoading] = useState(false);
+
+  // Enrich patient with call-assessed risk score (freezes at peak from call)
+  const enrichPatient = (p) => {
+    const override = riskOverrides[p.id];
+    if (!override) return p;
+    return { ...p, risk: override.score, riskLevel: override.level, riskAssessedDuringCall: true };
+  };
 
   const fetchEpicPatients = async () => {
     if (epicPatients.length > 0 || epicLoading) return;
@@ -3035,13 +3071,19 @@ function CareCoordinatorView({ onSwitchRole }) {
 
   if (view === "voiceCall") {
     return <VoiceCallDemo patient={selectedPatient} onComplete={(data) => {
-      if (data) setCallTranscripts(prev => ({ ...prev, [selectedPatient.id]: data }));
-      setView("patient");
+      if (data) {
+        setCallTranscripts(prev => ({ ...prev, [selectedPatient.id]: data }));
+        if (data.riskScore) {
+          const level = data.riskScore >= 70 ? "high" : data.riskScore >= 40 ? "moderate" : "low";
+          setRiskOverrides(prev => ({ ...prev, [selectedPatient.id]: { score: data.riskScore, level } }));
+        }
+      }
+      setView("roster");
     }} />;
   }
 
   if (view === "smsPath") {
-    return <SMSPathDemo patient={selectedPatient} onComplete={() => { setView("patient"); }} />;
+    return <SMSPathDemo patient={selectedPatient} onComplete={() => { setView("roster"); }} />;
   }
 
   return (
@@ -3062,7 +3104,7 @@ function CareCoordinatorView({ onSwitchRole }) {
           callData={callTranscripts[selectedPatient?.id]}
         />
       ) : (
-        <RosterView onSelect={(p) => { setSelectedPatient(p); setView("patient"); }} epicPatients={epicPatients} epicLoading={epicLoading} onFetchEpic={fetchEpicPatients} />
+        <RosterView onSelect={(p) => { setSelectedPatient(enrichPatient(p)); setView("patient"); }} epicPatients={epicPatients} epicLoading={epicLoading} onFetchEpic={fetchEpicPatients} riskOverrides={riskOverrides} />
       )}
       {showOutreachModal && selectedPatient && (
         <OutreachModal
@@ -3277,20 +3319,37 @@ function PatientExperienceView({ onSwitchRole }) {
   const sectionHead = { fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 };
 
   return (
-    <div style={{ fontFamily: c.font, background: DS.color.canvas.warm, minHeight: "100vh" }}>
+    <div style={{ minHeight: "100vh", background: "#E5E7EB", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "32px 16px", fontFamily: c.font }}>
       <style>{`
         * { box-sizing: border-box; margin: 0; }
         button:active { opacity: 0.9; }
       `}</style>
+      <div style={{ width: 390, minHeight: 844, background: DS.color.canvas.warm, borderRadius: 44, boxShadow: "0 25px 60px rgba(0,0,0,0.15), 0 0 0 4px #1F2937", overflow: "hidden", position: "relative" }}>
       <PatientHeader onSwitchRole={onSwitchRole} />
 
-      <div style={{ maxWidth: 800, margin: "0 auto", padding: 24 }}>
+      <div style={{ padding: 16 }}>
 
         {/* Welcome */}
         <div style={{ marginBottom: 24 }}>
           <h1 style={{ fontSize: 26, fontWeight: 400, color: c.text, margin: 0, fontFamily: DS.fontDisplay }}>Welcome back, Sarah</h1>
           <p style={{ fontSize: 14, color: c.textLight, margin: "4px 0 0", fontFamily: c.font }}>Here's your recovery progress for today</p>
         </div>
+
+        {/* Weight Alert — elevated above journey bar when alert active */}
+        {patient.alert && (
+          <div style={{ ...cardStyle, padding: "18px 20px", marginBottom: 16, borderLeft: `4px solid ${c.red}`, background: "#FEF2F2" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <Icon name="alert" size={16} color={c.red} />
+              <div style={{ fontSize: 13, fontWeight: 700, color: c.red, textTransform: "uppercase", letterSpacing: "0.05em" }}>Weight Change Alert</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <span style={{ fontSize: 28, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>{latestWeight.weight}</span>
+              <span style={{ fontSize: 13, color: c.textLight }}>lbs</span>
+              <span style={{ fontSize: 14, color: c.red, fontWeight: 700 }}>+{(latestWeight.weight - prevWeight.weight).toFixed(1)} lbs in 48hrs</span>
+            </div>
+            <div style={{ fontSize: 13, color: c.textMed, marginTop: 8, lineHeight: 1.5 }}>Your care team has been notified. Nurse Rachel Kim will call you today.</div>
+          </div>
+        )}
 
         {/* Journey Progress */}
         <div style={{ ...cardStyle, padding: "20px 24px", marginBottom: 16 }}>
@@ -3310,14 +3369,15 @@ function PatientExperienceView({ onSwitchRole }) {
           {/* Phase labels */}
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: c.textLight }}>
             <span style={{ color: c.green, fontWeight: 700 }}>Stabilize (1–14)</span>
-            <span style={{ color: c.accent, fontWeight: 700 }}>Optimize (15–60)</span>
+            <span style={{ color: "#3B82F6", fontWeight: 700 }}>Optimize (15–60)</span>
             <span style={{ color: c.purple, fontWeight: 600 }}>Maintain (61–90)</span>
           </div>
         </div>
 
         {/* Vitals Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-          {/* Weight */}
+          {/* Weight — normal position when no alert */}
+          {!patient.alert && (
           <div style={{ ...cardStyle, padding: "18px 20px" }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Your Weight</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -3329,6 +3389,7 @@ function PatientExperienceView({ onSwitchRole }) {
             </div>
             <div style={{ fontSize: 11, color: c.textLight, marginTop: 6 }}>Your care team has been notified about this change.</div>
           </div>
+          )}
 
           {/* Blood Pressure */}
           <div style={{ ...cardStyle, padding: "18px 20px" }}>
@@ -3378,7 +3439,7 @@ function PatientExperienceView({ onSwitchRole }) {
               <div style={{ fontSize: 18, fontWeight: 700, color: "white", fontFamily: DS.fontDisplay }}>Have a question?</div>
             </div>
             <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, margin: "0 0 16px", maxWidth: 340 }}>
-              Talk to your Vardana AI care concierge anytime — by voice or text.
+              Talk to your Vardana AI care concierge anytime.
             </p>
             <button
               onClick={() => setShowContactModal(true)}
@@ -3391,7 +3452,7 @@ function PatientExperienceView({ onSwitchRole }) {
                 display: "flex", alignItems: "center", gap: 8,
               }}
             >
-              <Icon name="phone" size={16} color="white" /> Start a Conversation
+              <Icon name="sms" size={16} color="white" /> Start a Check-in
             </button>
           </div>
         </div>
@@ -3420,8 +3481,8 @@ function PatientExperienceView({ onSwitchRole }) {
         <div style={{ ...cardStyle, padding: "20px 24px", marginBottom: 16 }}>
           <div style={sectionHead}>Recent Check-ins with Vardana AI</div>
           {[
-            { date: "Yesterday, 8:00 AM", summary: "Discussed how you've been feeling. Noted increased fatigue and some ankle swelling. Vardana shared this with your care team." },
-            { date: "Today, 7:45 AM", summary: "Checked in about weight change (+2.3 lbs). Asked about breathing and swelling. Your care coordinator Rachel Kim will follow up today." },
+            { date: "Yesterday, 8:00 AM", summary: "You mentioned feeling more tired and noticed some ankle swelling. Vardana connected this to a 1.1 lb weight increase and flagged it for your care team as an early sign to monitor." },
+            { date: "Today, 7:45 AM", summary: "Your weight is up 2.3 lbs over 2 days — back above your discharge weight. Vardana identified this as a fluid retention pattern and notified Nurse Rachel Kim. She will call you today." },
           ].map((item, i) => (
             <div key={i} style={{ padding: "14px 16px", background: i === 1 ? c.purpleLight : c.borderLight, borderRadius: 10, marginBottom: i < 1 ? 8 : 0, border: i === 1 ? `1px solid ${c.purple}30` : "none" }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: i === 1 ? c.purple : c.textLight, marginBottom: 6 }}>{item.date}</div>
@@ -3451,6 +3512,7 @@ function PatientExperienceView({ onSwitchRole }) {
         </div>
 
       </div>
+      </div>{/* end phone frame */}
       {showContactModal && (
         <PatientContactModal
           onClose={() => setShowContactModal(false)}
