@@ -9,7 +9,15 @@
     "eval": "npx tsx evals/run-evals.ts",
     "eval:decompensation": "npx tsx evals/run-evals.ts --suite decompensation",
     "eval:reasoning": "npx tsx evals/run-evals.ts --suite reasoning",
-    "eval:safety": "npx tsx evals/run-evals.ts --suite safety"
+    "eval:safety": "npx tsx evals/run-evals.ts --suite safety",
+    "test:e2e": "npx playwright test --config=tests/playwright.config.ts --project=chromium",
+    "test:e2e:firefox": "npx playwright test --config=tests/playwright.config.ts --project=firefox",
+    "test:e2e:webkit": "npx playwright test --config=tests/playwright.config.ts --project=webkit",
+    "test:responsive": "npx playwright test --config=tests/playwright.config.ts --project=ipad-pro --project=iphone-14 --project=pixel-7",
+    "test:api": "npx playwright test --config=tests/playwright.config.ts --project=api-tests",
+    "qa": "npx tsx tests/qa-runner.ts",
+    "qa:quick": "npx tsx tests/qa-runner.ts --quick",
+    "playwright:install": "npx playwright install chromium firefox webkit"
   },
   "dependencies": {
     "jsonwebtoken": "^9.0.3",
@@ -19,6 +27,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "@playwright/test": "^1.58.2",
     "@types/node": "^25.4.0",
     "@vitejs/plugin-react": "^4.3.1",
     "tsx": "^4.21.0",

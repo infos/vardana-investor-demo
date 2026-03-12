@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-03-11T18:20:29.006Z",
+  "mode": "quick",
+  "overallPassed": true,
+  "totalDuration": 151803,
+  "results": [
+    {
+      "name": "Evals: Decompensation Algorithm",
+      "passed": true,
+      "duration": 1054,
+      "details": "All checks passed"
+    },
+    {
+      "name": "API: TTS & Voice Chat Endpoints",
+      "passed": true,
+      "duration": 10019,
+      "details": "All checks passed"
+    },
+    {
+      "name": "E2E: Chromium (Full Suite)",
+      "passed": true,
+      "duration": 47750,
+      "details": "All checks passed"
+    },
+    {
+      "name": "Responsive: iPad Pro + iPhone 14 + Pixel 7",
+      "passed": true,
+      "duration": 92980,
+      "details": "All checks passed"
+    }
+  ]
+}
