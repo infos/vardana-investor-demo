@@ -854,6 +854,7 @@ function VoiceCallDemo({ patient, onComplete }) {
 
   // ── Start demo with ElevenLabs (server-side proxy — no key needed) ──
   const startElevenLabs = async () => {
+    cancelRef.current = false;
     setApiError("");
     setUiState("loading");
     try {
@@ -1231,6 +1232,7 @@ function VoiceCallDemo({ patient, onComplete }) {
   };
 
   const startLiveDemo = async () => {
+    cancelRef.current = false;
     unlockAudio();   // iOS: must unlock AudioContext during user gesture
     setDemoMode("live");
     setApiError("");
