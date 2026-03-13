@@ -1,0 +1,193 @@
+{
+  "timestamp": "2026-03-13T01:15:20.190Z",
+  "suite": "reasoning",
+  "clinicalReasoning": {
+    "passed": 0,
+    "failed": 13,
+    "falseNegatives": [],
+    "results": [
+      {
+        "scenarioId": "S01",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+      },
+      {
+        "scenarioId": "S03",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+      },
+      {
+        "scenarioId": "S07",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+      },
+      {
+        "scenarioId": "S08",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+      },
+      {
+        "scenarioId": "S09",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+      },
+      {
+        "scenarioId": "S11",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+      },
+      {
+        "scenarioId": "S14",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+      },
+      {
+        "scenarioId": "S17",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+      },
+      {
+        "scenarioId": "S20",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+      },
+      {
+        "scenarioId": "S21",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+      },
+      {
+        "scenarioId": "S22",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+      },
+      {
+        "scenarioId": "S23",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+      },
+      {
+        "scenarioId": "S25",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted"
+      }
+    ]
+  }
+}

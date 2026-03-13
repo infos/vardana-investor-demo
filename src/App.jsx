@@ -392,7 +392,7 @@ function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, ris
             {ROSTER.length} patients · {alertCount} pending alert{alertCount !== 1 && "s"}
           </p>
         </div>
-        {!isMobile && <div style={{ fontSize: 12, color: c.textLight, fontFamily: c.font }}>March 1, 2026 · 8:23 AM</div>}
+        {!isMobile && <div style={{ fontSize: 12, color: c.textLight, fontFamily: c.font }}>{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} · {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>}
       </div>
 
       {alertCount > 0 && (
@@ -638,7 +638,7 @@ function VoiceCallDemo({ patient, onComplete }) {
     // For Sarah Chen (id: 1) — return undefined so the API uses the Sarah-specific prompt
     return undefined;
   };
-  const [riskScore, setRiskScore]     = useState(isEpic ? 50 : 72);
+  const [riskScore, setRiskScore]     = useState(isEpic ? 50 : 68);
   const [alertGenerated, setAlertGenerated] = useState(false);
   const [elapsed, setElapsed]   = useState(0);
   const [waveFrame, setWaveFrame] = useState(0);
@@ -652,6 +652,7 @@ function VoiceCallDemo({ patient, onComplete }) {
   const [conversationHistory, setConversationHistory] = useState([]);
   const [aiAssessment, setAiAssessment] = useState({});
   const [textInput, setTextInput]     = useState("");
+  const [interimText, setInterimText] = useState("");   // live speech-to-text preview
 
   const transcriptRef   = useRef(null);
   const audioRef        = useRef(null);   // currently playing Audio element/source
@@ -815,10 +816,12 @@ function VoiceCallDemo({ patient, onComplete }) {
         addTimer(() => { if (!cancelRef.current) setFhirLog(p => [...p, FHIR_QUERIES[i + 1]]); }, d)
       );
     }
-    if (idx === 8) setRiskScore(78);
-    if (idx === 11) setRiskScore(82);
+    if (idx === 4) setRiskScore(72);   // identity verified → baseline risk visible
+    if (idx === 6) setRiskScore(75);   // Sarah reports symptoms → score bumps
+    if (idx === 8) setRiskScore(78);   // AI analyzes readings → score climbs
+    if (idx === 11) setRiskScore(82);  // breathing trouble → high risk
     if (idx === 12) {
-      setRiskScore(84);
+      setRiskScore(84);               // AI triggers alert → critical
       addTimer(() => {
         if (cancelRef.current) return;
         setFhirLog(p => [...p, FHIR_QUERIES[6]]);
@@ -853,6 +856,7 @@ function VoiceCallDemo({ patient, onComplete }) {
 
   // ── Start demo with ElevenLabs (server-side proxy — no key needed) ──
   const startElevenLabs = async () => {
+    cancelRef.current = false;
     setApiError("");
     setUiState("loading");
     try {
@@ -921,13 +925,23 @@ function VoiceCallDemo({ patient, onComplete }) {
     if (!SpeechRec) return reject(new Error("Speech recognition not available"));
     const rec = new SpeechRec();
     rec.continuous = false;
-    rec.interimResults = false;
+    rec.interimResults = true;
     rec.lang = "en-US";
     recognitionRef.current = rec;
     let gotResult = false;
-    rec.onresult = (e) => { gotResult = true; setIsListening(false); resolve(e.results[0][0].transcript); };
-    rec.onerror = (e) => { setIsListening(false); reject(new Error(e.error)); };
-    rec.onend = () => { setIsListening(false); if (!gotResult) reject(new Error("no-speech")); };
+    rec.onresult = (e) => {
+      const result = e.results[0];
+      if (result.isFinal) {
+        gotResult = true;
+        setInterimText("");
+        setIsListening(false);
+        resolve(result[0].transcript);
+      } else {
+        setInterimText(result[0].transcript);
+      }
+    };
+    rec.onerror = (e) => { setInterimText(""); setIsListening(false); reject(new Error(e.error)); };
+    rec.onend = () => { setInterimText(""); setIsListening(false); if (!gotResult) reject(new Error("no-speech")); };
     setIsListening(true);
     setActiveSpeaker("Patient");
     rec.start();
@@ -1060,31 +1074,8 @@ function VoiceCallDemo({ patient, onComplete }) {
     setConversationHistory([...history]);
 
     // AI acknowledges greeting response, then asks for DOB
-    // Use the API to generate a natural acknowledgment based on what the patient actually said
-    let ackAndDobMsg;
-    try {
-      setIsThinking(true);
-      const ackRes = await fetch("/api/voice-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [
-            ...history,
-            { role: "user", content: `[SYSTEM: The patient just responded to your greeting. Acknowledge their response warmly and briefly (one short sentence), then transition to identity verification by asking for their date of birth. Keep it to 2 sentences max. Example: "I'm glad to hear that, Sarah. Before we get started, I just need to verify your identity — could you tell me your date of birth?"]` }
-          ],
-          patientContext: getPatientContext(),
-        }),
-      });
-      setIsThinking(false);
-      if (ackRes.ok) {
-        const ackData = await ackRes.json();
-        ackAndDobMsg = ackData.reply;
-      }
-    } catch { setIsThinking(false); }
-    // Fallback if API call fails
-    if (!ackAndDobMsg) {
-      ackAndDobMsg = `Thank you for sharing that, ${firstName}. Before we get started, I just need to verify your identity. Could you tell me your date of birth?`;
-    }
+    // Use a deterministic template — LLM was unreliable here (would skip DOB ask entirely)
+    const ackAndDobMsg = `That's wonderful to hear, ${firstName}. Before we get started, I just need to verify your identity — could you please tell me your date of birth?`;
 
     // AI asks for DOB — allow up to 3 attempts
     let dobValid = false;
@@ -1243,6 +1234,7 @@ function VoiceCallDemo({ patient, onComplete }) {
   };
 
   const startLiveDemo = async () => {
+    cancelRef.current = false;
     unlockAudio();   // iOS: must unlock AudioContext during user gesture
     setDemoMode("live");
     setApiError("");
@@ -1557,7 +1549,7 @@ function VoiceCallDemo({ patient, onComplete }) {
             <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>Decompensation Risk</div>
             <div style={{ fontSize: 42, fontWeight: 900, color: riskColor, fontVariantNumeric: "tabular-nums", lineHeight: 1, transition: "all 0.9s ease" }}>{riskScore}</div>
             <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>/ 100</div>
-            {riskScore > 72 && <div style={{ fontSize: 10, fontWeight: 700, color: riskColor, marginTop: 6 }}>↑ Updated live during call</div>}
+            {riskScore > 68 && <div style={{ fontSize: 10, fontWeight: 700, color: riskColor, marginTop: 6 }}>↑ Updated live during call</div>}
           </div>
 
           {/* Alert */}
@@ -1648,6 +1640,11 @@ function VoiceCallDemo({ patient, onComplete }) {
             {isListening && demoMode === "live" && (
               <div style={{ textAlign: "center", padding: "8px 0", animation: "fadeIn 0.3s ease" }}>
                 <span style={{ fontSize: 12, color: "#A78BFA", fontWeight: 700 }}>● Listening...</span>
+                {interimText && (
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontStyle: "italic", marginTop: 4, padding: "0 16px" }}>
+                    "{interimText}"
+                  </div>
+                )}
               </div>
             )}
             {uiState === "done" && (
@@ -1908,7 +1905,7 @@ function SMSPathDemo({ patient, onComplete }) {
             <div style={{ background: c.card, borderRadius: 16, border: `1px solid ${c.border}`, boxShadow: c.shadowLg, overflow: "hidden" }}>
               <div style={{ background: DS.color.jade[600], padding: "18px 22px" }}>
                 <div style={{ fontSize: 16, fontWeight: 800, color: "white", display: "flex", alignItems: "center", gap: 8 }}><Icon name="sms" size={18} color="white" /> SMS Outreach Initiated</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>Sent via Twilio · March 1, 2026 · 8:24 AM</div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>{`Sent via Twilio · ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} · ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`}</div>
               </div>
               <div style={{ padding: "20px 22px" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: c.textLight, textTransform: "uppercase", marginBottom: 10 }}>Message Sent To</div>
@@ -2104,7 +2101,7 @@ function SMSPathDemo({ patient, onComplete }) {
                 <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="check" size={22} color="white" strokeWidth={2.5} /></div>
                 <div>
                   <div style={{ fontSize: 16, fontWeight: 800, color: "white" }}>Health Data Connected</div>
-                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>First sync complete · March 1, 2026</div>
+                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>{`First sync complete · ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`}</div>
                 </div>
               </div>
               <div style={{ padding: "20px 24px" }}>
@@ -2144,8 +2141,9 @@ function SMSPathDemo({ patient, onComplete }) {
 }
 
 // ── AI Reasoning Card ──
-function AIReasoningCard({ onOutreach }) {
+function AIReasoningCard({ onOutreach, onBack }) {
   const [expanded, setExpanded] = useState(false);
+  const [showEHR, setShowEHR] = useState(false);
 
   return (
     <div style={{ background: c.card, borderRadius: DS.radius.lg, boxShadow: DS.shadow.alert, borderLeft: `4px solid ${DS.color.crimson[600]}`, overflow: "hidden" }}>
@@ -2257,9 +2255,113 @@ function AIReasoningCard({ onOutreach }) {
         <button onClick={onOutreach} style={{ flex: 2, padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.slate[950], color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: DS.transition.fast }}>
           <Icon name="phone" size={14} color="white" /> Initiate Outreach
         </button>
-        <button style={{ flex: 1, padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.canvas.white, color: c.text, border: `1px solid ${DS.color.border.default}`, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon name="clipboard" size={14} color={c.textMed} /> Open in EHR</button>
-        <button style={{ padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.canvas.white, color: c.textLight, border: `1px solid ${DS.color.border.subtle}`, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: c.font }}>Dismiss</button>
+        <button onClick={() => setShowEHR(true)} style={{ flex: 1, padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.canvas.white, color: c.text, border: `1px solid ${DS.color.border.default}`, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon name="clipboard" size={14} color={c.textMed} /> Open in EHR</button>
+        <button onClick={onBack} style={{ padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.canvas.white, color: c.textLight, border: `1px solid ${DS.color.border.subtle}`, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: c.font }}>Dismiss</button>
       </div>
+
+      {/* Mock EHR / FHIR Resource Panel */}
+      {showEHR && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,26,42,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(4px)" }} onClick={() => setShowEHR(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: c.card, borderRadius: 16, width: "100%", maxWidth: 640, maxHeight: "85vh", overflow: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.2)", fontFamily: c.font }}>
+            <div style={{ background: DS.color.slate[950], padding: "18px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 1 }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "white" }}>Epic EHR — Patient Record</div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>Sarah Chen · MRN: SCH-2024-0847</div>
+              </div>
+              <button onClick={() => setShowEHR(false)} style={{ background: "rgba(255,255,255,0.12)", border: "none", color: "white", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+            </div>
+
+            <div style={{ padding: "20px 24px" }}>
+              {/* FHIR Resource: Patient */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ background: c.accent, color: "white", padding: "2px 6px", borderRadius: 4, fontSize: 10 }}>FHIR</span> Patient Resource
+                </div>
+                <div style={{ background: DS.color.slate[50], borderRadius: 10, padding: 16, fontFamily: DS.fontMono, fontSize: 12, lineHeight: 1.8, color: c.textMed, border: `1px solid ${c.border}`, whiteSpace: "pre-wrap" }}>{`{
+  "resourceType": "Patient",
+  "id": "sch-2024-0847",
+  "name": [{ "family": "Chen", "given": ["Sarah"] }],
+  "gender": "female",
+  "birthDate": "1958-07-14",
+  "identifier": [{ "system": "urn:oid:2.16.840.1.113883.4.1", "value": "MRN-SCH-2024-0847" }]
+}`}</div>
+              </div>
+
+              {/* FHIR Resource: Condition */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ background: DS.color.crimson[600], color: "white", padding: "2px 6px", borderRadius: 4, fontSize: 10 }}>FHIR</span> Active Conditions
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {[
+                    { code: "I50.2", display: "HFpEF (EF 45%)", status: "active", onset: "2025-11-02" },
+                    { code: "I10", display: "Hypertension", status: "active", onset: "2018-03-15" },
+                    { code: "E11.9", display: "Type 2 Diabetes", status: "active", onset: "2020-06-22" },
+                    { code: "N18.3", display: "CKD Stage 3a", status: "active", onset: "2023-01-10" },
+                  ].map((cond, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: DS.color.slate[50], borderRadius: 8, border: `1px solid ${c.border}` }}>
+                      <span style={{ fontFamily: DS.fontMono, fontSize: 11, fontWeight: 700, color: DS.color.crimson[600], background: DS.color.crimson[50], padding: "2px 8px", borderRadius: 4, whiteSpace: "nowrap" }}>{cond.code}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: c.text, flex: 1 }}>{cond.display}</span>
+                      <span style={{ fontSize: 11, color: c.textLight }}>Since {cond.onset}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* FHIR Resource: Recent Observations */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ background: c.green, color: "white", padding: "2px 6px", borderRadius: 4, fontSize: 10 }}>FHIR</span> Recent Observations
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {[
+                    { name: "Weight", value: "187.7 lbs", date: "Today", flag: "H" },
+                    { name: "Blood Pressure", value: "136/86 mmHg", date: "Today", flag: "H" },
+                    { name: "BNP", value: "485 pg/mL", date: "Mar 6", flag: "H" },
+                    { name: "Creatinine", value: "1.4 mg/dL", date: "Mar 6", flag: "H" },
+                    { name: "eGFR", value: "48 mL/min", date: "Mar 6", flag: "L" },
+                    { name: "Potassium", value: "4.5 mEq/L", date: "Mar 6", flag: "" },
+                  ].map((obs, i) => (
+                    <div key={i} style={{ padding: "10px 12px", background: DS.color.slate[50], borderRadius: 8, border: `1px solid ${c.border}` }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight }}>{obs.name}</div>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: obs.flag ? (obs.flag === "H" ? DS.color.crimson[600] : c.orange) : c.text, fontFamily: DS.fontDisplay, marginTop: 2 }}>{obs.value} {obs.flag && <span style={{ fontSize: 10, fontWeight: 800, background: obs.flag === "H" ? DS.color.crimson[50] : "#FEF3C7", color: obs.flag === "H" ? DS.color.crimson[600] : c.orange, padding: "1px 4px", borderRadius: 3 }}>{obs.flag}</span>}</div>
+                      <div style={{ fontSize: 10, color: c.textLight, marginTop: 2 }}>{obs.date}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* FHIR Resource: MedicationRequest */}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ background: c.purple, color: "white", padding: "2px 6px", borderRadius: 4, fontSize: 10 }}>FHIR</span> Active Medications
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {[
+                    { name: "Carvedilol 12.5mg", sig: "PO BID", prescriber: "Dr. Harrington" },
+                    { name: "Lisinopril 10mg", sig: "PO QD", prescriber: "Dr. Harrington" },
+                    { name: "Furosemide 40mg", sig: "PO QD", prescriber: "Dr. Harrington" },
+                    { name: "Metformin 1000mg", sig: "PO BID", prescriber: "Dr. Patel" },
+                    { name: "Spironolactone 25mg", sig: "PO QD", prescriber: "Dr. Harrington" },
+                  ].map((med, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 14px", background: DS.color.slate[50], borderRadius: 8, border: `1px solid ${c.border}` }}>
+                      <Icon name="pill" size={14} color={c.purple} />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: c.text, flex: 1 }}>{med.name}</span>
+                      <span style={{ fontSize: 11, fontFamily: DS.fontMono, color: c.textMed }}>{med.sig}</span>
+                      <span style={{ fontSize: 11, color: c.textLight }}>{med.prescriber}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: "16px 24px", borderTop: `1px solid ${c.border}`, background: DS.color.slate[50], display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 11, color: c.textLight }}>Data source: FHIR R4 via Medplum · Last synced {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
+              <button onClick={() => setShowEHR(false)} style={{ padding: "8px 20px", borderRadius: 8, background: DS.color.slate[950], color: "white", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: c.font }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2976,7 +3078,7 @@ function PatientDetail({ patient, onBack, onOutreach, callData }) {
       <div style={{ paddingBottom: patient.alert ? 80 : 0 }}>
         {isSarahChen ? (
           <>
-            <AIReasoningCard onOutreach={onOutreach} />
+            <AIReasoningCard onOutreach={onOutreach} onBack={onBack} />
             {callData && <RecentCallCard callData={callData} />}
             <div style={{ marginTop: 20 }}><SupportingData /></div>
           </>
@@ -3330,9 +3432,36 @@ function PatientExperienceView({ onSwitchRole }) {
       <div style={{ padding: 16 }}>
 
         {/* Welcome */}
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 20 }}>
           <h1 style={{ fontSize: 26, fontWeight: 400, color: c.text, margin: 0, fontFamily: DS.fontDisplay }}>Welcome back, Sarah</h1>
           <p style={{ fontSize: 14, color: c.textLight, margin: "4px 0 0", fontFamily: c.font }}>Here's your recovery progress for today</p>
+        </div>
+
+        {/* AI Concierge Check-in — above the fold */}
+        <div style={{ ...cardStyle, padding: 0, marginBottom: 16, background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)", border: "none", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(14,165,233,0.08)" }} />
+          <div style={{ padding: "20px 24px", position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: "linear-gradient(135deg, #0EA5E9, #A855F7)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon name="phone" size={22} color="white" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "white" }}>Your daily check-in is ready</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>Talk to Vardana AI about how you're feeling today</div>
+            </div>
+            <button
+              onClick={() => setShowContactModal(true)}
+              style={{
+                padding: "10px 22px", borderRadius: 10,
+                background: "linear-gradient(135deg, #0EA5E9, #0284C7)",
+                color: "white", border: "none", fontSize: 14, fontWeight: 800,
+                cursor: "pointer", fontFamily: c.font, whiteSpace: "nowrap",
+                boxShadow: "0 4px 16px rgba(14,165,233,0.3)",
+                display: "flex", alignItems: "center", gap: 6,
+              }}
+            >
+              Start Check-in
+            </button>
+          </div>
         </div>
 
         {/* Weight Alert — elevated above journey bar when alert active */}

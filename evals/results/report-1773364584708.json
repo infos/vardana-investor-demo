@@ -1,0 +1,193 @@
+{
+  "timestamp": "2026-03-13T01:16:24.709Z",
+  "suite": "reasoning",
+  "clinicalReasoning": {
+    "passed": 0,
+    "failed": 13,
+    "falseNegatives": [],
+    "results": [
+      {
+        "scenarioId": "S01",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Request timed out."
+      },
+      {
+        "scenarioId": "S03",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Request timed out."
+      },
+      {
+        "scenarioId": "S07",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Request timed out."
+      },
+      {
+        "scenarioId": "S08",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Request timed out."
+      },
+      {
+        "scenarioId": "S09",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Request timed out."
+      },
+      {
+        "scenarioId": "S11",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Request timed out."
+      },
+      {
+        "scenarioId": "S14",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Request timed out."
+      },
+      {
+        "scenarioId": "S17",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Request timed out."
+      },
+      {
+        "scenarioId": "S20",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Request timed out."
+      },
+      {
+        "scenarioId": "S21",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Request timed out."
+      },
+      {
+        "scenarioId": "S22",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Request timed out."
+      },
+      {
+        "scenarioId": "S23",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Request timed out."
+      },
+      {
+        "scenarioId": "S25",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": []
+        },
+        "error": "Error: Request timed out."
+      }
+    ]
+  }
+}

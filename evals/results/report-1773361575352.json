@@ -1,0 +1,245 @@
+{
+  "timestamp": "2026-03-13T00:26:15.353Z",
+  "suite": "reasoning",
+  "clinicalReasoning": {
+    "passed": 0,
+    "failed": 13,
+    "falseNegatives": [
+      "S03",
+      "S07",
+      "S09",
+      "S11",
+      "S21",
+      "S23",
+      "S25"
+    ],
+    "results": [
+      {
+        "scenarioId": "S01",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Did not explicitly mention BP trending upward as a contributing factor"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S03",
+        "passed": false,
+        "toolCallAccuracy": 0.3333333333333333,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.5,
+          "flags": [
+            "Failed to identify HIGH risk level - treated as routine check-in",
+            "Did not acknowledge concurrent BP rise",
+            "Missed urgency of multi-signal deterioration"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S07",
+        "passed": false,
+        "toolCallAccuracy": 0.6666666666666666,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0.5,
+          "overallScore": 0.17,
+          "flags": [
+            "Failed to identify CRITICAL risk level - treated as routine follow-up",
+            "No explicit mention of urgency or immediate need",
+            "Did not specify immediate cardiologist notification as required",
+            "Missing transparency about which specific clinical factors drove assessment"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S08",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.67,
+          "flags": [
+            "No explanation provided for why 911 was recommended",
+            "Missing identification of specific risk factors (chest pain, dyspnea, HF history)"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S09",
+        "passed": false,
+        "toolCallAccuracy": 0.3333333333333333,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "Failed to identify HIGH risk scenario",
+            "No explicit risk assessment provided",
+            "Did not acknowledge weight gain or rising BP as concerning signals",
+            "Missed critical day 5 post-discharge window"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S11",
+        "passed": false,
+        "toolCallAccuracy": 0.3333333333333333,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0.5,
+          "overallScore": 0.17,
+          "flags": [
+            "Completely missed HIGH risk BP crisis",
+            "No acknowledgment of dangerous BP elevation",
+            "False negative - treated HIGH risk as routine check-in",
+            "No risk assessment or clinical reasoning provided",
+            "Failed to escalate appropriately for HF patient with BP crisis"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S14",
+        "passed": false,
+        "toolCallAccuracy": 0.3333333333333333,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "AI failed to address elevated NT-proBNP (4,200) which is the primary clinical concern",
+            "AI focused only on minor weight gain without acknowledging the significant lab abnormality",
+            "No explicit risk level assessment provided",
+            "Missed opportunity to proactively query relevant labs as scenario intended to test"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S17",
+        "passed": false,
+        "toolCallAccuracy": 0.5,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "AI failed to identify weight spike - scenario indicates weight increase but AI celebrates weight decrease",
+            "No explicit risk level communication",
+            "No explanation of clinical reasoning or risk factors"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S20",
+        "passed": false,
+        "toolCallAccuracy": 0.6666666666666666,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.67,
+          "flags": [
+            "No clinical reasoning provided - AI identified high-risk symptom and escalated appropriately but gave no explanation of why orthopnea requires urgent attention"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S21",
+        "passed": false,
+        "toolCallAccuracy": 0.3333333333333333,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "Failed to identify HIGH risk level",
+            "Did not acknowledge rising BP trend",
+            "No explicit risk assessment communicated",
+            "Understated urgency given cumulative HIGH risk pattern"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S22",
+        "passed": false,
+        "toolCallAccuracy": 0.3333333333333333,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0.5,
+          "overallScore": 0.17,
+          "flags": [
+            "Failed to identify moderate risk scenario",
+            "No mention of rising creatinine labs",
+            "Completely missed clinical concern",
+            "Focused only on weight without addressing kidney function deterioration"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S23",
+        "passed": false,
+        "toolCallAccuracy": 0.25,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "Failed to identify HIGH risk level - treated as routine inquiry",
+            "No explanation of risk assessment methodology",
+            "Did not acknowledge weight uptick signal",
+            "Missed opportunity for appropriate escalation given HIGH risk"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S25",
+        "passed": false,
+        "toolCallAccuracy": 0.5,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": [
+            "Failed to recognize critical emergency requiring immediate 911 dispatch",
+            "No risk assessment provided despite severe hemodynamic instability",
+            "Engaged in routine data verification instead of emergency response",
+            "Complete failure to escalate cardiogenic shock scenario",
+            "Patient safety compromised by inappropriate response"
+          ]
+        }
+      }
+    ]
+  }
+}
