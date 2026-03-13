@@ -87,6 +87,8 @@ function assessDecompensationRisk({ vitals, symptoms, journeyDay, conditionCount
   if (wg48 >= 1.0 && wg48 < 2.0 && symCount >= 1 && conditionCount >= 4) score += 10;
   // Dual-threshold weight gain (accelerating fluid retention, not already in ≥3 lb/48hr range)
   if (wg48 >= 2.0 && wg48 < 3.0 && wg7d >= 2.0) score += 8;
+  // Early post-discharge dyspnea with significant weight gain — high-risk decompensation window
+  if (wg48 >= 2.0 && wg48 < 3.0 && symptoms.dyspnea && journeyDay <= 7) score += 10;
 
   if      (journeyDay <= 7)  score += 15;
   else if (journeyDay <= 14) score += 12;

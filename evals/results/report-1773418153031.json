@@ -1,0 +1,205 @@
+{
+  "timestamp": "2026-03-13T16:09:13.033Z",
+  "suite": "reasoning",
+  "clinicalReasoning": {
+    "passed": 12,
+    "failed": 1,
+    "falseNegatives": [],
+    "results": [
+      {
+        "scenarioId": "S01",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Did not mention BP trending upward as contributing factor"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S03",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Omitted BP rise as contributing factor - only mentioned weight gain"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S07",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Did not mention hypertension as contributing factor despite it being part of the clinical triad"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S08",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Could have been more specific about which clinical factors drove the assessment"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S09",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Weight gain discrepancy: AI reported 3.9 lbs vs scenario 2.0 lbs",
+            "Omitted rising BP from explanation despite being key risk factor"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S11",
+        "passed": false,
+        "toolCallAccuracy": 0.6666666666666666,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0.5,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.67,
+          "flags": [
+            "Missed critical BP elevation trigger",
+            "Failed to mention BP crisis as primary concern",
+            "Under-triaged HIGH risk as MODERATE"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S14",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S17",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "AI mentioned elevated NT-proBNP and creatinine but didn't address weight stability or normal BP which were key contextual factors favoring MODERATE assessment"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S20",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S21",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Weight gain timeframe inconsistency (5 days vs 48 hours)",
+            "Did not mention rising BP trend in reasoning despite it being a key factor"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S22",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Did not mention creatinine rise as key concern despite this being the primary clinical issue",
+            "Focused on NT-proBNP and heart strain rather than kidney function deterioration"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S23",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S25",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Did not mention critical vitals (hypotension 85/60) or near-syncope in reasoning - only cited weight gain and dyspnea"
+          ]
+        }
+      }
+    ]
+  }
+}
