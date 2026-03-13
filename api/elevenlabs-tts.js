@@ -3,7 +3,7 @@ const ELEVENLABS_KEY = (process.env.ELEVENLABS_API_KEY || '').trim();
 const CARTESIA_KEY = (process.env.CARTESIA_API_KEY || '').trim();
 
 // ElevenLabs voices
-const ELEVENLABS_VOICES = { AI: '21m00Tcm4TlvDq8ikWAM', Sarah: 'XB0fDUnXU5powFXDhCwa' };
+const ELEVENLABS_VOICES = { AI: '0fbdXLXuDBZXm2IHek4L', Sarah: 'XB0fDUnXU5powFXDhCwa' };
 
 // Cartesia fallback voices
 const CARTESIA_VOICES = {
@@ -22,11 +22,11 @@ async function elevenlabsTTS(text, speaker) {
     },
     body: JSON.stringify({
       text,
-      model_id: 'eleven_multilingual_v2',
+      model_id: 'eleven_turbo_v2_5',
       voice_settings: {
-        stability: speaker === 'AI' ? 0.50 : 0.45,
+        stability: speaker === 'AI' ? 0.70 : 0.55,
         similarity_boost: 0.80,
-        style: speaker === 'AI' ? 0.35 : 0.40,
+        style: speaker === 'AI' ? 0.10 : 0.35,
         use_speaker_boost: true,
       },
     }),
