@@ -652,6 +652,7 @@ function VoiceCallDemo({ patient, onComplete }) {
   const [conversationHistory, setConversationHistory] = useState([]);
   const [aiAssessment, setAiAssessment] = useState({});
   const [textInput, setTextInput]     = useState("");
+  const [interimText, setInterimText] = useState("");   // live speech-to-text preview
 
   const transcriptRef   = useRef(null);
   const audioRef        = useRef(null);   // currently playing Audio element/source
@@ -921,13 +922,23 @@ function VoiceCallDemo({ patient, onComplete }) {
     if (!SpeechRec) return reject(new Error("Speech recognition not available"));
     const rec = new SpeechRec();
     rec.continuous = false;
-    rec.interimResults = false;
+    rec.interimResults = true;
     rec.lang = "en-US";
     recognitionRef.current = rec;
     let gotResult = false;
-    rec.onresult = (e) => { gotResult = true; setIsListening(false); resolve(e.results[0][0].transcript); };
-    rec.onerror = (e) => { setIsListening(false); reject(new Error(e.error)); };
-    rec.onend = () => { setIsListening(false); if (!gotResult) reject(new Error("no-speech")); };
+    rec.onresult = (e) => {
+      const result = e.results[0];
+      if (result.isFinal) {
+        gotResult = true;
+        setInterimText("");
+        setIsListening(false);
+        resolve(result[0].transcript);
+      } else {
+        setInterimText(result[0].transcript);
+      }
+    };
+    rec.onerror = (e) => { setInterimText(""); setIsListening(false); reject(new Error(e.error)); };
+    rec.onend = () => { setInterimText(""); setIsListening(false); if (!gotResult) reject(new Error("no-speech")); };
     setIsListening(true);
     setActiveSpeaker("Patient");
     rec.start();
@@ -1060,31 +1071,8 @@ function VoiceCallDemo({ patient, onComplete }) {
     setConversationHistory([...history]);
 
     // AI acknowledges greeting response, then asks for DOB
-    // Use the API to generate a natural acknowledgment based on what the patient actually said
-    let ackAndDobMsg;
-    try {
-      setIsThinking(true);
-      const ackRes = await fetch("/api/voice-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [
-            ...history,
-            { role: "user", content: `[SYSTEM: The patient just responded to your greeting. Acknowledge their response warmly and briefly (one short sentence), then transition to identity verification by asking for their date of birth. Keep it to 2 sentences max. Example: "I'm glad to hear that, Sarah. Before we get started, I just need to verify your identity — could you tell me your date of birth?"]` }
-          ],
-          patientContext: getPatientContext(),
-        }),
-      });
-      setIsThinking(false);
-      if (ackRes.ok) {
-        const ackData = await ackRes.json();
-        ackAndDobMsg = ackData.reply;
-      }
-    } catch { setIsThinking(false); }
-    // Fallback if API call fails
-    if (!ackAndDobMsg) {
-      ackAndDobMsg = `Thank you for sharing that, ${firstName}. Before we get started, I just need to verify your identity. Could you tell me your date of birth?`;
-    }
+    // Use a deterministic template — LLM was unreliable here (would skip DOB ask entirely)
+    const ackAndDobMsg = `That's wonderful to hear, ${firstName}. Before we get started, I just need to verify your identity — could you please tell me your date of birth?`;
 
     // AI asks for DOB — allow up to 3 attempts
     let dobValid = false;
@@ -1648,6 +1636,11 @@ function VoiceCallDemo({ patient, onComplete }) {
             {isListening && demoMode === "live" && (
               <div style={{ textAlign: "center", padding: "8px 0", animation: "fadeIn 0.3s ease" }}>
                 <span style={{ fontSize: 12, color: "#A78BFA", fontWeight: 700 }}>● Listening...</span>
+                {interimText && (
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontStyle: "italic", marginTop: 4, padding: "0 16px" }}>
+                    "{interimText}"
+                  </div>
+                )}
               </div>
             )}
             {uiState === "done" && (
