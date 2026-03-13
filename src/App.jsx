@@ -3653,43 +3653,14 @@ function PatientExperienceView({ onSwitchRole }) {
   );
 }
 
-// ── Role Selector & App Entry ──
-export default function App() {
-  const [role, setRole] = useState(null);
-  const isMobile = useIsMobile();
+// ── App Entry (routed via main.jsx) ──
+export default function App({ initialRole, navigate }) {
+  const goBack = () => navigate('/demo');
 
-  if (role === "coordinator") return <CareCoordinatorView onSwitchRole={() => setRole(null)} />;
-  if (role === "patient") return <PatientExperienceView onSwitchRole={() => setRole(null)} />;
+  if (initialRole === "coordinator") return <CareCoordinatorView onSwitchRole={goBack} />;
+  if (initialRole === "patient") return <PatientExperienceView onSwitchRole={goBack} />;
 
-  // Role picker
-  return (
-    <div style={{ fontFamily: c.font, background: c.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? 16 : 0 }}>
-      <style>{`* { box-sizing: border-box; margin: 0; }`}</style>
-      <div style={{ maxWidth: 720, width: "100%", padding: isMobile ? 16 : 24 }}>
-        <div style={{ textAlign: "center", marginBottom: isMobile ? 28 : 40 }}>
-          <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay, letterSpacing: "-0.02em" }}>
-            Vardana<span style={{ color: DS.color.amber[400] }}>.</span>
-          </div>
-          <p style={{ fontSize: isMobile ? 13 : 15, color: c.textLight, marginTop: 8, fontFamily: c.font }}>AI Care Concierge Platform — Select a view</p>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
-          {/* Coordinator Card */}
-          <button onClick={() => setRole("coordinator")} style={{ background: DS.color.slate[950], border: "none", borderRadius: DS.radius.xl, padding: isMobile ? "24px 20px" : "32px 24px", cursor: "pointer", textAlign: "left", color: "white", fontFamily: c.font, boxShadow: DS.shadow.lg, transition: DS.transition.base }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>👩‍⚕️</div>
-            <div style={{ fontSize: isMobile ? 17 : 18, fontWeight: 400, marginBottom: 6, fontFamily: DS.fontDisplay }}>Care Coordinator</div>
-            <div style={{ fontSize: 13, opacity: 0.7, lineHeight: 1.5 }}>Nurse Rachel Kim</div>
-            <div style={{ fontSize: 12, opacity: 0.5, lineHeight: 1.5, marginTop: 8 }}>Monitor patients, review AI alerts, initiate voice & SMS outreach</div>
-          </button>
-
-          {/* Patient Card */}
-          <button onClick={() => setRole("patient")} style={{ background: DS.color.slate[900], border: "none", borderRadius: DS.radius.xl, padding: isMobile ? "24px 20px" : "32px 24px", cursor: "pointer", textAlign: "left", color: "white", fontFamily: c.font, boxShadow: DS.shadow.lg, transition: DS.transition.base }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>👩</div>
-            <div style={{ fontSize: isMobile ? 17 : 18, fontWeight: 400, marginBottom: 6, fontFamily: DS.fontDisplay }}>Patient Portal</div>
-            <div style={{ fontSize: 13, opacity: 0.7, lineHeight: 1.5 }}>Sarah Chen, 67F</div>
-            <div style={{ fontSize: 12, opacity: 0.5, lineHeight: 1.5, marginTop: 8 }}>Recovery journey, vitals, medications, AI check-in history</div>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  // Fallback — redirect to demo page
+  navigate('/demo');
+  return null;
 }
