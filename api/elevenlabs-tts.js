@@ -22,11 +22,11 @@ async function elevenlabsTTS(text, speaker) {
     },
     body: JSON.stringify({
       text,
-      model_id: 'eleven_turbo_v2_5',
+      model_id: 'eleven_multilingual_v2',
       voice_settings: {
-        stability: speaker === 'AI' ? 0.70 : 0.55,
+        stability: speaker === 'AI' ? 0.50 : 0.45,
         similarity_boost: 0.80,
-        style: speaker === 'AI' ? 0.10 : 0.35,
+        style: speaker === 'AI' ? 0.35 : 0.40,
         use_speaker_boost: true,
       },
     }),
