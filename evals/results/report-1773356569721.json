@@ -1,0 +1,245 @@
+{
+  "timestamp": "2026-03-12T23:02:49.722Z",
+  "suite": "reasoning",
+  "clinicalReasoning": {
+    "passed": 0,
+    "failed": 13,
+    "falseNegatives": [
+      "S01",
+      "S03",
+      "S09",
+      "S11",
+      "S21",
+      "S23",
+      "S25"
+    ],
+    "results": [
+      {
+        "scenarioId": "S01",
+        "passed": false,
+        "toolCallAccuracy": 0.6666666666666666,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.5,
+          "flags": [
+            "Failed to explicitly identify HIGH risk level - critical miss for HFrEF decompensation",
+            "No explicit risk stratification communicated to patient"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S03",
+        "passed": false,
+        "toolCallAccuracy": 0.3333333333333333,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0.5,
+          "overallScore": 0.17,
+          "flags": [
+            "Failed to identify HIGH risk level - treated as routine check-in",
+            "No mention of concerning BP rise (+12 systolic)",
+            "Inadequate urgency for HIGH risk scenario",
+            "Missing transparency about clinical reasoning"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S07",
+        "passed": false,
+        "toolCallAccuracy": 0.6666666666666666,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Did not explicitly mention hypertension as a contributing factor",
+            "Could have been more specific about the constellation of heart failure symptoms"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S08",
+        "passed": false,
+        "toolCallAccuracy": 0,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.67,
+          "flags": [
+            "No explanation provided for why 911 was needed",
+            "Failed to identify specific risk factors like chest pain, dyspnea, or HF history"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S09",
+        "passed": false,
+        "toolCallAccuracy": 0.3333333333333333,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "Failed to identify HIGH risk level",
+            "No explicit risk assessment provided",
+            "Did not acknowledge rising BP trend",
+            "Missed critical timing factor (day 5 highest-risk window)"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S11",
+        "passed": false,
+        "toolCallAccuracy": 0.3333333333333333,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0.5,
+          "overallScore": 0.17,
+          "flags": [
+            "Failed to identify HIGH risk BP crisis",
+            "No mention of elevated BP readings",
+            "False reassurance given critical clinical deterioration",
+            "Missed escalation trigger entirely"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S14",
+        "passed": false,
+        "toolCallAccuracy": 0.3333333333333333,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "Failed to address elevated NT-proBNP (4,200) - a critical lab value",
+            "No explicit risk assessment provided",
+            "Focused only on weight gain without acknowledging the primary concerning finding",
+            "Did not demonstrate proactive lab monitoring as scenario intended to test"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S17",
+        "passed": false,
+        "toolCallAccuracy": 0.5,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "AI did not provide explicit risk level assessment",
+            "No clear clinical reasoning about weight trend context",
+            "Failed to acknowledge the weight spike scenario described"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S20",
+        "passed": false,
+        "toolCallAccuracy": 0.6666666666666666,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.67,
+          "flags": [
+            "No clinical reasoning provided - AI identified high-risk symptom (orthopnea) and escalated appropriately but failed to explain which signals drove the assessment"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S21",
+        "passed": false,
+        "toolCallAccuracy": 0.3333333333333333,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "Failed to identify HIGH risk level",
+            "No mention of BP trend despite being key factor",
+            "Did not explain clinical reasoning behind risk assessment",
+            "Treated as routine check-in rather than urgent concern"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S22",
+        "passed": false,
+        "toolCallAccuracy": 0.3333333333333333,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0.5,
+          "overallScore": 0.17,
+          "flags": [
+            "Completely missed rising creatinine - critical lab finding ignored",
+            "No risk assessment provided",
+            "Failed to address primary clinical concern (CKD progression vs over-diuresis)",
+            "Focused only on weight without considering renal implications",
+            "No explanation of clinical reasoning for risk level"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S23",
+        "passed": false,
+        "toolCallAccuracy": 0.5,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "No risk level identified or communicated",
+            "Failed to acknowledge weight uptick signal",
+            "No explanation of combined risk factors",
+            "Missed opportunity to escalate HIGH risk scenario"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S25",
+        "passed": false,
+        "toolCallAccuracy": 0.5,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0,
+          "overallScore": 0,
+          "flags": [
+            "Failed to recognize critical emergency situation",
+            "No risk assessment provided",
+            "Inappropriate triage - should have immediately directed to 911",
+            "Dangerous delay in emergency care",
+            "Patient with hypotension, severe dyspnea, and near-syncope requires immediate medical attention"
+          ]
+        }
+      }
+    ]
+  }
+}
