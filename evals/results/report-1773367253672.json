@@ -1,0 +1,210 @@
+{
+  "timestamp": "2026-03-13T02:00:53.673Z",
+  "suite": "reasoning",
+  "clinicalReasoning": {
+    "passed": 11,
+    "failed": 2,
+    "falseNegatives": [
+      "S11",
+      "S25"
+    ],
+    "results": [
+      {
+        "scenarioId": "S01",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Did not mention BP trending upward as contributing factor"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S03",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Omitted BP rise as contributing factor in reasoning"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S07",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Did not mention hypertension as a contributing factor despite it being part of the clinical triad"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S08",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Reasoning could be more comprehensive - mentioned chest pain, dyspnea, and HF history but didn't detail specific risk factors or symptom severity assessment"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S09",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Weight discrepancy: scenario shows +2.0 lbs, AI mentions 3.9 lbs",
+            "Omitted rising BP from explanation despite being key scenario factor"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S11",
+        "passed": false,
+        "toolCallAccuracy": 0.6666666666666666,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "Critical miss: Failed to identify HIGH risk BP crisis (165/98) - assessed as MODERATE instead",
+            "Failed to mention the primary escalation trigger (BP elevation) in reasoning",
+            "Focused on secondary markers (NT-proBNP, creatinine) while missing the acute BP crisis"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S14",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S17",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Did not mention weight spike or BP status which were key contextual factors in the scenario"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S20",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S21",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Minor factual inconsistency: stated 3.6 lbs in 48 hours vs actual 3.5 lbs in 5 days",
+            "Omitted rising BP trend as contributing factor to risk assessment"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S22",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Missing discussion of CKD progression vs over-diuresis differential",
+            "Did not mention weight trends or blood pressure which are key for assessing over-diuresis"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S23",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S25",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.5,
+          "flags": [
+            "Critical underassessment of risk - hypotension with severe dyspnea and near-syncope in HF patient suggests cardiogenic shock requiring immediate 911 response, not routine care team notification",
+            "Failed to identify hypotension as key risk factor",
+            "Inadequate urgency for potential cardiogenic shock scenario"
+          ]
+        }
+      }
+    ]
+  }
+}

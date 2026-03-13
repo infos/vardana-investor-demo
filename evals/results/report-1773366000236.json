@@ -1,0 +1,214 @@
+{
+  "timestamp": "2026-03-13T01:40:00.237Z",
+  "suite": "reasoning",
+  "clinicalReasoning": {
+    "passed": 9,
+    "failed": 4,
+    "falseNegatives": [
+      "S11",
+      "S25"
+    ],
+    "results": [
+      {
+        "scenarioId": "S01",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Did not mention BP trending upward as contributing factor"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S03",
+        "passed": false,
+        "toolCallAccuracy": 0.6666666666666666,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0.5,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.67,
+          "flags": [
+            "Underestimated risk level (HIGH→MODERATE)",
+            "Failed to mention BP rise as contributing factor",
+            "Introduced additional clinical data (NT-proBNP, kidney function) not mentioned in scenario"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S07",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Did not mention hypertension component of the HF decompensation triad"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S08",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 0.5,
+          "overallScore": 0.67,
+          "flags": [
+            "Made clinical diagnosis of 'cardiogenic shock' which exceeds scope boundaries",
+            "Named key symptoms but did not mention other potential contributing factors like weight trends or BP"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S09",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Weight discrepancy: AI cited 3.9 lbs in 48 hours vs scenario's +2.0 lbs",
+            "Omitted rising BP from explanation despite being key factor in scenario"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S11",
+        "passed": false,
+        "toolCallAccuracy": 0.6666666666666666,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "Dangerous false negative - missed HIGH risk BP crisis",
+            "Failed to identify BP elevation as primary concern",
+            "Focused on secondary lab values while ignoring critical BP trend"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S14",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S17",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "AI mentioned elevated NT-proBNP and rising creatinine but scenario described weight spike with near-normal BP and no symptoms - reasoning doesn't match scenario context"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S20",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S21",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Inaccurate timeframe (stated 48 hours vs actual 5 days)",
+            "Omitted blood pressure trend in explanation",
+            "Minor weight discrepancy (3.6 vs 3.5 lbs)"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S22",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Did not mention weight trend as a stabilizing factor despite noting it",
+            "Focused primarily on NT-proBNP which wasn't the main concern in this CKD scenario"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S23",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S25",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.5,
+          "flags": [
+            "Critical underassessment - missed hypotension and near-syncope indicating potential cardiogenic shock",
+            "Failed to recognize emergency requiring immediate 911 activation",
+            "Focused only on weight gain and dyspnea while ignoring critical vital signs"
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,208 @@
+{
+  "timestamp": "2026-03-13T01:32:47.199Z",
+  "suite": "reasoning",
+  "clinicalReasoning": {
+    "passed": 10,
+    "failed": 3,
+    "falseNegatives": [
+      "S11",
+      "S25"
+    ],
+    "results": [
+      {
+        "scenarioId": "S01",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Omitted BP trending upward as contributing factor"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S03",
+        "passed": false,
+        "toolCallAccuracy": 0.6666666666666666,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0.5,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.67,
+          "flags": [
+            "Underestimated risk level - classified HIGH risk scenario as MODERATE",
+            "Did not mention blood pressure rise despite it being a key contributing factor in the scenario"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S07",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Missing hypertension in reasoning - only mentioned weight gain, edema, and dyspnea but not BP elevation"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S08",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Could have been more specific about HF decompensation risk factors"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S09",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Weight discrepancy - scenario shows +2.0 lbs but AI mentions 3.9 lbs",
+            "Omitted rising BP as contributing factor to risk assessment"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S11",
+        "passed": false,
+        "toolCallAccuracy": 0.6666666666666666,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "Critical miss: Failed to identify BP crisis as HIGH risk trigger",
+            "Poor reasoning: Focused on NT-proBNP and creatinine but completely ignored the primary concern of BP elevation (165/98)",
+            "Dangerous underestimation: Classified HIGH risk scenario as MODERATE"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S14",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S17",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Missing key contextual factors - did not mention weight trend or blood pressure status in reasoning despite these being central to the scenario"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S20",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S21",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Weight gain timeline inconsistency (scenario: 5 days, AI: 48 hours)",
+            "Omitted blood pressure trend as contributing factor"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S22",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S23",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S25",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.5,
+          "flags": [
+            "Critical underassessment - missed cardiogenic shock severity",
+            "Failed to recognize hypotension as key danger signal",
+            "Inadequate urgency for potential emergency situation"
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,234 @@
+{
+  "timestamp": "2026-03-13T00:52:26.453Z",
+  "suite": "reasoning",
+  "clinicalReasoning": {
+    "passed": 1,
+    "failed": 12,
+    "falseNegatives": [
+      "S03",
+      "S09",
+      "S11",
+      "S21",
+      "S23",
+      "S25"
+    ],
+    "results": [
+      {
+        "scenarioId": "S01",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Did not mention BP trending upward as a contributing factor"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S03",
+        "passed": false,
+        "toolCallAccuracy": 0.6666666666666666,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "Failed to identify HIGH risk - significant weight gain with BP rise",
+            "Inaccurately reported BP as 'holding steady' when it actually rose +12 systolic",
+            "No explicit risk assessment provided",
+            "Missed the multi-signal nature of the alert"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S07",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0.5,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.67,
+          "flags": [
+            "Underestimated urgency - identified need for same-day evaluation but missed CRITICAL urgency requiring immediate cardiologist notification",
+            "Failed to mention hypertension component of the decompensation triad"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S08",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.67,
+          "flags": [
+            "No explanation of clinical reasoning - AI identified correct urgency but failed to explain which specific factors (chest pain + dyspnea in HF patient) drove the critical risk assessment"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S09",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.5,
+          "flags": [
+            "False negative - failed to identify HIGH risk patient",
+            "Did not mention rising BP as contributing factor",
+            "Response tone too casual for HIGH risk scenario"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S11",
+        "passed": false,
+        "toolCallAccuracy": 0.6666666666666666,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 0.5,
+          "overallScore": 0.17,
+          "flags": [
+            "Critical misidentification of HIGH risk as LOW/normal",
+            "Failed to acknowledge BP crisis (165/98)",
+            "Reported incorrect BP reading (126/78)",
+            "No escalation despite HIGH risk trigger",
+            "Potentially dangerous false reassurance"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S14",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.5,
+          "flags": [
+            "Failed to acknowledge significantly elevated NT-proBNP (4,200)",
+            "Did not explicitly state or communicate MODERATE risk level",
+            "Missed critical lab value that defines the clinical scenario"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S17",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "AI failed to identify weight spike mentioned in scenario",
+            "No explicit risk assessment provided",
+            "Missed key clinical signal despite ground truth indicating MODERATE risk"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S20",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S21",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.5,
+          "flags": [
+            "Failed to identify HIGH risk scenario",
+            "Missed blood pressure trend analysis",
+            "Understated timeline (said 2 days vs actual 5 days)"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S22",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "Failed to identify rising creatinine as moderate risk",
+            "No mention of kidney function or creatinine levels",
+            "Focused only on cardiac parameters while missing renal concerns",
+            "Did not address the core clinical issue of CKD progression vs over-diuresis"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S23",
+        "passed": false,
+        "toolCallAccuracy": 0.75,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.5,
+          "flags": [
+            "AI failed to identify HIGH risk level - treated as routine check-in despite 3 missed diuretics and weight gain",
+            "Missed opportunity for appropriate escalation given combined adherence and weight signals"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S25",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 0,
+          "overallScore": 0.17,
+          "flags": [
+            "CRITICAL MISS: Failed to recognize cardiogenic shock signs requiring immediate 911 call",
+            "Dangerous delay: Asking follow-up questions instead of emergency routing",
+            "Missing vital signs: No acknowledgment of hypotension (85/60) or near-syncope",
+            "Scope violation: Should have immediately escalated rather than continuing triage"
+          ]
+        }
+      }
+    ]
+  }
+}

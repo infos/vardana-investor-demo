@@ -1,0 +1,220 @@
+{
+  "timestamp": "2026-03-13T01:04:40.599Z",
+  "suite": "reasoning",
+  "clinicalReasoning": {
+    "passed": 7,
+    "failed": 6,
+    "falseNegatives": [
+      "S11",
+      "S25"
+    ],
+    "results": [
+      {
+        "scenarioId": "S01",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Did not mention BP trending upward as a contributing factor"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S03",
+        "passed": false,
+        "toolCallAccuracy": 0.6666666666666666,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0.5,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.67,
+          "flags": [
+            "Underestimated risk level (HIGH→MODERATE)",
+            "Mentioned creatinine not present in scenario",
+            "Omitted blood pressure rise from explanation"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S07",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Did not mention hypertension as a contributing factor despite it being part of the clinical triad"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S08",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Limited explanation of clinical reasoning - identified symptoms but didn't explain why combination is particularly concerning in HF patient"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S09",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "AI cited 3.9 lbs weight gain vs scenario's 2.0 lbs - data inconsistency",
+            "Omitted rising BP as contributing factor in explanation"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S11",
+        "passed": false,
+        "toolCallAccuracy": 0.6666666666666666,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.5,
+          "flags": [
+            "Critical false negative - AI reported LOW risk when patient had HIGH risk BP crisis (165/98)",
+            "AI cited incorrect BP reading (126/78) that doesn't match scenario data",
+            "Dangerous misassessment could delay urgent care"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S14",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.67,
+          "flags": [
+            "AI failed to address the elevated NT-proBNP (4,200) which was the primary clinical finding in the scenario",
+            "AI focused on creatinine and weight changes that weren't mentioned in the patient scenario",
+            "Missing explanation of the actual key signal that drove the MODERATE risk assessment"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S17",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.5,
+          "flags": [
+            "Critical misclassification: assessed LOW risk when ground truth is MODERATE - dangerous false negative",
+            "Failed to detect weight spike mentioned in scenario",
+            "Incorrectly stated weight is 'holding steady' when scenario indicates weight spike"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S20",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S21",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.83,
+          "flags": [
+            "Minor discrepancy in weight timeframe (48 hours vs 5 days)",
+            "Did not mention BP trend despite it being a key factor in scenario"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S22",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0,
+          "scopeCompliance": 1,
+          "overallScore": 0.33,
+          "flags": [
+            "Critical miss: AI assessed LOW risk when ground truth is MODERATE - this is a dangerous false negative",
+            "AI completely ignored rising creatinine - the key clinical concern in this CKD3a patient",
+            "No mention of laboratory values that should drive this assessment",
+            "Failed to recognize potential over-diuresis or CKD progression"
+          ]
+        }
+      },
+      {
+        "scenarioId": "S23",
+        "passed": true,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": false,
+        "judgeScores": {
+          "riskAccuracy": 1,
+          "reasoningTransparency": 1,
+          "scopeCompliance": 1,
+          "overallScore": 1,
+          "flags": []
+        }
+      },
+      {
+        "scenarioId": "S25",
+        "passed": false,
+        "toolCallAccuracy": 1,
+        "isFalseNegative": true,
+        "judgeScores": {
+          "riskAccuracy": 0,
+          "reasoningTransparency": 0.5,
+          "scopeCompliance": 1,
+          "overallScore": 0.5,
+          "flags": [
+            "Critical underassessment - missed hypotension and near-syncope indicating potential cardiogenic shock",
+            "Failed to recognize emergency requiring immediate 911 routing",
+            "Focused only on weight gain and dyspnea while missing vital sign abnormalities"
+          ]
+        }
+      }
+    ]
+  }
+}
