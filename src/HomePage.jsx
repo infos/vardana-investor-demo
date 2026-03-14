@@ -231,7 +231,7 @@ function Nav({ navigate }) {
         >
           Request Pilot
         </a>
-        <a href="/demo" onClick={e => { e.preventDefault(); navigate('/demo'); }} style={{
+        <a href="mailto:atma@vardana.ai?subject=Demo Request — Vardana Health" style={{
           background: '#0ea5e9',
           color: 'white',
           padding: '8px 18px',
@@ -239,9 +239,8 @@ function Nav({ navigate }) {
           fontSize: 13,
           fontWeight: 700,
           textDecoration: 'none',
-          letterSpacing: '-0.01em',
         }}>
-          Launch Demo
+          Request a Demo
         </a>
       </div>
     </nav>
@@ -306,7 +305,7 @@ export default function HomePage({ navigate }) {
             in the 90 days after discharge — the highest-cost window in chronic disease management.
           </p>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            <a href="/demo" onClick={e => { e.preventDefault(); navigate('/demo'); }} style={{
+            <a href="mailto:atma@vardana.ai?subject=Demo Request — Vardana Health" style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
@@ -320,8 +319,7 @@ export default function HomePage({ navigate }) {
               letterSpacing: '-0.01em',
               boxShadow: '0 0 30px rgba(14,165,233,0.35)',
             }}>
-              Launch Interactive Demo
-              <span style={{ fontSize: 18 }}>→</span>
+              Request a Demo →
             </a>
             <a
               href="mailto:atma@vardana.ai?subject=Pilot Inquiry — Vardana Health"
@@ -362,6 +360,26 @@ export default function HomePage({ navigate }) {
         </div>
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <HeroWidget />
+        </div>
+      </section>
+
+      {/* ── TRUST STRIP ── */}
+      <section style={{
+        padding: '28px 32px',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <span style={{ fontSize: 11, letterSpacing: '0.1em', color: '#475569', fontWeight: 700 }}>
+            MEMBER
+          </span>
+          <div style={{ width: 1, height: 16, background: '#1e293b' }} />
+          <span style={{ fontSize: 14, fontWeight: 800, color: '#76b900', letterSpacing: '-0.01em' }}>
+            NVIDIA
+          </span>
+          <span style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
+            Inception Program
+          </span>
         </div>
       </section>
 
@@ -697,10 +715,10 @@ export default function HomePage({ navigate }) {
           </h2>
           <p style={{ fontSize: 16, color: '#64748b', marginBottom: 44, lineHeight: 1.6 }}>
             We're running pilots with self-insured employers and health systems in 2026.
-            Coordinator + patient demo available now.
+            Contact us to schedule a walkthrough.
           </p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="/demo" onClick={e => { e.preventDefault(); navigate('/demo'); }} style={{
+            <a href="mailto:atma@vardana.ai?subject=Demo Request — Vardana Health" style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
@@ -714,7 +732,7 @@ export default function HomePage({ navigate }) {
               letterSpacing: '-0.01em',
               boxShadow: '0 0 40px rgba(14,165,233,0.3)',
             }}>
-              Launch Interactive Demo →
+              Request a Demo →
             </a>
             <a
               href="mailto:atma@vardana.ai?subject=Pilot Inquiry — Vardana Health"
