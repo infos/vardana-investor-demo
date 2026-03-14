@@ -599,7 +599,8 @@ function VoiceCallDemo({ patient, onComplete }) {
   const isMobileView = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState("transcript"); // transcript | chart (mobile only)
   // ── state ──
-  const [uiState, setUiState] = useState("setup"); // setup|loading|dialing|connected|active|alert|done
+  const [uiState, setUiState] = useState("setup"); // setup|intro|loading|dialing|connected|active|alert|done|closing
+  const [alertZoom, setAlertZoom] = useState(false);
   const [apiError, setApiError] = useState("");
   const [loadProgress, setLoadProgress] = useState(0);
   const [transcript, setTranscript]   = useState([]);
@@ -815,34 +816,32 @@ function VoiceCallDemo({ patient, onComplete }) {
   };
 
   // ── shared effects that fire at specific line indices ──
-  // Lines: 0=AI greeting, 1=Sarah reply, 2=AI DOB ask, 3=Sarah DOB, 4=AI verified,
-  //        5=AI weight, 6=Sarah symptoms, 7=AI readings, 8=AI analysis, 9=Sarah worried,
-  //        10=AI escalate, 11=Sarah breathing, 12=AI alert+guidance, 13=Sarah thanks, 14=AI goodbye
+  // Lines: 0=AI greeting+weight, 1=Sarah symptoms, 2=AI readings, 3=AI care team,
+  //        4=Sarah worried, 5=AI escalate+breathing?, 6=Sarah breathing, 7=AI alert+guidance
   const triggerEffects = (idx) => {
-    if (idx === 3) {
-      // DOB verification — show identity check in FHIR log
-      addTimer(() => { if (!cancelRef.current) setFhirLog(p => [...p, FHIR_QUERIES[0]]); }, 200);
-    }
-    if (idx === 7) {
+    if (idx === 2) {
       // AI pulls up readings — fire clinical FHIR queries
       [0, 520, 1060, 1620, 2200].forEach((d, i) =>
-        addTimer(() => { if (!cancelRef.current) setFhirLog(p => [...p, FHIR_QUERIES[i + 1]]); }, d)
+        addTimer(() => { if (!cancelRef.current) setFhirLog(p => [...p, FHIR_QUERIES[i]]); }, d)
       );
     }
-    if (idx === 4) setRiskScore(72);   // identity verified → baseline risk visible
-    if (idx === 6) setRiskScore(75);   // Sarah reports symptoms → score bumps
-    if (idx === 8) setRiskScore(78);   // AI analyzes readings → score climbs
-    if (idx === 11) setRiskScore(82);  // breathing trouble → high risk
-    if (idx === 12) {
+    if (idx === 1) setRiskScore(72);   // Sarah reports symptoms → baseline risk visible
+    if (idx === 2) setRiskScore(75);   // AI analyzes readings → score bumps
+    if (idx === 3) setRiskScore(78);   // AI: care team aware → score climbs
+    if (idx === 6) setRiskScore(82);   // breathing trouble → high risk
+    if (idx === 7) {
       setRiskScore(84);               // AI triggers alert → critical
       addTimer(() => {
         if (cancelRef.current) return;
-        setFhirLog(p => [...p, FHIR_QUERIES[6]]);
+        setFhirLog(p => [...p, FHIR_QUERIES[5]]);
         addTimer(() => {
           if (cancelRef.current) return;
-          setFhirLog(p => [...p, FHIR_QUERIES[7]]);
+          setFhirLog(p => [...p, FHIR_QUERIES[6]]);
           setAlertGenerated(true);
           setUiState("alert");
+          // Zoom into alert section for 4 seconds
+          setAlertZoom(true);
+          addTimer(() => { if (!cancelRef.current) setAlertZoom(false); }, 4000);
         }, 900);
       }, 1200);
     }
@@ -864,7 +863,7 @@ function VoiceCallDemo({ patient, onComplete }) {
       const gap = VOICE_TRANSCRIPT[i + 1]?.speaker !== line.speaker ? 680 : 260;
       await new Promise(r => setTimeout(r, gap));
     }
-    if (!cancelRef.current) setUiState("done");
+    if (!cancelRef.current) setUiState("closing");
   };
 
   // ── Start demo with ElevenLabs (server-side proxy — no key needed) ──
@@ -906,7 +905,7 @@ function VoiceCallDemo({ patient, onComplete }) {
     let idx = 0;
     const playNext = () => {
       if (cancelRef.current || idx >= VOICE_TRANSCRIPT.length) {
-        if (!cancelRef.current) setUiState("done");
+        if (!cancelRef.current) setUiState("closing");
         return;
       }
       const line = VOICE_TRANSCRIPT[idx];
@@ -1443,7 +1442,7 @@ function VoiceCallDemo({ patient, onComplete }) {
             <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.5, marginBottom: 14, flex: 1 }}>
               Pre-rendered {VOICE_TRANSCRIPT.length}-line conversation via ElevenLabs TTS. Fully automated — just watch and listen.
             </div>
-            <button onClick={() => { unlockAudio(); setDemoMode("scripted"); startElevenLabs(); }}
+            <button onClick={() => { unlockAudio(); setDemoMode("scripted"); setUiState("intro"); }}
               style={{ width: "100%", padding: "11px", borderRadius: 9, background: "linear-gradient(135deg, #F59E0B, #D97706)", color: "white", border: "none", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: c.font }}>
               🎙 Start Scripted Demo
             </button>
@@ -1455,6 +1454,27 @@ function VoiceCallDemo({ patient, onComplete }) {
         <button onClick={() => onComplete(null)}
           style={{ width: "100%", marginTop: 8, padding: "9px", border: "none", background: "none", color: "#334155", fontSize: 12, cursor: "pointer", fontFamily: c.font }}>
           ← Return to Dashboard
+        </button>
+      </div>
+    </div>
+  );
+
+  // ─────────────────────────────────────────────
+  // INTRO SLIDE (before scripted call)
+  // ─────────────────────────────────────────────
+  if (uiState === "intro") return (
+    <div style={{ position: "fixed", inset: 0, background: c.navy, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: c.font, padding: 24 }}>
+      <div style={{ maxWidth: 600, textAlign: "center", animation: "fadeIn 0.8s ease" }}>
+        <div style={{ fontSize: 22, fontWeight: 400, color: "white", letterSpacing: "-0.02em", fontFamily: DS.fontDisplay, marginBottom: 48 }}>Vardana<span style={{ color: DS.color.amber[400] }}>.</span></div>
+        <div style={{ fontSize: isMobileView ? 28 : 40, fontWeight: 900, color: "white", lineHeight: 1.2, marginBottom: 24, fontFamily: DS.fontDisplay }}>
+          1 in 4 CHF patients is readmitted within 30 days.
+        </div>
+        <div style={{ fontSize: isMobileView ? 16 : 20, color: "#94A3B8", lineHeight: 1.6, marginBottom: 48 }}>
+          Vardana's AI concierge monitors patients daily and alerts their care team before a crisis.
+        </div>
+        <button onClick={() => startElevenLabs()}
+          style={{ padding: "14px 36px", borderRadius: 10, background: "linear-gradient(135deg, #F59E0B, #D97706)", color: "white", border: "none", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: c.font, letterSpacing: "0.02em" }}>
+          Watch the Demo
         </button>
       </div>
     </div>
@@ -1476,6 +1496,27 @@ function VoiceCallDemo({ patient, onComplete }) {
           <div style={{ height: "100%", borderRadius: 8, background: "linear-gradient(90deg, #F59E0B, #38BDF8)", width: `${loadProgress}%`, transition: "width 0.4s ease" }} />
         </div>
         <div style={{ fontSize: 13, fontWeight: 700, color: "#94A3B8" }}>{loadProgress}% · Line {Math.ceil(loadProgress / (100 / VOICE_TRANSCRIPT.length))} of {VOICE_TRANSCRIPT.length}</div>
+      </div>
+    </div>
+  );
+
+  // ─────────────────────────────────────────────
+  // CLOSING SLIDE (after scripted call)
+  // ─────────────────────────────────────────────
+  if (uiState === "closing") return (
+    <div style={{ position: "fixed", inset: 0, background: c.navy, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: c.font, padding: 24 }}>
+      <div style={{ maxWidth: 520, textAlign: "center", animation: "fadeIn 0.8s ease" }}>
+        <div style={{ fontSize: isMobileView ? 36 : 48, fontWeight: 400, color: "white", letterSpacing: "-0.02em", fontFamily: DS.fontDisplay, marginBottom: 16 }}>Vardana<span style={{ color: DS.color.amber[400] }}>.</span></div>
+        <div style={{ fontSize: isMobileView ? 18 : 22, color: "#CBD5E1", lineHeight: 1.5, marginBottom: 48, fontWeight: 500 }}>
+          CHF post-discharge care.
+        </div>
+        <div style={{ fontSize: isMobileView ? 15 : 18, color: "#94A3B8", marginBottom: 48 }}>
+          Request a pilot at <span style={{ color: DS.color.amber[400], fontWeight: 700 }}>vardana.ai</span>
+        </div>
+        <button onClick={() => { setUiState("done"); handleComplete(); }}
+          style={{ padding: "12px 28px", borderRadius: 9, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#CBD5E1", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: c.font }}>
+          Return to Dashboard
+        </button>
       </div>
     </div>
   );
@@ -1541,15 +1582,14 @@ function VoiceCallDemo({ patient, onComplete }) {
             {/* Patient avatar small */}
             <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #3730A3, #7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.9)", fontFamily: DS.fontDisplay, border: `2px solid ${activeSpeaker && activeSpeaker !== "AI" ? "rgba(167,139,250,0.7)" : "rgba(255,255,255,0.08)"}`, transition: "all 0.3s" }}>{patient.name.charAt(0)}</div>
           </div>
-          {/* Risk score compact */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {/* Risk score compact + Alert indicator */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, transform: alertZoom ? "scale(1.3)" : "scale(1)", transformOrigin: "center center", transition: "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)", background: alertZoom ? "rgba(220,38,38,0.1)" : "transparent", borderRadius: 8, padding: alertZoom ? "4px 8px" : 0 }}>
             <div style={{ fontSize: 9, fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>Risk</div>
             <div style={{ fontSize: 18, fontWeight: 900, color: riskColor, fontVariantNumeric: "tabular-nums", transition: "all 0.9s" }}>{riskScore}</div>
+            {alertGenerated && (
+              <div style={{ fontSize: 9, fontWeight: 800, color: "#F87171", background: "rgba(220,38,38,0.15)", borderRadius: 4, padding: "2px 6px" }}>P1 ALERT</div>
+            )}
           </div>
-          {/* Alert indicator */}
-          {alertGenerated && (
-            <div style={{ fontSize: 9, fontWeight: 800, color: "#F87171", background: "rgba(220,38,38,0.15)", borderRadius: 4, padding: "2px 6px" }}>P1 ALERT</div>
-          )}
         </div>
       )}
 
@@ -1584,21 +1624,25 @@ function VoiceCallDemo({ patient, onComplete }) {
           <div style={{ fontSize: 11, fontWeight: 700, color: isPS ? "#A78BFA" : "#475569", letterSpacing: "0.04em", transition: "color 0.3s" }}>{patient.name.toUpperCase()} · {patient.age}{isEpic ? (patient.epicData?.patient?.gender === 'male' ? 'M' : 'F') : (patient.gender || '')}</div>
           </>); })()}
 
-          {/* Risk gauge */}
-          <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: "14px 16px", width: "100%", textAlign: "center", marginTop: 4 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>Decompensation Risk</div>
-            <div style={{ fontSize: 42, fontWeight: 900, color: riskColor, fontVariantNumeric: "tabular-nums", lineHeight: 1, transition: "all 0.9s ease" }}>{riskScore}</div>
-            <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>/ 100</div>
-            {riskScore > 68 && <div style={{ fontSize: 10, fontWeight: 700, color: riskColor, marginTop: 6 }}>↑ Updated live during call</div>}
-          </div>
-
-          {/* Alert */}
-          {alertGenerated && (
-            <div style={{ background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.35)", borderRadius: 10, padding: "10px 12px", width: "100%", animation: "fadeIn 0.4s ease" }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#F87171", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={11} color="#F87171" /> P1 ALERT GENERATED</div>
-              <div style={{ fontSize: 10, color: "#FCA5A5", lineHeight: 1.4 }}>FHIR Flag posted · Coordinator notified</div>
+          {/* Risk gauge + Alert — zoom container */}
+          <div style={{ width: "100%", transform: alertZoom ? "scale(1.45)" : "scale(1)", transformOrigin: "center center", transition: "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)", zIndex: alertZoom ? 10 : 1, position: "relative" }}>
+            {alertZoom && <div style={{ position: "absolute", inset: -12, borderRadius: 16, background: "rgba(220,38,38,0.08)", border: "2px solid rgba(220,38,38,0.3)", animation: "fhirPulse 1.5s ease infinite", pointerEvents: "none" }} />}
+            {/* Risk gauge */}
+            <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: "14px 16px", width: "100%", textAlign: "center", marginTop: 4 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>Decompensation Risk</div>
+              <div style={{ fontSize: 42, fontWeight: 900, color: riskColor, fontVariantNumeric: "tabular-nums", lineHeight: 1, transition: "all 0.9s ease" }}>{riskScore}</div>
+              <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>/ 100</div>
+              {riskScore > 68 && <div style={{ fontSize: 10, fontWeight: 700, color: riskColor, marginTop: 6 }}>↑ Updated live during call</div>}
             </div>
-          )}
+
+            {/* Alert */}
+            {alertGenerated && (
+              <div style={{ background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.35)", borderRadius: 10, padding: "10px 12px", width: "100%", marginTop: 8, animation: "fadeIn 0.4s ease" }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: "#F87171", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={11} color="#F87171" /> P1 ALERT GENERATED</div>
+                <div style={{ fontSize: 10, color: "#FCA5A5", lineHeight: 1.4 }}>FHIR Flag posted · Coordinator notified</div>
+              </div>
+            )}
+          </div>
 
           {/* Controls */}
           <div style={{ display: "flex", gap: 10, marginTop: "auto" }}>
