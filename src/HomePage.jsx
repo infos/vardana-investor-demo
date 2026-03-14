@@ -215,7 +215,6 @@ function Nav({ navigate }) {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 32, fontSize: 14, color: 'rgba(248,250,252,0.65)' }}>
         <a href="#how-it-works" style={{ color: 'inherit', textDecoration: 'none' }}>How It Works</a>
-        <a href="#outcomes" style={{ color: 'inherit', textDecoration: 'none' }}>Outcomes</a>
         <a href="mailto:atma@vardana.ai" style={{ color: 'inherit', textDecoration: 'none' }}>Contact</a>
       </div>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -448,91 +447,6 @@ export default function HomePage({ navigate }) {
         </div>
       </section>
 
-      {/* ── OUTCOMES ── */}
-      <section id="outcomes" style={{ padding: '100px 32px' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 56 }}>
-            <div style={{ fontSize: 12, letterSpacing: '0.12em', color: '#38bdf8', fontWeight: 700, marginBottom: 12 }}>
-              TARGET OUTCOMES
-            </div>
-            <h2 style={{
-              fontFamily: "'Georgia', serif",
-              fontSize: 'clamp(28px, 3vw, 42px)',
-              fontWeight: 700,
-              letterSpacing: '-0.03em',
-              color: '#f8fafc',
-            }}>
-              Measurable by Month 12
-            </h2>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-            {[
-              { value: '≥20%', label: 'Reduction in 30-day readmissions', note: 'Pilot target vs matched controls' },
-              { value: '$3–5K', label: 'Per-patient cost avoidance', note: 'Based on ~$14K avg readmit cost' },
-              { value: '≥80%', label: 'Patient engagement rate', note: '90-day journey completion' },
-              { value: '3–5d', label: 'Earlier decompensation detection', note: 'vs. symptom-triggered ER visit' },
-            ].map(m => (
-              <div key={m.label} style={{
-                background: '#1e293b',
-                border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: 14,
-                padding: 24,
-                textAlign: 'center',
-              }}>
-                <div style={{ fontSize: 32, fontWeight: 900, color: '#38bdf8', letterSpacing: '-0.04em', marginBottom: 8 }}>
-                  {m.value}
-                </div>
-                <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600, marginBottom: 6, lineHeight: 1.4 }}>
-                  {m.label}
-                </div>
-                <div style={{ fontSize: 11, color: '#475569', lineHeight: 1.4 }}>
-                  {m.note}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── EHR LOGO STRIP ── */}
-      <section style={{
-        padding: '60px 32px',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        background: 'rgba(255,255,255,0.015)',
-      }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center' }}>
-          <div style={{ fontSize: 11, letterSpacing: '0.1em', color: '#475569', fontWeight: 700, marginBottom: 28 }}>
-            FHIR R4 INTEROPERABILITY — EHR INTEGRATION ROADMAP
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 48, flexWrap: 'wrap' }}>
-            {[
-              { name: 'Epic', badge: 'FHIR R4', color: '#c0392b' },
-              { name: 'Oracle Health', badge: 'FHIR R4', color: '#f39c12' },
-              { name: 'CommonWell', badge: 'Network', color: '#2980b9' },
-              { name: 'Carequality', badge: 'Network', color: '#27ae60' },
-              { name: 'Particle Health', badge: 'Aggregator', color: '#8e44ad' },
-            ].map(e => (
-              <div key={e.name} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#94a3b8', letterSpacing: '-0.01em', marginBottom: 4 }}>
-                  {e.name}
-                </div>
-                <div style={{
-                  fontSize: 10, letterSpacing: '0.06em', color: e.color, fontWeight: 700,
-                  background: `${e.color}15`, border: `1px solid ${e.color}30`,
-                  borderRadius: 4, padding: '2px 8px', display: 'inline-block',
-                }}>
-                  {e.badge}
-                </div>
-              </div>
-            ))}
-          </div>
-          <p style={{ fontSize: 12, color: '#334155', marginTop: 24 }}>
-            Demo runs on Medplum FHIR R4 · Epic sandbox connectivity in scope for pilot
-          </p>
-        </div>
-      </section>
-
       {/* ── BOTTOM CTA ── */}
       <section style={{
         padding: '120px 32px',
@@ -555,7 +469,6 @@ export default function HomePage({ navigate }) {
             See what Vardana does<br />for your CHF patients.
           </h2>
           <p style={{ fontSize: 16, color: '#64748b', marginBottom: 44, lineHeight: 1.6 }}>
-            We're running pilots with self-insured employers and health systems in 2026.
             Coordinator + patient demo available now.
           </p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
