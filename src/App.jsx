@@ -177,8 +177,8 @@ const PATIENT_CLINICAL_DATA = {
 };
 
 const VOICE_TRANSCRIPT = [
-  { t: 1200, speaker: "AI", text: "Good morning, Sarah. This is the Vardana Care Concierge calling for your check-in. I am checking in because I noticed your weight went up a couple of pounds over the last two days." },
-  { t: 6200, speaker: "Sarah", text: "How are you feeling this morning, now that you mention it? I do feel more tired than usual and my ankles look a little puffy." },
+  { t: 1200, speaker: "AI", text: "Good morning, Sarah. This is the Vardana Care Concierge calling for your check-in. I am checking in because I noticed your weight went up a couple of pounds over the last two days. How are you feeling this morning?" },
+  { t: 6200, speaker: "Sarah", text: "Hi. Now that you mention it, I do feel more tired than usual and my ankles look a little puffy. The rest is the same." },
   { t: 11000, speaker: "AI", text: "Thank you for telling me that, Sarah. That's really important. Let me pull up your recent readings. Your weight has increased 2.3 pounds in 48 hours, and your blood pressure is a little higher than your best last week." },
   { t: 17500, speaker: "AI", text: "Combined with the ankle swelling and fatigue, I wanna make sure your care team is aware today." },
   { t: 21000, speaker: "Sarah", text: "Is that serious? Should I be worried?" },
