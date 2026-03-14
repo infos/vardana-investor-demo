@@ -989,6 +989,9 @@ function VoiceCallDemo({ patient, onComplete }) {
     try {
       const url = await fetchAudio(text, "AI");
       await playAudioUrl(url);
+      // Echo guard: brief pause after AI audio ends before mic opens,
+      // prevents the mic from picking up the tail end of AI's own speech
+      await new Promise(r => setTimeout(r, 400));
       setActiveSpeaker(null);
       return true;
     } catch {
@@ -1001,6 +1004,7 @@ function VoiceCallDemo({ patient, onComplete }) {
           utt.volume = mutedRef.current ? 0 : 1;
           await new Promise(resolve => { utt.onend = utt.onerror = resolve; synth.cancel(); synth.speak(utt); });
         }
+        await new Promise(r => setTimeout(r, 400)); // echo guard
         setActiveSpeaker(null);
         return true; // browser fallback counts as OK for greeting
       }
@@ -1255,7 +1259,7 @@ function VoiceCallDemo({ patient, onComplete }) {
     setDemoMode("live");
     setApiError("");
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     } catch {
       setApiError("Microphone access required for live demo. Please allow mic access and try again.");
       return;
