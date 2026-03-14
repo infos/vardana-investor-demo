@@ -58,7 +58,7 @@ function HeroWidget() {
   const riskColor = riskScore >= 80 ? C.cr500 : riskScore >= 70 ? C.a400 : C.j500;
   const signals = [
     { label: 'Weight +2.3 lbs / 48 hr',        active: phase >= 1, color: C.a400 },
-    { label: 'BP 136/86 — reversed trend',       active: phase >= 1, color: C.a400 },
+    { label: 'BP 136/86, reversed trend',       active: phase >= 1, color: C.a400 },
     { label: 'Patient: fatigue + ankle swelling', active: phase >= 2, color: C.cr500 },
     { label: '3-day trajectory reversal',         active: phase >= 2, color: C.cr500 },
   ];
@@ -197,7 +197,7 @@ function Nav() {
         <a href="mailto:hello@vardana.ai" style={{ color: 'inherit', textDecoration: 'none' }}>Contact</a>
       </div>
       {/* CTA */}
-      <a href="mailto:hello@vardana.ai?subject=Demo Request — Vardana Health" style={{
+      <a href="mailto:hello@vardana.ai?subject=Demo Request: Vardana Health" style={{
         background: C.a500,
         color: C.s950,
         padding: '8px 20px',
@@ -252,11 +252,11 @@ export default function HomePage() {
             fontSize: 17, lineHeight: 1.65, color: C.s400,
             marginBottom: 40, maxWidth: 460,
           }}>
-            Vardana is a voice-first AI care concierge for congestive heart failure
-            patients in the 90 days after discharge — the highest-cost window in
-            chronic disease management.
+            CHF patients face their highest risk in the 90 days after leaving the hospital.
+            Vardana checks in with them daily by phone, catches warning signs early,
+            and keeps their care team in the loop.
           </p>
-          <a href="mailto:hello@vardana.ai?subject=Demo Request — Vardana Health" style={{
+          <a href="mailto:hello@vardana.ai?subject=Demo Request: Vardana Health" style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
             background: C.a500,
             color: C.s950,
@@ -326,9 +326,9 @@ export default function HomePage() {
               A 90-day structured recovery journey
             </h2>
             <p style={{ fontSize: 16, color: C.s500, maxWidth: 520, margin: '0 auto', lineHeight: 1.65 }}>
-              Most remote monitoring platforms collect data and act on it separately.
-              Vardana reads live patient data and reasons on it during the same
-              interaction — no lag between signal and response.
+              Most remote monitoring tools collect data and flag it for someone to review later.
+              Vardana reads a patient's latest readings during the call itself and responds
+              to what it finds, right then.
             </p>
           </div>
           {/* Phase cards */}
@@ -339,21 +339,21 @@ export default function HomePage() {
                 name: 'Stabilize',
                 color: C.j500,
                 borderColor: C.j600,
-                description: 'Daily AI check-ins, decompensation early warning, and immediate coordinator escalation when thresholds are crossed.',
+                description: 'A daily phone call, no app needed. If something looks off with weight or blood pressure, the care team hears about it the same day.',
               },
               {
                 phase: 'Phase 2 · Days 15–60',
                 name: 'Optimize',
                 color: C.a400,
                 borderColor: C.a500,
-                description: 'Titration monitoring, activity tolerance progression, and structured goal-setting aligned with the cardiologist\'s plan.',
+                description: 'As the patient settles in, Vardana tracks how they\'re responding to their medications and activity, and keeps goals in line with what the cardiologist has planned.',
               },
               {
                 phase: 'Phase 3 · Days 61–90',
                 name: 'Maintain',
                 color: C.s300,
                 borderColor: C.s400,
-                description: 'Self-management skill building, trigger recognition, and transition coordination to primary care.',
+                description: 'By the end, patients know their warning signs and what to do about them. Vardana helps hand care off smoothly to their primary doctor.',
               },
             ].map(p => (
               <div key={p.name} style={{
@@ -406,7 +406,7 @@ export default function HomePage() {
                 FHIR-native. Reasoning during the call.
               </div>
               <p style={{ fontSize: 13, color: C.s500, margin: 0, lineHeight: 1.6 }}>
-                The voice agent reads live EHR data mid-conversation and responds to what it finds — no lag between signal and clinical response.
+                The voice agent pulls a patient's latest readings from their health record while they're on the call. It responds to what it finds, not to a snapshot from yesterday.
               </p>
             </div>
           </div>
@@ -427,8 +427,8 @@ export default function HomePage() {
               What we will measure
             </h2>
             <p style={{ fontSize: 16, color: C.s500, maxWidth: 500, margin: '0 auto', lineHeight: 1.65 }}>
-              Pilot structured against matched controls. Primary endpoint is
-              30-day readmission rate at 90 days post-enrollment.
+              We're running our pilot against matched controls. The main thing we're
+              measuring is whether fewer patients end up back in the hospital within 30 days.
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
@@ -537,10 +537,10 @@ export default function HomePage() {
             See what Vardana does<br />for your CHF patients.
           </h2>
           <p style={{ fontSize: 16, color: C.s500, marginBottom: 44, lineHeight: 1.65 }}>
-            We're running pilots with self-insured employers and health systems in 2026.
-            Contact us to schedule a walkthrough.
+            We're working with self-insured employers and health systems this year.
+            If you want to see it in action, reach out and we'll walk you through it.
           </p>
-          <a href="mailto:hello@vardana.ai?subject=Demo Request — Vardana Health" style={{
+          <a href="mailto:hello@vardana.ai?subject=Demo Request: Vardana Health" style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
             background: C.a500, color: C.s950,
             padding: '15px 36px', borderRadius: 10,
