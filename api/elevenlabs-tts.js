@@ -3,7 +3,7 @@ const ELEVENLABS_KEY = (process.env.ELEVENLABS_API_KEY || '').trim();
 const CARTESIA_KEY = (process.env.CARTESIA_API_KEY || '').trim();
 
 // ElevenLabs voices
-const ELEVENLABS_VOICES = { AI: '0fbdXLXuDBZXm2IHek4L', Sarah: '21m00Tcm4TlvDq8ikWAM' };
+const ELEVENLABS_VOICES = { AI: '0fbdXLXuDBZXm2IHek4L', Sarah: 'RGb96Dcl0k5eVje8EBch' };
 
 // Cartesia fallback voices
 const CARTESIA_VOICES = {
