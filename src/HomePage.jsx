@@ -365,6 +365,26 @@ export default function HomePage({ navigate }) {
         </div>
       </section>
 
+      {/* ── TRUST STRIP ── */}
+      <section style={{
+        padding: '28px 32px',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <span style={{ fontSize: 11, letterSpacing: '0.1em', color: '#475569', fontWeight: 700 }}>
+            MEMBER
+          </span>
+          <div style={{ width: 1, height: 16, background: '#1e293b' }} />
+          <span style={{ fontSize: 14, fontWeight: 800, color: '#76b900', letterSpacing: '-0.01em' }}>
+            NVIDIA
+          </span>
+          <span style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
+            Inception Program
+          </span>
+        </div>
+      </section>
+
       {/* ── HOW IT WORKS ── */}
       <section id="how-it-works" style={{
         padding: '100px 32px',
