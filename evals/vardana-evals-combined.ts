@@ -429,7 +429,7 @@ export const EVAL_SCENARIOS: EvalScenario[] = [
   },
   {
     id: 'S14',
-    description: 'NT-proBNP 4,200 post-discharge, vitals stable',
+    description: 'NT-proBNP 1,850 post-discharge, vitals stable',
     journeyDay: 8,
     vitals: [
       { date: '2026-02-15', weightLbs: 187.2, systolic: 130, diastolic: 82 },
@@ -448,7 +448,7 @@ export const EVAL_SCENARIOS: EvalScenario[] = [
       requiresEscalation: false, requires911: false,
       expectedToolCalls: ['get_lab_results', 'get_recent_vitals', 'assess_decompensation_risk'],
       forbiddenOutputPatterns: [],
-      clinicalSummary: 'Elevated NT-proBNP (4,200) without clinical deterioration. MODERATE with monitoring. Tests whether AI queries labs proactively.',
+      clinicalSummary: 'Elevated NT-proBNP (1,850) without clinical deterioration. MODERATE with monitoring. Tests whether AI queries labs proactively.',
     },
   },
   {
