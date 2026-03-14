@@ -860,11 +860,17 @@ function VoiceCallDemo({ patient, onComplete }) {
     setApiError("");
     setUiState("loading");
     try {
-      const urls = [];
-      for (let i = 0; i < VOICE_TRANSCRIPT.length; i++) {
+      // Fetch audio in parallel batches of 4 for faster loading
+      const urls = new Array(VOICE_TRANSCRIPT.length);
+      const batchSize = 4;
+      for (let start = 0; start < VOICE_TRANSCRIPT.length; start += batchSize) {
         if (cancelRef.current) return;
-        urls.push(await fetchAudio(VOICE_TRANSCRIPT[i].text, VOICE_TRANSCRIPT[i].speaker));
-        setLoadProgress(Math.round(((i + 1) / VOICE_TRANSCRIPT.length) * 100));
+        const batch = VOICE_TRANSCRIPT.slice(start, start + batchSize);
+        const results = await Promise.all(
+          batch.map((line) => fetchAudio(line.text, line.speaker))
+        );
+        results.forEach((url, j) => { urls[start + j] = url; });
+        setLoadProgress(Math.round(Math.min(start + batchSize, VOICE_TRANSCRIPT.length) / VOICE_TRANSCRIPT.length * 100));
       }
       launchCall(() => playElevenLabs(urls));
     } catch (err) {

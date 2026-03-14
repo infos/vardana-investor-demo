@@ -24,10 +24,11 @@ async function elevenlabsTTS(text, speaker) {
       text,
       model_id: 'eleven_turbo_v2_5',
       voice_settings: {
-        stability: speaker === 'AI' ? 0.70 : 0.55,
-        similarity_boost: 0.80,
-        style: speaker === 'AI' ? 0.10 : 0.35,
+        stability: speaker === 'AI' ? 0.82 : 0.55,
+        similarity_boost: 0.75,
+        style: speaker === 'AI' ? 0.05 : 0.35,
         use_speaker_boost: true,
+        speed: speaker === 'AI' ? 0.88 : 1.0,
       },
     }),
   });
@@ -61,7 +62,7 @@ async function cartesiaTTS(text, speaker) {
       },
       language: 'en',
       generation_config: {
-        speed: speaker === 'AI' ? 0.95 : 1.0,
+        speed: speaker === 'AI' ? 0.85 : 1.0,
         emotion: 'calm',
       },
     }),
@@ -87,11 +88,13 @@ export default async function handler(req, res) {
 
   try {
     let audioBuf;
+    let ttsProvider = 'none';
 
     // Primary: ElevenLabs
     if (ELEVENLABS_KEY) {
       try {
         audioBuf = await elevenlabsTTS(text, speaker || 'AI');
+        ttsProvider = 'elevenlabs';
       } catch (e) {
         console.error('ElevenLabs TTS failed, trying Cartesia:', e.message);
       }
@@ -101,6 +104,7 @@ export default async function handler(req, res) {
     if (!audioBuf && CARTESIA_KEY) {
       try {
         audioBuf = await cartesiaTTS(text, speaker || 'AI');
+        ttsProvider = 'cartesia';
       } catch (e) {
         console.error('Cartesia TTS also failed:', e.message);
       }
@@ -112,6 +116,7 @@ export default async function handler(req, res) {
 
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Content-Length', audioBuf.byteLength);
+    res.setHeader('X-TTS-Provider', ttsProvider);
     return res.status(200).send(audioBuf);
   } catch (err) {
     return res.status(500).json({ error: err.message });

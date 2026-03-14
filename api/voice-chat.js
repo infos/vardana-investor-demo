@@ -466,7 +466,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 600,
+        max_tokens: 350,
         system: systemPrompt,
         messages,
       }),
