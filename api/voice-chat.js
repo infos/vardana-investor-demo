@@ -161,10 +161,8 @@ function getSarahDemoVitals() {
 }
 
 const SARAH_DEMO_LABS = {
-  // Using scenario-representative values: NT-proBNP still elevated post-discharge,
-  // creatinine at the upper range of CKD3a. These match S14 (NT-proBNP 4,200) and
-  // S22 (creatinine 1.8) eval scenarios.
-  ntProBNP:   { value: 4200, unit: 'pg/mL',          status: 'significantly elevated (normal <300)', trend: 'down from 8,500 at admission — still well above normal' },
+  // Post-discharge values: NT-proBNP elevated but improving, creatinine at upper CKD3a range.
+  ntProBNP:   { value: 1850, unit: 'pg/mL',          status: 'elevated (normal <300)', trend: 'down from 8,500 at admission — improving but still above normal' },
   creatinine: { value: 1.8,  unit: 'mg/dL',          status: 'elevated above CKD3a baseline (1.4)', trend: 'rising — monitor for over-diuresis vs CKD progression' },
   eGFR:       { value: 42,   unit: 'mL/min/1.73m²',  status: 'reduced (normal >60)',                trend: 'slightly declining' },
   potassium:  { value: 4.2,  unit: 'mEq/L',          status: 'normal',                              trend: 'stable' },
@@ -244,7 +242,7 @@ ${isEmergency
   : requiresEscal
   ? `1. REQUIRED FIRST SENTENCE: "I've reviewed your data and I need to let you know — I'm assessing this as ${riskResult.riskLevel.toUpperCase()} risk." (Use those exact words: "${riskResult.riskLevel.toUpperCase()} risk")\n2. REQUIRED SECOND SENTENCE: Name the specific signals. Example: "Your weight has gone up ${wg48.toFixed(1)} pounds in 48 hours${symptoms.edema ? ' and you have ankle swelling' : ''}${symptoms.dyspnea ? ' and breathing difficulty' : ''}${symptoms.orthopnea ? ' and trouble lying flat' : ''} — those signals together are what's driving my concern."\n3. Say "I'm going to notify your care team" — required phrase.\n4. Ask ONE targeted follow-up question about the most important unconfirmed symptom.\n5. Set generateAlert=true — do not wait.`
   : riskResult.riskLevel === 'moderate'
-  ? `1. REQUIRED OPENING: "I've reviewed your data and I'm assessing this as MODERATE risk." — say these exact words.\n2. REQUIRED: Name ALL elevated lab values and clinical drivers explicitly:\n   ${labs && labs.ntProBNP.value >= 2000 ? `• NT-proBNP is ${labs.ntProBNP.value} pg/mL (significantly elevated — normal is under 300). REQUIRED: Tell Sarah this number. "Your NT-proBNP heart-strain marker is at ${labs.ntProBNP.value} — that's well above normal, which tells me your heart is still working harder than we'd like."` : ''}\n   ${labs && labs.creatinine.value >= 1.6 ? `• Creatinine is ${labs.creatinine.value} mg/dL and rising. REQUIRED: Mention this too. "Your kidney function number has been creeping up — it's at ${labs.creatinine.value} and we want to make sure it's not related to your water pill."` : ''}\n   ${!labs || (labs.ntProBNP.value < 2000 && labs.creatinine.value < 1.6) ? `• State the weight trend and what it means for heart failure recovery.` : ''}\n3. Ask about symptoms (dyspnea, swelling, fatigue) and medication adherence.\n4. Reassure: MODERATE = monitoring closely, not emergency.`
+  ? `1. REQUIRED OPENING: "I've reviewed your data and I'm assessing this as MODERATE risk." — say these exact words.\n2. REQUIRED: Name ALL elevated lab values and clinical drivers explicitly:\n   ${labs && labs.ntProBNP.value >= 1500 ? `• NT-proBNP is ${labs.ntProBNP.value} pg/mL (elevated — normal is under 300, improving from admission). REQUIRED: Tell Sarah this number. "Your NT-proBNP heart-strain marker is at ${labs.ntProBNP.value} — it's come down a lot since your hospital stay, but it's still above normal, so we're keeping an eye on it."` : ''}\n   ${labs && labs.creatinine.value >= 1.6 ? `• Creatinine is ${labs.creatinine.value} mg/dL and rising. REQUIRED: Mention this too. "Your kidney function number has been creeping up — it's at ${labs.creatinine.value} and we want to make sure it's not related to your water pill."` : ''}\n   ${!labs || (labs.ntProBNP.value < 1500 && labs.creatinine.value < 1.6) ? `• State the weight trend and what it means for heart failure recovery.` : ''}\n3. Ask about symptoms (dyspnea, swelling, fatigue) and medication adherence.\n4. Reassure: MODERATE = monitoring closely, not emergency.`
   : `1. REQUIRED: State the risk level — "I've reviewed your readings and things look LOW risk and stable today."\n2. Note any positive trends (stable weight, BP in range).\n3. Briefly ask about symptoms and adherence.\n4. Keep the tone reassuring and brief.\nIMPORTANT: Do NOT over-emphasize labs for a LOW-risk patient — mention them only if asked or only in passing ("your labs are being monitored by your care team"). The focus should be on the stable vitals.\nNEVER say labs "look reasonable", "look good", or "look fine" — the patient's NT-proBNP and creatinine are elevated. If you mention labs, say "your labs are being monitored" — never characterize them positively.`
 }
 
@@ -254,7 +252,8 @@ ${isEmergency ? '⚠ EMERGENCY: DO NOT ask follow-up questions. Start with "Plea
 SAFETY RULES:
 - NEVER suggest changing, adjusting, or stopping any medication. If asked: "That's a great question for your next appointment."
 - NEVER diagnose. Say "your medical history" or "your conditions" — never "you have X."
-- 911 EMERGENCIES (overrides everything): Chest pain, severe dyspnea, fainting/near-fainting → your FIRST sentence must be "Please call 911 right now."
+- 911 EMERGENCIES (overrides everything): Chest pain, loss of consciousness/near-fainting, or severe acute shortness of breath AT REST (not exertional) → your FIRST sentence must be "Please call 911 right now."
+- NON-911 ESCALATION: Exertional dyspnea (e.g. short of breath walking to kitchen), ankle swelling, weight gain → say "I'm notifying your care coordinator, they'll call you today." Do NOT say 911 for these.
 - ESCALATION: When risk is HIGH or CRITICAL, say "I'm going to notify your care team" in your spoken response.
 - NEVER DISMISS OR SKIP A PATIENT CONCERN: If the patient reports a symptom (shortness of breath, swelling, pain, etc.), you MUST acknowledge it and ask at least one follow-up question before moving on. Never summarize/wrap up while a patient concern is unaddressed.
 - LISTEN FIRST: Do not assume you know what the patient will say. Wait for their full response before drawing conclusions. Never pre-empt their answer with your own summary.
@@ -312,7 +311,8 @@ CONVERSATION OBJECTIVE:
 SAFETY RULES:
 - NEVER suggest changing any medication. If asked: "That's a great question for your next appointment."
 - NEVER diagnose. Use "your medical history" not "you have X."
-- 911 EMERGENCIES: Chest pain, severe dyspnea, syncope → immediately say "Please call 911 right now."
+- 911 EMERGENCIES: Chest pain, loss of consciousness/syncope, or severe acute dyspnea AT REST → say "Please call 911 right now." Do NOT call 911 for exertional SOB, ankle swelling, or weight gain — those escalate to care coordinator.
+- NON-911 ESCALATION: Exertional dyspnea, swelling, weight gain → "I'm notifying your care coordinator, they'll call you today."
 - TRANSPARENCY: Always explain which specific signals drove your risk assessment.
 - NEVER DISMISS OR SKIP A PATIENT CONCERN: If the patient reports a symptom, you MUST acknowledge it and ask at least one follow-up question before moving on. Never wrap up while a concern is unaddressed.
 - LISTEN FIRST: Do not assume you know what the patient will say. Wait for their full response before drawing conclusions.
@@ -331,6 +331,104 @@ METADATA FIELDS:
 }
 
 // =============================================================================
+// Demo Response Cache — pre-seeded AI responses for Sarah Chen scenario
+// Matches on keywords in the patient's last message + conversation turn.
+// Falls through to live API if no match (e.g. unexpected patient input).
+// =============================================================================
+
+const DEMO_CACHE = [
+  {
+    // Turn 0: Patient responds to greeting (e.g. "I'm okay" / "fine" / "not great" / "tired")
+    match: (msg, turn) => turn === 0 || turn === undefined,
+    keywords: ['okay', 'fine', 'good', 'not great', 'tired', 'alright', 'so-so', 'hi', 'hello', 'go ahead'],
+    response: {
+      reply: "I've reviewed your data and I need to let you know — I'm assessing this as HIGH risk. Your weight has gone up 2.3 pounds in 48 hours, and your blood pressure has crept up from 126 over 78 to 136 over 86. I'm going to notify your care coordinator Rachel Kim. Can you tell me — have you noticed any swelling in your ankles or feet?",
+      fhirQueries: [
+        { method: 'GET', path: '/Patient/sarah-chen-001', result: 'Sarah Chen, 67F, HFrEF NYHA III', color: '#2563EB' },
+        { method: 'GET', path: '/Observation?patient=sarah-chen&code=body-weight&_sort=-date&_count=14', result: '14 weight readings · Latest: 187.7 lbs · 48hr Δ: +2.3 lbs', color: '#2563EB' },
+        { method: 'GET', path: '/Observation?patient=sarah-chen&code=blood-pressure&_sort=-date&_count=14', result: 'Latest BP: 136/86 mmHg', color: '#D97706' },
+        { method: 'GET', path: '/Condition?patient=sarah-chen&_count=20', result: '5 active conditions', color: '#2563EB' },
+        { method: 'GET', path: '/CarePlan?patient=sarah-chen&status=active', result: 'Day 15 post-discharge', color: '#2563EB' },
+        { method: 'GET', path: '/DiagnosticReport?patient=sarah-chen&_count=10', result: 'NT-proBNP: 1850 pg/mL · Creatinine: 1.8 mg/dL', color: '#2563EB' },
+      ],
+      riskScore: 72,
+      generateAlert: false,
+      assessment: { weightGain: '+2.3 lbs/48hr', orthopnea: 'Pending', ankleEdema: 'Pending', adherence: 'Pending' },
+      phase: 'weight_review',
+    },
+  },
+  {
+    // Turn 1: Patient confirms swelling / mentions fatigue ("yes ankles puffy" / "a little swollen" / "tired")
+    match: (msg, turn) => turn === 1,
+    keywords: ['swollen', 'swelling', 'puffy', 'ankles', 'yes', 'little', 'tired', 'fatigue', 'bit'],
+    response: {
+      reply: "Thank you for telling me that, Sarah. The ankle swelling combined with the weight gain is important. Your NT-proBNP heart-strain marker is at 1,850 — it's come down a lot since your hospital stay, but still above normal. Have you had any trouble breathing, especially when lying flat or walking around the house?",
+      fhirQueries: [],
+      riskScore: 76,
+      generateAlert: false,
+      assessment: { weightGain: '+2.3 lbs/48hr', orthopnea: 'Pending', ankleEdema: 'Confirmed', adherence: 'Pending' },
+      phase: 'symptoms',
+    },
+  },
+  {
+    // Turn 2: Patient mentions SOB / breathing trouble ("short of breath walking to kitchen" / "had to use extra pillow")
+    match: (msg, turn) => turn === 2,
+    keywords: ['breath', 'breathing', 'winded', 'pillow', 'kitchen', 'stairs', 'walk', 'short', 'hard'],
+    response: {
+      reply: "That's really helpful to know. Shortness of breath with activity plus the ankle swelling and weight gain — I'm notifying your care coordinator Rachel Kim right now. She'll call you today to discuss next steps with your cardiologist. Are you taking all your medications as prescribed, including the Furosemide?",
+      fhirQueries: [
+        { method: 'POST', path: '/Flag', result: 'Coordinator alert queued: HIGH risk', color: '#DC2626' },
+        { method: 'POST', path: '/Communication', result: 'Care team notification prepared', color: '#DC2626' },
+      ],
+      riskScore: 82,
+      generateAlert: true,
+      assessment: { weightGain: '+2.3 lbs/48hr', orthopnea: 'Pending', ankleEdema: 'Confirmed', adherence: 'Pending' },
+      phase: 'escalation',
+    },
+  },
+  {
+    // Turn 3: Patient confirms meds / asks about worry ("yes taking everything" / "should I be worried")
+    match: (msg, turn) => turn === 3,
+    keywords: ['yes', 'taking', 'medication', 'worried', 'scared', 'concern', 'serious', 'all of them', 'everything'],
+    response: {
+      reply: "Good to hear you're staying on your medications. We're being careful, not alarmed — this is exactly why we monitor closely. Rachel will call you today, and in the meantime, keep taking your medications and try to keep sodium low. Do you have any other questions for me?",
+      fhirQueries: [],
+      riskScore: 82,
+      generateAlert: false,
+      assessment: { weightGain: '+2.3 lbs/48hr', orthopnea: 'Pending', ankleEdema: 'Confirmed', adherence: 'Meds taken' },
+      phase: 'guidance',
+    },
+  },
+  {
+    // Turn 4+: Patient says goodbye / no more questions ("no" / "thank you" / "that's all")
+    match: (msg, turn) => turn >= 4,
+    keywords: ['no', 'thank', 'thanks', 'that', 'all', 'goodbye', 'bye', 'okay', 'understand'],
+    response: {
+      reply: "You're welcome, Sarah. I've sent a full summary to Rachel Kim with everything we discussed — the weight gain, ankle swelling, and breathing changes. She'll be in touch today. Take care, and don't hesitate to reach out if anything changes.",
+      fhirQueries: [],
+      riskScore: 82,
+      generateAlert: false,
+      assessment: { weightGain: '+2.3 lbs/48hr', orthopnea: 'Pending', ankleEdema: 'Confirmed', adherence: 'Meds taken' },
+      phase: 'done',
+    },
+  },
+];
+
+function getDemoCachedResponse(lastUserMsg, turn, msgCount) {
+  // Infer turn from message count if not provided (messages alternate assistant/user)
+  const effectiveTurn = turn ?? Math.max(0, Math.floor((msgCount - 1) / 2));
+  for (const entry of DEMO_CACHE) {
+    if (!entry.match(lastUserMsg, effectiveTurn)) continue;
+    // Check if any keyword matches the patient's message
+    const hasKeyword = entry.keywords.some(kw => lastUserMsg.includes(kw));
+    if (hasKeyword || lastUserMsg.length === 0) {
+      return { ...entry.response };
+    }
+  }
+  return null; // No cache hit — fall through to live API
+}
+
+// =============================================================================
 // Handler
 // =============================================================================
 
@@ -342,8 +440,17 @@ export default async function handler(req, res) {
   if (req.method !== 'POST')   return res.status(405).json({ error: 'POST only' });
   if (!API_KEY)                return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
 
-  const { messages, patientContext, evalMode, turn, maxTurns } = req.body || {};
+  const { messages, patientContext, evalMode, turn, maxTurns, chatMode } = req.body || {};
   if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'messages array required' });
+
+  // ── Demo response cache: pre-seeded responses for Sarah Chen to eliminate latency ──
+  // Only active when caller passes demoCache:true (opt-in for recording sessions)
+  const { demoCache } = req.body || {};
+  if (demoCache && !patientContext && !evalMode && !chatMode) {
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content?.toLowerCase() || '';
+    const cached = getDemoCachedResponse(lastUserMsg, turn, messages.length);
+    if (cached) return res.status(200).json(cached);
+  }
 
   try {
     // ── 1. Parse device data + symptoms from conversation ──────────────────
@@ -379,7 +486,7 @@ export default async function handler(req, res) {
       if (labs.creatinine.value > 1.5) {
         riskResult.riskLevel  = 'moderate';
         riskResult.riskScore  = Math.max(22, riskResult.riskScore + 15);
-      } else if (labs.ntProBNP.value > 3000) {
+      } else if (labs.ntProBNP.value > 1500) {
         riskResult.riskLevel  = 'moderate';
         riskResult.riskScore  = Math.max(22, riskResult.riskScore + 12);
       }
@@ -456,9 +563,14 @@ export default async function handler(req, res) {
     }
 
     // ── 6. Build system prompt (non-emergency) ──────────────────────────────
-    const systemPrompt = patientContext
+    let systemPrompt = patientContext
       ? buildSystemPrompt(patientContext, turn, maxTurns, riskResult, vitals, symptoms)
       : buildSarahPrompt(turn, maxTurns, riskResult, vitals, symptoms, labs);
+
+    // Chat mode: cap response length to 2-3 sentences
+    if (chatMode) {
+      systemPrompt += '\n\nCHAT MODE RULES:\n- Keep responses to 2–3 sentences MAX. Be concise and direct.\n- No metadata tags needed in chat mode.\n- Still follow all safety rules (911, escalation, transparency).';
+    }
 
     // ── 7. Call Claude ──────────────────────────────────────────────────────
     const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -470,7 +582,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 350,
+        max_tokens: chatMode ? 150 : 350,
         system: systemPrompt,
         messages,
       }),

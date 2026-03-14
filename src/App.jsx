@@ -953,11 +953,13 @@ function VoiceCallDemo({ patient, onComplete }) {
     rec.start();
   });
 
+  const demoCache = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('cache') === '1';
+
   const sendToAPI = async (msgs, turn, maxTurns) => {
     const res = await fetch("/api/voice-chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: msgs, patientContext: getPatientContext(), turn, maxTurns }),
+      body: JSON.stringify({ messages: msgs, patientContext: getPatientContext(), turn, maxTurns, ...(demoCache && { demoCache: true }) }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -979,6 +981,11 @@ function VoiceCallDemo({ patient, onComplete }) {
     if (data.generateAlert) {
       setAlertGenerated(true);
       addTimer(() => { if (!cancelRef.current) setUiState("alert"); }, 600);
+    }
+    // Broadcast escalation to coordinator view (cross-tab via localStorage)
+    if (data.riskScore || data.generateAlert) {
+      const level = (data.riskScore || 0) >= 80 ? 'critical' : (data.riskScore || 0) >= 45 ? 'high' : (data.riskScore || 0) >= 20 ? 'moderate' : 'low';
+      localStorage.setItem('vardana-escalation', JSON.stringify({ patientId: patient?.id, riskScore: data.riskScore, generateAlert: data.generateAlert, riskLevel: level, timestamp: Date.now() }));
     }
   };
 
@@ -3138,6 +3145,25 @@ function CareCoordinatorView({ onSwitchRole }) {
   const [epicPatients, setEpicPatients] = useState([]);
   const [epicLoading, setEpicLoading] = useState(false);
 
+  // Listen for cross-tab escalation events from patient chat (Video 2 demo moment)
+  useEffect(() => {
+    const handleStorage = (e) => {
+      if (e.key !== 'vardana-escalation' || !e.newValue) return;
+      try {
+        const data = JSON.parse(e.newValue);
+        if (data.patientId && data.riskScore) {
+          setRiskOverrides(prev => ({ ...prev, [data.patientId]: { score: data.riskScore, level: data.riskLevel || 'high' } }));
+          // If this patient is currently selected, update the alert state
+          if (data.generateAlert) {
+            setSelectedPatient(prev => prev?.id === data.patientId ? { ...prev, alert: true, alertType: 'AI chat escalation', alertTime: 'Just now', risk: data.riskScore, riskLevel: data.riskLevel } : prev);
+          }
+        }
+      } catch {}
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   // Enrich patient with call-assessed risk score (freezes at peak from call)
   const enrichPatient = (p) => {
     const override = riskOverrides[p.id];
@@ -3332,12 +3358,17 @@ function PatientChat({ patient, onBack }) {
       const res = await fetch("/api/voice-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newHistory, turn: Math.floor(newHistory.length / 2), maxTurns: 20 }),
+        body: JSON.stringify({ messages: newHistory, turn: Math.floor(newHistory.length / 2), maxTurns: 20, chatMode: true }),
       });
       if (!res.ok) throw new Error(`API ${res.status}`);
       const data = await res.json();
       setMessages(prev => [...prev, { role: "ai", text: data.reply }]);
       setHistory(prev => [...prev, { role: "assistant", content: data.reply }]);
+      // Notify coordinator view of escalation via localStorage (cross-tab)
+      if (data.riskScore || data.generateAlert) {
+        const escalation = { patientId: patient.id, riskScore: data.riskScore, generateAlert: data.generateAlert, riskLevel: data.riskScore >= 80 ? 'critical' : data.riskScore >= 45 ? 'high' : data.riskScore >= 20 ? 'moderate' : 'low', timestamp: Date.now() };
+        localStorage.setItem('vardana-escalation', JSON.stringify(escalation));
+      }
     } catch (err) {
       setMessages(prev => [...prev, { role: "ai", text: "I'm sorry, I'm having trouble connecting right now. Please try again." }]);
     }
