@@ -178,8 +178,8 @@ const SARAH_DEMO_LABS = {
 function buildPacingInstruction(turn, maxTurns) {
   if (turn == null || maxTurns == null) return '';
   const remaining = maxTurns - turn;
-  if (remaining <= 2) return `\n\nPACING: FINAL exchange. Summarize findings, confirm coordinator follow-up if needed, say a warm goodbye. Do NOT ask any questions. Set phase to "done".`;
-  if (remaining <= 4) return `\n\nPACING: ${remaining} exchanges left. Begin wrapping up — move to guidance/escalation now.`;
+  if (remaining <= 2) return `\n\nPACING: FINAL exchange. Summarize findings, confirm coordinator follow-up if needed, say a warm goodbye. Set phase to "done".\nCRITICAL EXCEPTION: If the patient has JUST raised a new symptom or concern (e.g. shortness of breath, swelling, chest pain) in their last message, do NOT wrap up yet. Acknowledge the concern, ask the most important follow-up question about it, and note it for the care coordinator. Patient safety always overrides pacing.`;
+  if (remaining <= 4) return `\n\nPACING: ${remaining} exchanges left. Begin wrapping up — move to guidance/escalation now.\nIMPORTANT: If the patient raises a new symptom or concern, ALWAYS address it before wrapping up. Never dismiss or skip a patient-reported symptom to save time.`;
   if (remaining <= 6) return `\n\nPACING: ${remaining} exchanges left. Progress efficiently through remaining topics.`;
   return '';
 }
@@ -245,7 +245,7 @@ ${isEmergency
   ? `1. REQUIRED FIRST SENTENCE: "I've reviewed your data and I need to let you know — I'm assessing this as ${riskResult.riskLevel.toUpperCase()} risk." (Use those exact words: "${riskResult.riskLevel.toUpperCase()} risk")\n2. REQUIRED SECOND SENTENCE: Name the specific signals. Example: "Your weight has gone up ${wg48.toFixed(1)} pounds in 48 hours${symptoms.edema ? ' and you have ankle swelling' : ''}${symptoms.dyspnea ? ' and breathing difficulty' : ''}${symptoms.orthopnea ? ' and trouble lying flat' : ''} — those signals together are what's driving my concern."\n3. Say "I'm going to notify your care team" — required phrase.\n4. Ask ONE targeted follow-up question about the most important unconfirmed symptom.\n5. Set generateAlert=true — do not wait.`
   : riskResult.riskLevel === 'moderate'
   ? `1. REQUIRED OPENING: "I've reviewed your data and I'm assessing this as MODERATE risk." — say these exact words.\n2. REQUIRED: Name ALL elevated lab values and clinical drivers explicitly:\n   ${labs && labs.ntProBNP.value >= 2000 ? `• NT-proBNP is ${labs.ntProBNP.value} pg/mL (significantly elevated — normal is under 300). REQUIRED: Tell Sarah this number. "Your NT-proBNP heart-strain marker is at ${labs.ntProBNP.value} — that's well above normal, which tells me your heart is still working harder than we'd like."` : ''}\n   ${labs && labs.creatinine.value >= 1.6 ? `• Creatinine is ${labs.creatinine.value} mg/dL and rising. REQUIRED: Mention this too. "Your kidney function number has been creeping up — it's at ${labs.creatinine.value} and we want to make sure it's not related to your water pill."` : ''}\n   ${!labs || (labs.ntProBNP.value < 2000 && labs.creatinine.value < 1.6) ? `• State the weight trend and what it means for heart failure recovery.` : ''}\n3. Ask about symptoms (dyspnea, swelling, fatigue) and medication adherence.\n4. Reassure: MODERATE = monitoring closely, not emergency.`
-  : `1. REQUIRED: State the risk level — "I've reviewed your readings and things look LOW risk and stable today."\n2. Note any positive trends (stable weight, BP in range).\n3. Briefly ask about symptoms and adherence.\n4. Keep the tone reassuring and brief.\nIMPORTANT: Do NOT over-emphasize labs for a LOW-risk patient — mention them only if asked or only in passing ("your recent labs are being monitored"). The focus should be on the stable vitals.`
+  : `1. REQUIRED: State the risk level — "I've reviewed your readings and things look LOW risk and stable today."\n2. Note any positive trends (stable weight, BP in range).\n3. Briefly ask about symptoms and adherence.\n4. Keep the tone reassuring and brief.\nIMPORTANT: Do NOT over-emphasize labs for a LOW-risk patient — mention them only if asked or only in passing ("your labs are being monitored by your care team"). The focus should be on the stable vitals.\nNEVER say labs "look reasonable", "look good", or "look fine" — the patient's NT-proBNP and creatinine are elevated. If you mention labs, say "your labs are being monitored" — never characterize them positively.`
 }
 
 MANDATORY TRANSPARENCY: Name the specific data points that drove your assessment. Don't say "I'm concerned" without saying WHY — cite the numbers, the trend, the symptoms.
@@ -256,6 +256,8 @@ SAFETY RULES:
 - NEVER diagnose. Say "your medical history" or "your conditions" — never "you have X."
 - 911 EMERGENCIES (overrides everything): Chest pain, severe dyspnea, fainting/near-fainting → your FIRST sentence must be "Please call 911 right now."
 - ESCALATION: When risk is HIGH or CRITICAL, say "I'm going to notify your care team" in your spoken response.
+- NEVER DISMISS OR SKIP A PATIENT CONCERN: If the patient reports a symptom (shortness of breath, swelling, pain, etc.), you MUST acknowledge it and ask at least one follow-up question before moving on. Never summarize/wrap up while a patient concern is unaddressed.
+- LISTEN FIRST: Do not assume you know what the patient will say. Wait for their full response before drawing conclusions. Never pre-empt their answer with your own summary.
 - Use simple, warm language. No jargon.
 
 RESPONSE FORMAT: Phone call — 2–4 short spoken sentences, warm and direct. Metadata LAST in <metadata> tags.
@@ -312,6 +314,8 @@ SAFETY RULES:
 - NEVER diagnose. Use "your medical history" not "you have X."
 - 911 EMERGENCIES: Chest pain, severe dyspnea, syncope → immediately say "Please call 911 right now."
 - TRANSPARENCY: Always explain which specific signals drove your risk assessment.
+- NEVER DISMISS OR SKIP A PATIENT CONCERN: If the patient reports a symptom, you MUST acknowledge it and ask at least one follow-up question before moving on. Never wrap up while a concern is unaddressed.
+- LISTEN FIRST: Do not assume you know what the patient will say. Wait for their full response before drawing conclusions.
 - Use simple, warm language. No jargon.
 
 RESPONSE FORMAT: Phone call — 2–4 sentences. Metadata LAST in <metadata> tags.
