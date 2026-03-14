@@ -178,7 +178,7 @@ const PATIENT_CLINICAL_DATA = {
 
 const VOICE_TRANSCRIPT = [
   { t: 1200, speaker: "AI", text: "Good morning Sarah. This is the Vardana care concierge calling for your check-in. I hope you're having a good morning." },
-  { t: 4500, speaker: "Sarah", text: "Oh hi. Yes, go ahead." },
+  { t: 4500, speaker: "Sarah", text: "Hi - I am doing good." },
   { t: 6200, speaker: "AI", text: "Before we begin, I just need to verify your identity. Can you tell me your date of birth?" },
   { t: 9200, speaker: "Sarah", text: "July 14th, 1958." },
   { t: 10800, speaker: "AI", text: "Perfect, thank you Sarah. You're verified." },
