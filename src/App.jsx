@@ -655,6 +655,8 @@ function VoiceCallDemo({ patient, onComplete }) {
   const [interimText, setInterimText] = useState("");   // live speech-to-text preview
 
   const transcriptRef   = useRef(null);
+  const fhirSectionRef  = useRef(null);   // FHIR Activity section for auto-scroll
+  const rightPanelRef   = useRef(null);   // right panel scrollable container
   const audioRef        = useRef(null);   // currently playing Audio element/source
   const mutedRef        = useRef(false);
   const cancelRef       = useRef(false);
@@ -763,6 +765,25 @@ function VoiceCallDemo({ patient, onComplete }) {
   useEffect(() => {
     if (transcriptRef.current) transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
   }, [transcript]);
+
+  // auto-scroll to FHIR Activity when new entries appear + pulse highlight
+  const prevFhirLen = useRef(0);
+  useEffect(() => {
+    if (fhirLog.length > prevFhirLen.current) {
+      // On mobile: scroll the FHIR section into view
+      if (isMobileView && fhirSectionRef.current) {
+        fhirSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      // On desktop: scroll the right panel to the FHIR section
+      if (!isMobileView && rightPanelRef.current && fhirSectionRef.current) {
+        const panel = rightPanelRef.current;
+        const section = fhirSectionRef.current;
+        const offsetTop = section.offsetTop - panel.offsetTop;
+        panel.scrollTo({ top: offsetTop, behavior: "smooth" });
+      }
+    }
+    prevFhirLen.current = fhirLog.length;
+  }, [fhirLog.length, isMobileView]);
 
   // ── Fetch audio via server-side TTS proxy ──
   const fetchAudioOnce = async (text, speaker) => {
@@ -1537,15 +1558,10 @@ function VoiceCallDemo({ patient, onComplete }) {
           {alertGenerated && (
             <div style={{ fontSize: 9, fontWeight: 800, color: "#F87171", background: "rgba(220,38,38,0.15)", borderRadius: 4, padding: "2px 6px" }}>P1 ALERT</div>
           )}
-          {/* Panel toggle */}
-          <div style={{ display: "flex", gap: 4 }}>
-            <button onClick={() => setMobilePanel("transcript")} style={{ padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: c.font, border: "none", background: mobilePanel === "transcript" ? "rgba(56,189,248,0.2)" : "rgba(255,255,255,0.06)", color: mobilePanel === "transcript" ? "#38BDF8" : "#475569" }}>Chat</button>
-            <button onClick={() => setMobilePanel("chart")} style={{ padding: "4px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: c.font, border: "none", background: mobilePanel === "chart" ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.06)", color: mobilePanel === "chart" ? "#A78BFA" : "#475569" }}>Chart</button>
-          </div>
         </div>
       )}
 
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: isMobileView ? "column" : "row", overflow: isMobileView ? "auto" : "hidden" }}>
 
         {/* ── Left: speakers + gauge ── (hidden on mobile) */}
         {!isMobileView && (
@@ -1606,9 +1622,8 @@ function VoiceCallDemo({ patient, onComplete }) {
         </div>
         )}
 
-        {/* ── Center: transcript ── (shown on mobile when mobilePanel==="transcript") */}
-        {(!isMobileView || mobilePanel === "transcript") && (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* ── Center: transcript ── */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: isMobileView ? 300 : "auto" }}>
           {!isMobileView && (
           <div style={{ padding: "13px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>Live Transcript</div>
@@ -1703,17 +1718,38 @@ function VoiceCallDemo({ patient, onComplete }) {
             </div>
           )}
         </div>
+
+        {/* ── Mobile: FHIR Activity inline below transcript ── */}
+        {isMobileView && (
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
+            <div ref={fhirSectionRef} style={{ padding: "13px 16px 4px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>FHIR Activity</div>
+            </div>
+            <div style={{ padding: "6px 12px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+              {fhirLog.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#334155", textAlign: "center", marginTop: 12, marginBottom: 12, lineHeight: 1.6 }}>Waiting for AI to<br />begin querying...</div>
+              ) : fhirLog.map((q, i) => (
+                <div key={i} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 7, padding: "7px 9px", border: `1px solid ${q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.05)"}`, animation: i === fhirLog.length - 1 ? "slideUp 0.25s ease, fhirPulse 0.6s ease" : "slideUp 0.25s ease" }}>
+                  <div style={{ display: "flex", gap: 5, alignItems: "center", marginBottom: 3 }}>
+                    <span style={{ fontSize: 8, fontWeight: 800, background: q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(37,99,235,0.18)", color: q.color, padding: "1px 4px", borderRadius: 3 }}>{q.method}</span>
+                    <span style={{ fontSize: 8, color: "#475569", fontFamily: DS.fontMono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{q.path.length > 34 ? q.path.slice(0, 34) + "…" : q.path}</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: "#94A3B8" }}>→ {q.result}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
-        {/* ── Right: Patient Chart + FHIR + assessment ── (on mobile: shown when mobilePanel==="chart") */}
-        {(!isMobileView || mobilePanel === "chart") && (
+        {/* ── Right: Patient Chart + FHIR + assessment ── (hidden on mobile) */}
+        {!isMobileView && (
         (() => {
           const chartData = PATIENT_CLINICAL_DATA[patient?.id];
           const statusColor = (s) => s === "good" ? "#34D399" : s === "borderline" ? "#F59E0B" : "#F87171";
           const sectionHead = { fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 };
           return (
-        <div style={{ width: isMobileView ? "100%" : 300, flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderLeft: isMobileView ? "none" : "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ flex: 1, overflowY: "auto" }}>
+        <div style={{ width: 300, flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
+          <div ref={rightPanelRef} style={{ flex: 1, overflowY: "auto" }}>
 
             {/* Patient Chart */}
             {chartData && (
@@ -1825,14 +1861,14 @@ function VoiceCallDemo({ patient, onComplete }) {
             )}
 
             {/* FHIR Activity */}
-            <div style={{ padding: "13px 16px 4px", borderBottom: "none" }}>
+            <div ref={fhirSectionRef} style={{ padding: "13px 16px 4px", borderBottom: "none" }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>FHIR Activity</div>
             </div>
             <div style={{ padding: "6px 12px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
               {fhirLog.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#334155", textAlign: "center", marginTop: 12, marginBottom: 12, lineHeight: 1.6 }}>Waiting for AI to<br />begin querying...</div>
               ) : fhirLog.map((q, i) => (
-                <div key={i} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 7, padding: "7px 9px", border: `1px solid ${q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.05)"}`, animation: "slideUp 0.25s ease" }}>
+                <div key={i} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 7, padding: "7px 9px", border: `1px solid ${q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.05)"}`, animation: i === fhirLog.length - 1 ? "slideUp 0.25s ease, fhirPulse 0.6s ease" : "slideUp 0.25s ease" }}>
                   <div style={{ display: "flex", gap: 5, alignItems: "center", marginBottom: 3 }}>
                     <span style={{ fontSize: 8, fontWeight: 800, background: q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(37,99,235,0.18)", color: q.color, padding: "1px 4px", borderRadius: 3 }}>{q.method}</span>
                     <span style={{ fontSize: 8, color: "#475569", fontFamily: DS.fontMono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{q.path.length > 34 ? q.path.slice(0, 34) + "…" : q.path}</span>
@@ -1883,6 +1919,7 @@ function VoiceCallDemo({ patient, onComplete }) {
         @keyframes fadeIn  { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulse   { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+        @keyframes fhirPulse { 0% { box-shadow: 0 0 0 0 rgba(37,99,235,0.4); } 50% { box-shadow: 0 0 0 6px rgba(37,99,235,0.15); } 100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); } }
       `}</style>
     </div>
   );
