@@ -28,7 +28,7 @@ async function elevenlabsTTS(text, speaker) {
         similarity_boost: 0.75,
         style: speaker === 'AI' ? 0.05 : 0.35,
         use_speaker_boost: true,
-        speed: speaker === 'AI' ? 0.88 : 1.0,
+        speed: speaker === 'AI' ? 0.88 : 0.85,
       },
     }),
   });
