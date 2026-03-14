@@ -1092,7 +1092,12 @@ function VoiceCallDemo({ patient, onComplete }) {
 
     // AI acknowledges greeting response, then asks for DOB
     // Use a deterministic template — LLM was unreliable here (would skip DOB ask entirely)
-    const ackAndDobMsg = `That's wonderful to hear, ${firstName}. Before we get started, I just need to verify your identity — could you please tell me your date of birth?`;
+    // Detect negative sentiment so the AI doesn't say "wonderful" when the patient feels bad
+    const negativePattern = /\b(not\s+(so\s+)?(good|great|well|fine)|bad|terrible|awful|horrible|rough|sick|worse|pain|hurt|struggling|miserable|don'?t\s+feel\s+(so\s+)?(good|great|well))\b/i;
+    const isNegative = negativePattern.test(greetReply);
+    const ackAndDobMsg = isNegative
+      ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. Before we get started, I just need to verify your identity — could you please tell me your date of birth?`
+      : `That's wonderful to hear, ${firstName}. Before we get started, I just need to verify your identity — could you please tell me your date of birth?`;
 
     // AI asks for DOB — allow up to 3 attempts
     let dobValid = false;
