@@ -1228,9 +1228,19 @@ function VoiceCallDemo({ patient, onComplete }) {
     }
 
     // Graceful ending ONLY when max turns reached without AI already saying goodbye
+    // Instead of a hardcoded message, send one final API call so the AI can address
+    // any unresolved concerns the patient raised in the last turn.
     if (!conversationEnded && !cancelRef.current) {
-      const coordName = PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
-      const closingMsg = `Well ${firstName}, it was great checking in with you today. I've noted everything from our conversation, and your care coordinator ${coordName.split(',')[0]} will have a full summary. If anything changes or you have concerns before your next check-in, don't hesitate to reach out. Take care!`;
+      let closingMsg;
+      try {
+        const finalData = await sendToAPI(history, 12, 12); // remaining=0 triggers FINAL pacing
+        closingMsg = finalData.reply;
+        processMetadata(finalData);
+      } catch {
+        // Fallback if API fails
+        const coordName = PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
+        closingMsg = `Well ${firstName}, it was great checking in with you today. I've noted everything from our conversation, and your care coordinator ${coordName.split(',')[0]} will have a full summary. If anything changes or you have concerns before your next check-in, don't hesitate to reach out. Take care!`;
+      }
       setTranscript(p => [...p, { speaker: "AI", text: closingMsg }]);
       history.push({ role: "assistant", content: closingMsg });
       setConversationHistory([...history]);
