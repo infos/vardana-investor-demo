@@ -177,32 +177,24 @@ const PATIENT_CLINICAL_DATA = {
 };
 
 const VOICE_TRANSCRIPT = [
-  { t: 1200, speaker: "AI", text: "Good morning Sarah. This is the Vardana care concierge calling for your check-in. I hope you're having a good morning." },
-  { t: 4500, speaker: "Sarah", text: "Hi - I am doing good." },
-  { t: 6200, speaker: "AI", text: "Before we begin, I just need to verify your identity. Can you tell me your date of birth?" },
-  { t: 9200, speaker: "Sarah", text: "July 14th, 1958." },
-  { t: 10800, speaker: "AI", text: "Perfect, thank you Sarah. You're verified." },
-  { t: 13500, speaker: "AI", text: "I'm checking in because I noticed your weight went up a couple of pounds over the last two days. How are you feeling this morning?" },
-  { t: 17500, speaker: "Sarah", text: "Now that you mention it — I do feel more tired than usual. And my ankles look a little puffy." },
-  { t: 21000, speaker: "AI", text: "Thank you for telling me that, Sarah. That's really important. Let me pull up your recent readings..." },
-  { t: 24500, speaker: "AI", text: "Your weight has increased 2.3 pounds in 48 hours, and your blood pressure is a little higher than your best last week. Combined with the ankle swelling and fatigue, I want to make sure your care team is aware today." },
-  { t: 30000, speaker: "Sarah", text: "Is that serious? Should I be worried?" },
-  { t: 32500, speaker: "AI", text: "We're being careful, not alarmed. I'm letting Rachel Kim know right now so she can follow up with you and your cardiologist today. Are you having any trouble breathing, especially when lying flat?" },
-  { t: 38000, speaker: "Sarah", text: "A little. Had to use an extra pillow last night." },
-  { t: 40500, speaker: "AI", text: "That's helpful. I've sent a priority alert to your coordinator with everything we discussed. Rachel will call you today. In the meantime, please stay on your medications and keep sodium low. Do you have any questions?" },
-  { t: 46000, speaker: "Sarah", text: "No, I think I understand. Thank you." },
-  { t: 48000, speaker: "AI", text: "You're welcome Sarah. We'll be in touch very soon. Take care." },
+  { t: 1200, speaker: "AI", text: "Good morning, Sarah. This is the Vardana Care Concierge calling for your check-in. I am checking in because I noticed your weight went up a couple of pounds over the last two days." },
+  { t: 6200, speaker: "Sarah", text: "How are you feeling this morning, now that you mention it? I do feel more tired than usual and my ankles look a little puffy." },
+  { t: 11000, speaker: "AI", text: "Thank you for telling me that, Sarah. That's really important. Let me pull up your recent readings. Your weight has increased 2.3 pounds in 48 hours, and your blood pressure is a little higher than your best last week." },
+  { t: 17500, speaker: "AI", text: "Combined with the ankle swelling and fatigue, I wanna make sure your care team is aware today." },
+  { t: 21000, speaker: "Sarah", text: "Is that serious? Should I be worried?" },
+  { t: 23500, speaker: "AI", text: "We're being careful, not alarmed. I'm letting Rachel Kim know right now so she can follow up with you and your cardiologist today. Are you having any trouble breathing?" },
+  { t: 29000, speaker: "Sarah", text: "Especially when lying flat a little. Had to use an extra pillow last night." },
+  { t: 32500, speaker: "AI", text: "That's helpful. I've sent a priority alert to your coordinator with everything we discussed. Rachel will call you today. In the meantime, please stay on your medications and keep sodium low." },
 ];
 
 const FHIR_QUERIES = [
-  { t: 9400, method: "GET", path: "/Patient?identifier=VRD-2026-001", result: "Identity verified · DOB matches ✓", color: "#059669" },
-  { t: 21200, method: "GET", path: "/Patient/sarah-chen-001", result: "Patient demographics loaded", color: "#2563EB" },
-  { t: 22000, method: "GET", path: "/Observation?patient=sarah-chen&code=body-weight&_sort=-date&_count=14", result: "14 weight readings · Latest: 187.7 lbs", color: "#2563EB" },
-  { t: 22700, method: "GET", path: "/Observation?patient=sarah-chen&code=blood-pressure", result: "BP trend: 126/78 → 136/86 mmHg", color: "#D97706" },
-  { t: 23300, method: "GET", path: "/CarePlan?patient=sarah-chen&status=active", result: "Day 15/90 · Phase: Stabilize → Optimize", color: "#2563EB" },
-  { t: 23900, method: "GET", path: "/Condition?patient=sarah-chen", result: "HFrEF, CKD3a, HTN, T2DM", color: "#2563EB" },
-  { t: 41200, method: "POST", path: "/Flag", result: "P1 Alert created · ID: flag-sc-001", color: "#DC2626" },
-  { t: 41800, method: "POST", path: "/Communication", result: "Coordinator alert dispatched → Rachel Kim", color: "#DC2626" },
+  { t: 11500, method: "GET", path: "/Patient/sarah-chen-001", result: "Patient demographics loaded", color: "#2563EB" },
+  { t: 12200, method: "GET", path: "/Observation?patient=sarah-chen&code=body-weight&_sort=-date&_count=14", result: "14 weight readings · Latest: 187.7 lbs", color: "#2563EB" },
+  { t: 12900, method: "GET", path: "/Observation?patient=sarah-chen&code=blood-pressure", result: "BP trend: 126/78 → 136/86 mmHg", color: "#D97706" },
+  { t: 13500, method: "GET", path: "/CarePlan?patient=sarah-chen&status=active", result: "Day 15/90 · Phase: Stabilize → Optimize", color: "#2563EB" },
+  { t: 14100, method: "GET", path: "/Condition?patient=sarah-chen", result: "HFrEF, CKD3a, HTN, T2DM", color: "#2563EB" },
+  { t: 33000, method: "POST", path: "/Flag", result: "P1 Alert created · ID: flag-sc-001", color: "#DC2626" },
+  { t: 33600, method: "POST", path: "/Communication", result: "Coordinator alert dispatched → Rachel Kim", color: "#DC2626" },
 ];
 
 // ── Design System Tokens ──
