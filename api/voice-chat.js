@@ -444,8 +444,9 @@ export default async function handler(req, res) {
   if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'messages array required' });
 
   // ── Demo response cache: pre-seeded responses for Sarah Chen to eliminate latency ──
-  // Only used for Sarah (no patientContext) and non-eval mode
-  if (!patientContext && !evalMode && !chatMode) {
+  // Only active when caller passes demoCache:true (opt-in for recording sessions)
+  const { demoCache } = req.body || {};
+  if (demoCache && !patientContext && !evalMode && !chatMode) {
     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content?.toLowerCase() || '';
     const cached = getDemoCachedResponse(lastUserMsg, turn, messages.length);
     if (cached) return res.status(200).json(cached);

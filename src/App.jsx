@@ -953,11 +953,13 @@ function VoiceCallDemo({ patient, onComplete }) {
     rec.start();
   });
 
+  const demoCache = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('cache') === '1';
+
   const sendToAPI = async (msgs, turn, maxTurns) => {
     const res = await fetch("/api/voice-chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: msgs, patientContext: getPatientContext(), turn, maxTurns }),
+      body: JSON.stringify({ messages: msgs, patientContext: getPatientContext(), turn, maxTurns, ...(demoCache && { demoCache: true }) }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
