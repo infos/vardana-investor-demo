@@ -29,24 +29,7 @@ const BP_DATA = [
   { date: "Feb 28", sys: 136, dia: 86 },
 ];
 
-// DOB verification — fuzzy-match spoken dates like "July 14th 1958", "7/14/58", "07-14-1958"
-const MONTH_NAMES = { january: 1, february: 2, march: 3, april: 4, may: 5, june: 6, july: 7, august: 8, september: 9, october: 10, november: 11, december: 12 };
-function validateDOB(spoken, expected) {
-  if (!spoken) return false;
-  const s = spoken.toLowerCase().replace(/[,.\-/]/g, ' ').replace(/\b(st|nd|rd|th)\b/g, '').replace(/\s+/g, ' ').trim();
-  const tokens = s.split(' ');
-  let month = null, day = null, year = null;
-  for (const t of tokens) {
-    if (MONTH_NAMES[t]) { month = MONTH_NAMES[t]; continue; }
-    const n = parseInt(t, 10);
-    if (isNaN(n)) continue;
-    if (!month && n >= 1 && n <= 12 && !day) { month = n; }
-    else if (month && !day && n >= 1 && n <= 31) { day = n; }
-    else if (month && day && !year) { year = n < 100 ? n + 1900 : n; }
-    else if (!month && !day && n >= 1 && n <= 12) { month = n; }
-  }
-  return month === expected.month && day === expected.day && year === expected.year;
-}
+
 
 const ROSTER = [
   { id: 1, name: "Sarah Chen", age: 67, gender: "F", dob: { month: 7, day: 14, year: 1958 }, day: 15, phase: "Stabilize → Optimize", risk: 72, riskLevel: "high", alert: true, alertType: "Decompensation risk", alertTime: "38 min ago", trend: "worsening", scheduledOutreach: null, doctor: "Dr. James Harrington" },
@@ -1086,8 +1069,7 @@ function VoiceCallDemo({ patient, onComplete }) {
     await speakAI(greeting, true); // allow browser fallback for the very first line
     if (cancelRef.current) return;
 
-    // ── Patient identity verification (DOB) ──
-    // Wait for patient to respond to greeting first
+    // Wait for patient to respond to greeting
     let greetReply;
     try {
       greetReply = await startListening();
@@ -1102,68 +1084,18 @@ function VoiceCallDemo({ patient, onComplete }) {
     history.push({ role: "user", content: greetReply });
     setConversationHistory([...history]);
 
-    // AI acknowledges greeting response, then asks for DOB
-    // Use a deterministic template — LLM was unreliable here (would skip DOB ask entirely)
-    // Detect negative sentiment so the AI doesn't say "wonderful" when the patient feels bad
+    // AI acknowledges greeting and transitions to check-in
     const negativePattern = /\b(not\s+(so\s+)?(good|great|well|fine)|bad|terrible|awful|horrible|rough|sick|worse|pain|hurt|struggling|miserable|don'?t\s+feel\s+(so\s+)?(good|great|well))\b/i;
     const isNegative = negativePattern.test(greetReply);
-    const ackAndDobMsg = isNegative
-      ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. Before we get started, I just need to verify your identity — could you please tell me your date of birth?`
-      : `That's wonderful to hear, ${firstName}. Before we get started, I just need to verify your identity — could you please tell me your date of birth?`;
-
-    // AI asks for DOB — allow up to 3 attempts
-    let dobValid = false;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const dobAsk = attempt === 0
-        ? ackAndDobMsg
-        : attempt === 1
-          ? `I'm sorry, that didn't match. Could you try your date of birth again?`
-          : `Let me try one more time. What is your date of birth, including the year?`;
-      setTranscript(p => [...p, { speaker: "AI", text: dobAsk }]);
-      history.push({ role: "assistant", content: dobAsk });
-      setConversationHistory([...history]);
-      await speakAI(dobAsk);
-      if (cancelRef.current) return;
-
-      // Listen for DOB response
-      let dobReply;
-      try {
-        dobReply = await startListening();
-      } catch {
-        setIsListening(false);
-        setActiveSpeaker(null);
-        dobReply = await new Promise(resolve => { window._liveTextResolve = resolve; });
-      }
-      if (cancelRef.current) return;
-      setActiveSpeaker(null);
-      setTranscript(p => [...p, { speaker: firstName, text: dobReply }]);
-      history.push({ role: "user", content: dobReply });
-      setConversationHistory([...history]);
-
-      // Validate DOB — use patient-specific DOB
-      const expectedDOB = patient?.dob || { month: 7, day: 14, year: 1958 };
-      const patientIdentifier = (patient?.name || "patient").toLowerCase().replace(/\s+/g, '-');
-      dobValid = validateDOB(dobReply, expectedDOB);
-      setFhirLog(p => [...p, { method: "GET", path: `/Patient?identifier=${patientIdentifier}`, result: dobValid ? "Identity verified · DOB matches ✓" : `Attempt ${attempt + 1}/3 — DOB mismatch ✗`, color: dobValid ? "#059669" : "#DC2626" }]);
-
-      if (dobValid) break;
-    }
-
-    if (!dobValid) {
-      const failMsg = "I wasn't able to verify your identity. For your security, I'm going to connect you with a care team member who can help. Have a good day, and someone will be in touch shortly.";
-      setTranscript(p => [...p, { speaker: "AI", text: failMsg }]);
-      history.push({ role: "assistant", content: failMsg });
-      await speakAI(failMsg);
-      setUiState("done");
-      return;
-    }
-
-    // DOB verified — confirm and transition to check-in (patient-specific opener)
     let verifiedMsg;
     if (patient?.id === 1) {
-      verifiedMsg = `Perfect, thank you ${firstName}. You're verified. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. How are you feeling today?`;
+      verifiedMsg = isNegative
+        ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. Can you tell me more about how you're feeling?`
+        : `That's great to hear, ${firstName}. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. How are you feeling today?`;
     } else {
-      verifiedMsg = `Perfect, thank you ${firstName}. You're verified. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing. How are you feeling overall?`;
+      verifiedMsg = isNegative
+        ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing.`
+        : `That's great to hear, ${firstName}. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing. How are you feeling overall?`;
     }
     setTranscript(p => [...p, { speaker: "AI", text: verifiedMsg }]);
     history.push({ role: "assistant", content: verifiedMsg });
