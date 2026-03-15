@@ -355,11 +355,12 @@ function Header({ onBack, patientSelected, onSwitchRole }) {
 }
 
 // ── Roster View ──
-function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, riskOverrides = {} }) {
+function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, riskOverrides = {}, guidanceBanner }) {
   const isMobile = useIsMobile();
   const alertCount = ROSTER.filter(p => p.alert).length;
   return (
     <div style={{ maxWidth: 960, margin: "0 auto", padding: isMobile ? 14 : 24 }}>
+      {guidanceBanner}
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "baseline", marginBottom: 20, gap: isMobile ? 4 : 0 }}>
         <div>
           <h1 style={{ fontSize: isMobile ? 19 : 22, fontWeight: 800, color: c.text, margin: 0, fontFamily: c.font }}>Patient Roster</h1>
@@ -3085,13 +3086,14 @@ function GenericPatientSummary({ patient, onOutreach }) {
   );
 }
 
-function PatientDetail({ patient, onBack, onOutreach, callData }) {
+function PatientDetail({ patient, onBack, onOutreach, callData, guidanceBanner }) {
   if (patient.isEpic) return <EpicPatientDetail patient={patient} onOutreach={onOutreach} callData={callData} />;
 
   const isSarahChen = patient.id === 1;
 
   return (
     <div style={{ maxWidth: 960, margin: "0 auto", padding: 24 }}>
+      {guidanceBanner}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 26, fontWeight: 400, color: c.text, margin: 0, fontFamily: DS.fontDisplay }}>{patient.name}</h1>
@@ -3145,11 +3147,48 @@ function PatientDetail({ patient, onBack, onOutreach, callData }) {
   );
 }
 
+// ── Scripted Demo Guidance Banner ──
+function ScriptedGuidanceBanner({ text, onDismiss }) {
+  return (
+    <div style={{
+      background: 'rgba(245,158,11,0.08)',
+      border: '1px solid rgba(245,158,11,0.25)',
+      borderRadius: 10,
+      padding: '12px 16px',
+      marginBottom: 16,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+    }}>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </div>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#D97706', fontFamily: c.font }}>Scripted Demo</span>
+        <span style={{ fontSize: 13, color: c.textMed, fontFamily: c.font }}>{text}</span>
+      </div>
+      <button onClick={onDismiss} style={{
+        background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center',
+      }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#556882" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 // ── Main App ──
-function CareCoordinatorView({ onSwitchRole }) {
+function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false }) {
   const [view, setView] = useState("roster"); // roster | patient | voiceCall | smsPath
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showOutreachModal, setShowOutreachModal] = useState(false);
+  const [showRosterBanner, setShowRosterBanner] = useState(isScriptedDemo);
+  const [showDetailBanner, setShowDetailBanner] = useState(isScriptedDemo);
   const [callTranscripts, setCallTranscripts] = useState({});
   const [riskOverrides, setRiskOverrides] = useState({}); // { patientId: { score, level } }
   const [epicPatients, setEpicPatients] = useState([]);
@@ -3258,11 +3297,32 @@ function CareCoordinatorView({ onSwitchRole }) {
         <PatientDetail
           patient={selectedPatient}
           onBack={() => setView("roster")}
-          onOutreach={() => setShowOutreachModal(true)}
+          onOutreach={() => {
+            if (isScriptedDemo) {
+              setView("voiceCall");
+            } else {
+              setShowOutreachModal(true);
+            }
+          }}
           callData={callTranscripts[selectedPatient?.id]}
+          guidanceBanner={showDetailBanner ? (
+            <ScriptedGuidanceBanner
+              text="Review the evidence chain below, then click Contact Patient to start the AI voice call."
+              onDismiss={() => setShowDetailBanner(false)}
+            />
+          ) : null}
         />
       ) : (
-        <RosterView onSelect={(p) => { setSelectedPatient(enrichPatient(p)); setView("patient"); }} epicPatients={epicPatients} epicLoading={epicLoading} onFetchEpic={fetchEpicPatients} riskOverrides={riskOverrides} />
+        <RosterView
+          onSelect={(p) => { setSelectedPatient(enrichPatient(p)); setView("patient"); setShowDetailBanner(isScriptedDemo); }}
+          epicPatients={epicPatients} epicLoading={epicLoading} onFetchEpic={fetchEpicPatients} riskOverrides={riskOverrides}
+          guidanceBanner={showRosterBanner ? (
+            <ScriptedGuidanceBanner
+              text="Sarah Chen has been flagged. Click her name, review the AI alert, then click Contact Patient to start the voice call."
+              onDismiss={() => setShowRosterBanner(false)}
+            />
+          ) : null}
+        />
       )}
       {showOutreachModal && selectedPatient && (
         <OutreachModal
@@ -3717,8 +3777,9 @@ function PatientExperienceView({ onSwitchRole }) {
 // ── App Entry (routed via main.jsx) ──
 export default function App({ initialRole, navigate }) {
   const goBack = () => navigate('/demo');
+  const isScriptedDemo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === 'scripted';
 
-  if (initialRole === "coordinator") return <CareCoordinatorView onSwitchRole={goBack} />;
+  if (initialRole === "coordinator") return <CareCoordinatorView onSwitchRole={goBack} isScriptedDemo={isScriptedDemo} />;
   if (initialRole === "patient") return <PatientExperienceView onSwitchRole={goBack} />;
 
   // Fallback — redirect to demo page

@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import HomePage from './HomePage.jsx'
 import DemoPage from './DemoPage.jsx'
+import ScriptedDemoPage from './demo/ScriptedDemoPage.jsx'
+import LiveDemoPage from './demo/LiveDemoPage.jsx'
 
 function navigate(path) {
   window.history.pushState({}, '', path);
@@ -10,17 +12,21 @@ function navigate(path) {
 }
 
 function Router() {
-  const [path, setPath] = useState(window.location.pathname);
+  const [path, setPath] = useState(window.location.pathname + window.location.search);
 
   useEffect(() => {
-    const onNav = () => setPath(window.location.pathname);
+    const onNav = () => setPath(window.location.pathname + window.location.search);
     window.addEventListener('popstate', onNav);
     return () => window.removeEventListener('popstate', onNav);
   }, []);
 
-  if (path === '/coordinator') return <App initialRole="coordinator" navigate={navigate} />;
-  if (path === '/patient') return <App initialRole="patient" navigate={navigate} />;
-  if (path === '/demo') return <DemoPage navigate={navigate} />;
+  const pathname = path.split('?')[0];
+
+  if (pathname === '/coordinator') return <App initialRole="coordinator" navigate={navigate} />;
+  if (pathname === '/patient') return <App initialRole="patient" navigate={navigate} />;
+  if (pathname === '/demo/scripted') return <ScriptedDemoPage navigate={navigate} />;
+  if (pathname === '/demo/live') return <LiveDemoPage navigate={navigate} />;
+  if (pathname === '/demo') return <DemoPage navigate={navigate} />;
   return <HomePage navigate={navigate} />;
 }
 
