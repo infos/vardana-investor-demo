@@ -17,7 +17,7 @@ export default function ScriptedDemoPage({ navigate }) {
           width: '100%',
         }}>
           <iframe
-            src="https://share.descript.com/embed/yYuz1hZqXOF"
+            src="https://www.loom.com/embed/ab1c85d821684a919d8d7574b5ba2055"
             style={{
               position: 'absolute',
               top: 0,
