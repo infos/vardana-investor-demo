@@ -1,4 +1,6 @@
 export default function ScriptedDemoPage({ navigate }) {
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
   return (
     <div style={{ minHeight: '100vh', background: '#0C1420' }}>
 
@@ -12,44 +14,40 @@ export default function ScriptedDemoPage({ navigate }) {
         </span>
       </div>
 
-      {/* Video — full width, 16:9 responsive */}
-      <div style={{ width: '100%', background: '#000', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
-          <iframe
-            src="https://www.loom.com/embed/ab1c85d821684a919d8d7574b5ba2055?hide_owner=true&hide_share=true&hide_title=true&hideEmbedTopBar=true"
+      {isMobile ? (
+        <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+          <a
+            href="https://www.loom.com/share/ab1c85d821684a919d8d7574b5ba2055"
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              border: 'none',
+              display: 'inline-block',
+              background: '#D97706',
+              color: '#fff',
+              padding: '14px 28px',
+              borderRadius: 8,
+              fontSize: 15,
+              fontWeight: 700,
+              textDecoration: 'none',
             }}
-            allowFullScreen
-          />
+          >
+            Watch Demo
+          </a>
+          <p style={{ color: '#556882', fontSize: 12, marginTop: 12 }}>
+            Opens in browser — rotate for full screen
+          </p>
         </div>
-      </div>
-
-      {/* Mobile rotate hint */}
-      <div
-        className="rotate-hint"
-        style={{
-          display: 'none',
-          textAlign: 'center',
-          padding: '12px 16px',
-          fontSize: 12,
-          color: '#556882',
-          background: '#0C1420',
-        }}
-      >
-        Rotate your phone for the best experience
-      </div>
-
-      <style>{`
-        @media (max-width: 767px) and (orientation: portrait) {
-          .rotate-hint { display: block !important; }
-        }
-      `}</style>
+      ) : (
+        <div style={{ width: '100%', background: '#000', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
+            <iframe
+              src="https://www.loom.com/embed/ab1c85d821684a919d8d7574b5ba2055?hide_owner=true&hide_share=true&hide_title=true&hideEmbedTopBar=true"
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
 
     </div>
   );
