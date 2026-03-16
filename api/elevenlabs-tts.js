@@ -24,9 +24,9 @@ async function elevenlabsTTS(text, speaker) {
       text,
       model_id: 'eleven_turbo_v2_5',
       voice_settings: {
-        stability: speaker === 'AI' ? 0.82 : 0.55,
+        stability: speaker === 'AI' ? 0.82 : 0.78,
         similarity_boost: 0.75,
-        style: speaker === 'AI' ? 0.05 : 0.35,
+        style: speaker === 'AI' ? 0.05 : 0.10,
         use_speaker_boost: true,
         speed: speaker === 'AI' ? 0.95 : 0.85,
       },
