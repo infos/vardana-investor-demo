@@ -587,7 +587,7 @@ function OutreachModal({ patient, onClose, onInitiate }) {
 }
 
 // ── Voice Call Demo ──
-function VoiceCallDemo({ patient, onComplete, autoStartScripted = false }) {
+function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitDemo = null }) {
   const isMobileView = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState("transcript"); // transcript | chart (mobile only)
   // ── state ──
@@ -1563,9 +1563,9 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false }) {
 
       {/* Return button */}
       <button
-        onClick={() => { setUiState("done"); handleComplete(); }}
-        onMouseEnter={e => { e.currentTarget.style.borderColor = "#3A4F6B"; }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = "#253550"; }}
+        onClick={() => { if (onExitDemo) { onExitDemo(); } else { setUiState("done"); handleComplete(); } }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = "#F59E0B"; e.currentTarget.style.color = "#F59E0B"; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = "#253550"; e.currentTarget.style.color = "#556882"; }}
         style={{
           background: "none", border: "1px solid #253550",
           borderRadius: 10, padding: "10px 24px",
@@ -1574,7 +1574,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false }) {
           transition: "all 0.2s ease",
         }}
       >
-        ← Return to Dashboard
+        Close Demo
       </button>
     </div>
   );
@@ -1813,45 +1813,6 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false }) {
           )}
         </div>
 
-        {/* ── Mobile: FHIR Activity fixed at bottom ── */}
-        {isMobileView && fhirLog.length > 0 && (
-          <div ref={fhirSectionRef} style={{
-            position: "fixed", bottom: 0, left: 0, right: 0,
-            height: "25vh", maxHeight: 220,
-            background: "#0C1420",
-            borderTop: "1px solid #1C2B40",
-            padding: "10px 16px",
-            overflow: "hidden",
-            zIndex: 40,
-          }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#3A4F6B", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>FHIR Activity</div>
-            {fhirLog.slice(-3).reverse().map((q, i) => (
-              <div key={i} style={{ fontFamily: DS.fontMono, fontSize: 11, color: i === 0 ? "#34D399" : "#3A4F6B", marginBottom: 4, opacity: 1 - i * 0.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {q.method} {q.path.length > 40 ? q.path.slice(0, 40) + "..." : q.path} → {q.result}
-              </div>
-            ))}
-          </div>
-        )}
-        {isMobileView && fhirLog.length === 0 && (
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
-            <div ref={fhirSectionRef} style={{ padding: "13px 16px 4px" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>FHIR Activity</div>
-            </div>
-            <div style={{ padding: "6px 12px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
-              {fhirLog.length === 0 ? (
-                <div style={{ fontSize: 12, color: "#334155", textAlign: "center", marginTop: 12, marginBottom: 12, lineHeight: 1.6 }}>Waiting for AI to<br />begin querying...</div>
-              ) : fhirLog.map((q, i) => (
-                <div key={i} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 7, padding: "7px 9px", border: `1px solid ${q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.05)"}`, animation: i === fhirLog.length - 1 ? "slideUp 0.25s ease, fhirPulse 0.6s ease" : "slideUp 0.25s ease" }}>
-                  <div style={{ display: "flex", gap: 5, alignItems: "center", marginBottom: 3 }}>
-                    <span style={{ fontSize: 8, fontWeight: 800, background: q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(37,99,235,0.18)", color: q.color, padding: "1px 4px", borderRadius: 3 }}>{q.method}</span>
-                    <span style={{ fontSize: 8, color: "#475569", fontFamily: DS.fontMono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{q.path.length > 34 ? q.path.slice(0, 34) + "…" : q.path}</span>
-                  </div>
-                  <div style={{ fontSize: 10, color: "#94A3B8" }}>→ {q.result}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* ── Right: Patient Chart + FHIR + assessment ── (hidden on mobile) */}
         {!isMobileView && (
@@ -1979,15 +1940,19 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false }) {
             <div style={{ padding: "6px 12px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
               {fhirLog.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#334155", textAlign: "center", marginTop: 12, marginBottom: 12, lineHeight: 1.6 }}>Waiting for AI to<br />begin querying...</div>
-              ) : [...fhirLog].reverse().map((q, i) => (
+              ) : [...fhirLog].reverse().map((q, i) => {
+                const methodColor = q.method === "POST" ? "#F59E0B" : q.color === c.red ? c.red : "#34D399";
+                const methodBg = q.method === "POST" ? "rgba(245,158,11,0.18)" : q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(5,150,105,0.18)";
+                return (
                 <div key={fhirLog.length - 1 - i} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 7, padding: "7px 9px", border: `1px solid ${q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.05)"}`, animation: i === 0 ? "slideUp 0.25s ease, fhirPulse 0.6s ease" : "slideUp 0.25s ease" }}>
                   <div style={{ display: "flex", gap: 5, alignItems: "center", marginBottom: 3 }}>
-                    <span style={{ fontSize: 8, fontWeight: 800, background: q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(37,99,235,0.18)", color: q.color, padding: "1px 4px", borderRadius: 3 }}>{q.method}</span>
+                    <span style={{ fontSize: 8, fontWeight: 800, background: methodBg, color: methodColor, padding: "1px 4px", borderRadius: 3 }}>{q.method}</span>
                     <span style={{ fontSize: 8, color: "#475569", fontFamily: DS.fontMono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{q.path.length > 34 ? q.path.slice(0, 34) + "…" : q.path}</span>
                   </div>
                   <div style={{ fontSize: 10, color: "#94A3B8" }}>→ {q.result}</div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* AI Assessment */}
@@ -3444,7 +3409,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false }) {
   };
 
   if (view === "voiceCall") {
-    return <VoiceCallDemo patient={selectedPatient} autoStartScripted={isScriptedDemo} onComplete={(data) => {
+    return <VoiceCallDemo patient={selectedPatient} autoStartScripted={isScriptedDemo} onExitDemo={isScriptedDemo ? onSwitchRole : null} onComplete={(data) => {
       if (data) {
         setCallTranscripts(prev => ({ ...prev, [selectedPatient.id]: data }));
         if (data.riskScore) {
