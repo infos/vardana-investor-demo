@@ -358,6 +358,15 @@ function Header({ onBack, patientSelected, onSwitchRole }) {
 function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, riskOverrides = {}, guidanceBanner, isScriptedDemo = false }) {
   const isMobile = useIsMobile();
   const alertCount = ROSTER.filter(p => p.alert).length;
+  const [showPointerArrow, setShowPointerArrow] = useState(false);
+
+  // In scripted mode, show pointer after 1.5s (amber pulse shows immediately, pointer appears later)
+  useEffect(() => {
+    if (!isScriptedDemo) return;
+    const timer = setTimeout(() => setShowPointerArrow(true), 1500);
+    return () => clearTimeout(timer);
+  }, [isScriptedDemo]);
+
   return (
     <div style={{ maxWidth: 960, margin: "0 auto", padding: isMobile ? 14 : 24 }}>
       {guidanceBanner}
@@ -386,10 +395,11 @@ function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, ris
           const ro = riskOverrides[p.id];
           const displayRisk = ro ? ro.score : p.risk;
           const displayLevel = ro ? ro.level : p.riskLevel;
-          const showPointer = isScriptedDemo && p.id === 1;
+          const isSarahRow = p.id === 1;
+          const showPointer = isScriptedDemo && isSarahRow;
           return (
-          <div key={p.id} style={{ position: "relative" }}>
-          <button onClick={() => onSelect(p)} style={{ width: "100%", background: c.card, border: `1px solid ${p.alert ? "#FECACA" : c.border}`, borderRadius: c.radius, padding: "16px 20px", cursor: "pointer", fontFamily: c.font, textAlign: "left", boxShadow: c.shadow, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 16, borderLeft: p.alert ? `4px solid ${c.red}` : `4px solid transparent` }}>
+          <div key={p.id} style={{ position: "relative", opacity: isScriptedDemo && !isSarahRow ? 0.35 : 1, transition: "all 0.3s ease" }}>
+          <button onClick={() => onSelect(p)} style={{ width: "100%", background: c.card, border: `1px solid ${p.alert ? "#FECACA" : c.border}`, borderRadius: c.radius, padding: "16px 20px", cursor: "pointer", fontFamily: c.font, textAlign: "left", boxShadow: isScriptedDemo && isSarahRow ? "0 0 0 2px rgba(245,158,11,0.4)" : c.shadow, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 16, borderLeft: p.alert ? `4px solid ${c.red}` : `4px solid transparent`, animation: isScriptedDemo && isSarahRow ? "amberBorderPulse 1.5s ease-in-out infinite" : "none" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>{p.name}</span>
@@ -413,7 +423,7 @@ function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, ris
             </div>
             <span style={{ fontSize: 16, color: c.textLight }}>›</span>
           </button>
-          {showPointer && (
+          {showPointer && showPointerArrow && (
             <div style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", animation: "pointerBounce 0.6s ease infinite alternate", pointerEvents: "none", zIndex: 50 }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="#F59E0B"><path d="M4 0 L4 20 L8 16 L12 24 L14 22 L10 14 L16 14 Z"/></svg>
             </div>
@@ -423,8 +433,8 @@ function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, ris
         })}
       </div>
 
-      {/* Epic EHR Patients */}
-      <div style={{ marginTop: 24 }}>
+      {/* Epic EHR Patients — hidden in scripted demo and on mobile */}
+      <div style={{ marginTop: 24, display: (isScriptedDemo || isMobile) ? "none" : "block" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 16 }}>🏥</span>
@@ -859,10 +869,49 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitD
     if (!cancelRef.current) setUiState("closing");
   };
 
+  // ── Pre-fetched audio buffers for scripted demo ──
+  const preloadedUrlsRef = useRef(null);
+  const [preloadProgress, setPreloadProgress] = useState(0);
+  const [preloadReady, setPreloadReady] = useState(false);
+
+  // Pre-fetch all audio segments on mount for scripted demo
+  useEffect(() => {
+    if (!autoStartScripted || preloadedUrlsRef.current) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const urls = new Array(VOICE_TRANSCRIPT.length);
+        const batchSize = 4;
+        for (let start = 0; start < VOICE_TRANSCRIPT.length; start += batchSize) {
+          if (cancelled || cancelRef.current) return;
+          const batch = VOICE_TRANSCRIPT.slice(start, start + batchSize);
+          const results = await Promise.all(
+            batch.map((line) => fetchAudio(line.text, line.speaker))
+          );
+          results.forEach((url, j) => { urls[start + j] = url; });
+          setPreloadProgress(Math.round(Math.min(start + batchSize, VOICE_TRANSCRIPT.length) / VOICE_TRANSCRIPT.length * 100));
+        }
+        if (!cancelled) {
+          preloadedUrlsRef.current = urls;
+          setPreloadReady(true);
+        }
+      } catch (err) {
+        if (!cancelled) setApiError(err.message || "Audio pre-fetch failed.");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [autoStartScripted]);
+
   // ── Start demo with ElevenLabs (server-side proxy — no key needed) ──
   const startElevenLabs = async () => {
     cancelRef.current = false;
     setApiError("");
+    // If pre-loaded (scripted demo), use cached URLs
+    if (preloadedUrlsRef.current) {
+      setLoadProgress(100);
+      launchCall(() => playElevenLabs(preloadedUrlsRef.current));
+      return;
+    }
     setUiState("loading");
     try {
       // Fetch audio in parallel batches of 4 for faster loading
@@ -884,26 +933,36 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitD
     }
   };
 
-  // Auto-start scripted demo when entering from onboarding flow (skip setup + intro)
+  // Auto-start scripted demo: wait for both audio unlock + preload ready
   const autoStartedRef = useRef(false);
   useEffect(() => {
-    if (autoStartScripted && !autoStartedRef.current) {
-      autoStartedRef.current = true;
-      // Try to unlock audio context; if browser blocks, show tap-to-start overlay
-      try {
-        unlockAudio();
-        setAudioUnlocked(true);
-        startElevenLabs();
-      } catch {
-        // Browser blocked — overlay will handle it
-      }
+    if (!autoStartScripted || autoStartedRef.current) return;
+    // Try to unlock audio context
+    try {
+      unlockAudio();
+      setAudioUnlocked(true);
+    } catch {
+      // Browser blocked — overlay will handle it
     }
   }, [autoStartScripted]);
+
+  // When both audio is unlocked and preload is ready, start playback
+  useEffect(() => {
+    if (!autoStartScripted || autoStartedRef.current) return;
+    if (audioUnlocked && preloadReady) {
+      autoStartedRef.current = true;
+      startElevenLabs();
+    }
+  }, [autoStartScripted, audioUnlocked, preloadReady]);
 
   const handleUnlockAndStart = () => {
     unlockAudio();
     setAudioUnlocked(true);
-    startElevenLabs();
+    // If preload is already done, start immediately; otherwise it will auto-start via effect
+    if (preloadReady) {
+      autoStartedRef.current = true;
+      startElevenLabs();
+    }
   };
 
   // ── Browser TTS fallback ──
@@ -1380,6 +1439,11 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitD
       </div>
       <div style={{ fontSize: 13, color: "#556882" }}>
         {patient.name} · Day {patient.day || '15'} · CHF check-in
+      </div>
+      <div style={{ fontSize: 12, color: '#3A4F6B', marginTop: 12 }}>
+        {preloadProgress < 100
+          ? `Loading... ${preloadProgress}%`
+          : 'Ready \u2014 tap to start'}
       </div>
     </div>
   );
@@ -2288,7 +2352,7 @@ function SMSPathDemo({ patient, onComplete }) {
 }
 
 // ── AI Reasoning Card ──
-function AIReasoningCard({ onOutreach, onBack }) {
+function AIReasoningCard({ onOutreach, onBack, isScriptedDemo = false }) {
   const [expanded, setExpanded] = useState(false);
   const [showEHR, setShowEHR] = useState(false);
 
@@ -2370,41 +2434,45 @@ function AIReasoningCard({ onOutreach, onBack }) {
         </div>
       </div>
 
-      <button onClick={() => setExpanded(!expanded)} style={{ width: "100%", padding: "14px 20px", border: "none", background: "none", cursor: "pointer", fontFamily: c.font, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: expanded ? `1px solid ${c.border}` : "none" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Icon name="chat" size={14} color={c.textMed} />
-          <span style={{ fontSize: 13, fontWeight: 700, color: c.textMed }}>What Sarah told Vardana today →</span>
-        </div>
-        <span style={{ fontSize: 14, color: c.textLight, transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "rotate(0)" }}>⌄</span>
-      </button>
-
-      {expanded && (
-        <div style={{ padding: "12px 20px 16px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {[
-              { time: "Yesterday 8:00 AM", who: "AI → Patient", text: "Asked about weight increase (+1.1 lbs). Patient reported feeling 'a little more tired than usual.' AI advised low-sodium diet, confirmed Furosemide adherence." },
-              { time: "Today 7:45 AM", who: "AI → Patient", text: "Flagged 2.3 lb/48hr weight gain. Patient confirmed ankle swelling. AI informed patient that care coordinator would reach out. Advised continued medication adherence and sodium restriction." },
-            ].map((ex, i) => (
-              <div key={i} style={{ padding: "10px 14px", background: c.borderLight, borderRadius: 8, borderLeft: `3px solid ${c.accent}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: c.accent }}>{ex.who}</span>
-                  <span style={{ fontSize: 11, color: c.textLight }}>{ex.time}</span>
-                </div>
-                <div style={{ fontSize: 13, color: c.textMed, lineHeight: 1.5 }}>{ex.text}</div>
-              </div>
-            ))}
+      {!isScriptedDemo && (
+        <>
+        <button onClick={() => setExpanded(!expanded)} style={{ width: "100%", padding: "14px 20px", border: "none", background: "none", cursor: "pointer", fontFamily: c.font, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: expanded ? `1px solid ${c.border}` : "none" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Icon name="chat" size={14} color={c.textMed} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: c.textMed }}>What Sarah told Vardana today →</span>
           </div>
-        </div>
-      )}
-
-      {/* Action buttons */}
-      <div style={{ padding: "16px 24px", display: "flex", gap: 10, background: DS.color.slate[50] }}>
-        <button onClick={onOutreach} style={{ flex: 2, padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.slate[950], color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: DS.transition.fast }}>
-          <Icon name="phone" size={14} color="white" /> Initiate Outreach
+          <span style={{ fontSize: 14, color: c.textLight, transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "rotate(0)" }}>⌄</span>
         </button>
-        <button onClick={() => setShowEHR(true)} style={{ flex: 1, padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.canvas.white, color: c.text, border: `1px solid ${DS.color.border.default}`, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon name="clipboard" size={14} color={c.textMed} /> Open in EHR</button>
-        <button onClick={onBack} style={{ padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.canvas.white, color: c.textLight, border: `1px solid ${DS.color.border.subtle}`, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: c.font }}>Dismiss</button>
-      </div>
+
+        {expanded && (
+          <div style={{ padding: "12px 20px 16px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                { time: "Yesterday 8:00 AM", who: "AI → Patient", text: "Asked about weight increase (+1.1 lbs). Patient reported feeling 'a little more tired than usual.' AI advised low-sodium diet, confirmed Furosemide adherence." },
+                { time: "Today 7:45 AM", who: "AI → Patient", text: "Flagged 2.3 lb/48hr weight gain. Patient confirmed ankle swelling. AI informed patient that care coordinator would reach out. Advised continued medication adherence and sodium restriction." },
+              ].map((ex, i) => (
+                <div key={i} style={{ padding: "10px 14px", background: c.borderLight, borderRadius: 8, borderLeft: `3px solid ${c.accent}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: c.accent }}>{ex.who}</span>
+                    <span style={{ fontSize: 11, color: c.textLight }}>{ex.time}</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: c.textMed, lineHeight: 1.5 }}>{ex.text}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div style={{ padding: "16px 24px", display: "flex", gap: 10, background: DS.color.slate[50] }}>
+          <button onClick={onOutreach} style={{ flex: 2, padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.slate[950], color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: DS.transition.fast }}>
+            <Icon name="phone" size={14} color="white" /> Initiate Outreach
+          </button>
+          <button onClick={() => setShowEHR(true)} style={{ flex: 1, padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.canvas.white, color: c.text, border: `1px solid ${DS.color.border.default}`, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon name="clipboard" size={14} color={c.textMed} /> Open in EHR</button>
+          <button onClick={onBack} style={{ padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.canvas.white, color: c.textLight, border: `1px solid ${DS.color.border.subtle}`, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: c.font }}>Dismiss</button>
+        </div>
+        </>
+      )}
 
       {/* Mock EHR / FHIR Resource Panel */}
       {showEHR && (
@@ -3196,16 +3264,17 @@ function GenericPatientSummary({ patient, onOutreach }) {
 }
 
 function PatientDetail({ patient, onBack, onOutreach, callData, guidanceBanner, isScriptedDemo = false }) {
-  const [showContactPointer, setShowContactPointer] = useState(isScriptedDemo);
+  const [showContactPointer, setShowContactPointer] = useState(false);
   if (patient.isEpic) return <EpicPatientDetail patient={patient} onOutreach={onOutreach} callData={callData} />;
 
   const isSarahChen = patient.id === 1;
 
-  // Scripted demo: auto-trigger Contact Patient after 2s
+  // Scripted demo: show pointer at 5s, auto-trigger Contact Patient at 7s
   useEffect(() => {
     if (!isScriptedDemo) return;
-    const timer = setTimeout(() => { setShowContactPointer(false); onOutreach(); }, 2000);
-    return () => clearTimeout(timer);
+    const pointerTimer = setTimeout(() => setShowContactPointer(true), 5000);
+    const navTimer = setTimeout(() => { setShowContactPointer(false); onOutreach(); }, 7000);
+    return () => { clearTimeout(pointerTimer); clearTimeout(navTimer); };
   }, [isScriptedDemo]);
 
   return (
@@ -3234,9 +3303,9 @@ function PatientDetail({ patient, onBack, onOutreach, callData, guidanceBanner, 
       <div style={{ paddingBottom: patient.alert ? 80 : 0 }}>
         {isSarahChen ? (
           <>
-            <AIReasoningCard onOutreach={onOutreach} onBack={onBack} />
+            <AIReasoningCard onOutreach={onOutreach} onBack={onBack} isScriptedDemo={isScriptedDemo} />
             {callData && <RecentCallCard callData={callData} />}
-            <div style={{ marginTop: 20 }}><SupportingData /></div>
+            {!isScriptedDemo && <div style={{ marginTop: 20 }}><SupportingData /></div>}
           </>
         ) : (
           <>
@@ -3315,24 +3384,24 @@ function ScriptedGuidanceBanner({ text, onDismiss }) {
 }
 
 // ── Main App ──
-function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false }) {
+function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo = false }) {
   const [view, setView] = useState("roster"); // roster | patient | voiceCall | smsPath
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showOutreachModal, setShowOutreachModal] = useState(false);
-  const [showRosterBanner, setShowRosterBanner] = useState(isScriptedDemo);
+  const [showRosterBanner, setShowRosterBanner] = useState(isScriptedDemo || isLiveDemo);
   const [showDetailBanner, setShowDetailBanner] = useState(isScriptedDemo);
   const [callTranscripts, setCallTranscripts] = useState({});
   const [riskOverrides, setRiskOverrides] = useState({}); // { patientId: { score, level } }
   const [epicPatients, setEpicPatients] = useState([]);
   const [epicLoading, setEpicLoading] = useState(false);
 
-  // Scripted demo: auto-navigate to Sarah after 1.5s
+  // Scripted demo: auto-navigate to Sarah after 4s
   useEffect(() => {
     if (!isScriptedDemo || view !== "roster") return;
     const timer = setTimeout(() => {
       const sarah = ROSTER.find(p => p.id === 1);
       if (sarah) { setSelectedPatient(sarah); setView("patient"); setShowDetailBanner(true); }
-    }, 1500);
+    }, 4000);
     return () => clearTimeout(timer);
   }, [isScriptedDemo, view]);
 
@@ -3433,6 +3502,11 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false }) {
         button:active { opacity: 0.9; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: ${c.border}; border-radius: 3px; }
+        @keyframes amberBorderPulse {
+          0% { box-shadow: 0 0 0 2px rgba(245,158,11,0.2); }
+          50% { box-shadow: 0 0 0 4px rgba(245,158,11,0.5); }
+          100% { box-shadow: 0 0 0 2px rgba(245,158,11,0.2); }
+        }
       `}</style>
       <Header patientSelected={view === "patient"} onBack={() => setView("roster")} onSwitchRole={onSwitchRole} />
       {view === "patient" && selectedPatient ? (
@@ -3462,7 +3536,9 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false }) {
           isScriptedDemo={isScriptedDemo}
           guidanceBanner={showRosterBanner ? (
             <ScriptedGuidanceBanner
-              text="Sarah Chen has been flagged. Click her name, review the AI alert, then click Contact Patient to start the voice call."
+              text={isLiveDemo
+                ? "Explore at your own pace. Click Sarah Chen to review her AI alert."
+                : "Sarah Chen has been flagged. Click her name, review the AI alert, then click Contact Patient to start the voice call."}
               onDismiss={() => setShowRosterBanner(false)}
             />
           ) : null}
@@ -3623,7 +3699,11 @@ function PatientChat({ patient, onBack }) {
                 fontSize: 13,
                 lineHeight: 1.6,
               }}>
-                {msg.text}
+                {msg.text.split(/(\*\*[^*]+\*\*)/).map((part, j) =>
+                  part.startsWith('**') && part.endsWith('**')
+                    ? <strong key={j}>{part.slice(2, -2)}</strong>
+                    : part
+                )}
               </div>
             </div>
           ))}
@@ -3921,9 +4001,11 @@ function PatientExperienceView({ onSwitchRole }) {
 // ── App Entry (routed via main.jsx) ──
 export default function App({ initialRole, navigate }) {
   const goBack = () => navigate('/demo');
-  const isScriptedDemo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === 'scripted';
+  const demoParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('demo') : null;
+  const isScriptedDemo = demoParam === 'scripted';
+  const isLiveDemo = demoParam === 'live';
 
-  if (initialRole === "coordinator") return <CareCoordinatorView onSwitchRole={goBack} isScriptedDemo={isScriptedDemo} />;
+  if (initialRole === "coordinator") return <CareCoordinatorView onSwitchRole={goBack} isScriptedDemo={isScriptedDemo} isLiveDemo={isLiveDemo} />;
   if (initialRole === "patient") return <PatientExperienceView onSwitchRole={goBack} />;
 
   // Fallback — redirect to demo page
