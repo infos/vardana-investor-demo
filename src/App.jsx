@@ -355,7 +355,7 @@ function Header({ onBack, patientSelected, onSwitchRole }) {
 }
 
 // ── Roster View ──
-function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, riskOverrides = {}, guidanceBanner, isScriptedDemo = false }) {
+function RosterView({ onSelect, onCallPatient, epicPatients = [], epicLoading, onFetchEpic, riskOverrides = {}, guidanceBanner, isScriptedDemo = false }) {
   const isMobile = useIsMobile();
   const alertCount = ROSTER.filter(p => p.alert).length;
   const [showPointerArrow, setShowPointerArrow] = useState(false);
@@ -398,7 +398,7 @@ function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, ris
           const isSarahRow = p.id === 1;
           const showPointer = isScriptedDemo && isSarahRow;
           return (
-          <div key={p.id} style={{ position: "relative", display: isScriptedDemo && !isSarahRow ? "none" : "block", opacity: 1, transition: "all 0.3s ease" }}>
+          <div key={p.id} style={{ position: "relative", display: "block", opacity: 1, transition: "all 0.3s ease" }}>
           <button onClick={() => onSelect(p)} style={{ width: "100%", background: c.card, border: `1px solid ${p.alert ? "#FECACA" : c.border}`, borderRadius: c.radius, padding: "16px 20px", cursor: "pointer", fontFamily: c.font, textAlign: "left", boxShadow: isScriptedDemo && isSarahRow ? "0 0 0 2px rgba(245,158,11,0.4)" : c.shadow, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 16, borderLeft: p.alert ? `4px solid ${c.red}` : `4px solid transparent`, animation: isScriptedDemo && isSarahRow ? "amberBorderPulse 1.5s ease-in-out infinite" : "none" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -421,10 +421,15 @@ function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, ris
               {ro && <div style={{ fontSize: 10, color: c.teal, fontWeight: 600, marginTop: 2 }}>Assessed during call</div>}
               {!ro && <div style={{ marginTop: 4 }}><TrendArrow trend={p.trend} /></div>}
             </div>
+            {isScriptedDemo && isSarahRow && p.alert && (
+              <button onClick={(e) => { e.stopPropagation(); onCallPatient && onCallPatient(p); }} style={{ padding: "8px 16px", borderRadius: 8, background: DS.color.slate[950], color: "white", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", flexShrink: 0, animation: "amberBorderPulse 1.5s ease-in-out infinite" }}>
+                <Icon name="phone" size={13} color="white" /> Call Patient
+              </button>
+            )}
             <span style={{ fontSize: 16, color: c.textLight }}>›</span>
           </button>
           {showPointer && showPointerArrow && (
-            <div style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", animation: "pointerBounce 0.6s ease infinite alternate", pointerEvents: "none", zIndex: 50 }}>
+            <div style={{ position: "absolute", right: 56, top: "50%", transform: "translateY(-50%)", animation: "pointerBounce 0.6s ease infinite alternate", pointerEvents: "none", zIndex: 50 }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="#F59E0B"><path d="M4 0 L4 20 L8 16 L12 24 L14 22 L10 14 L16 14 Z"/></svg>
             </div>
           )}
@@ -3375,24 +3380,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
   const [epicPatients, setEpicPatients] = useState([]);
   const [epicLoading, setEpicLoading] = useState(false);
 
-  // Scripted demo: mobile skips roster entirely, desktop shows roster 2s then goes to call
-  useEffect(() => {
-    if (!isScriptedDemo || view !== "roster") return;
-    const sarah = ROSTER.find(p => p.id === 1);
-    if (!sarah) return;
-    if (isMobile) {
-      // Mobile: skip roster, go directly to voice call
-      setSelectedPatient(sarah);
-      setView("voiceCall");
-    } else {
-      // Desktop: show simplified roster for 5s then go directly to voice call
-      const timer = setTimeout(() => {
-        setSelectedPatient(sarah);
-        setView("voiceCall");
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [isScriptedDemo, view, isMobile]);
+  // Scripted demo: user clicks Sarah Chen on roster, then clicks Contact Patient to start call
 
   // Listen for cross-tab escalation events from patient chat (Video 2 demo moment)
   useEffect(() => {
@@ -3521,13 +3509,14 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
       ) : (
         <RosterView
           onSelect={(p) => { setSelectedPatient(enrichPatient(p)); setView("patient"); setShowDetailBanner(isScriptedDemo); }}
+          onCallPatient={(p) => { setSelectedPatient(enrichPatient(p)); setView("voiceCall"); }}
           epicPatients={epicPatients} epicLoading={epicLoading} onFetchEpic={fetchEpicPatients} riskOverrides={riskOverrides}
           isScriptedDemo={isScriptedDemo}
           guidanceBanner={showRosterBanner ? (
             <ScriptedGuidanceBanner
               text={isLiveDemo
                 ? "Explore at your own pace. Click Sarah Chen to review her AI alert."
-                : "Sarah Chen has been flagged. Click her name, review the AI alert, then click Contact Patient to start the voice call."}
+                : "Sarah Chen has been flagged. Click \"Call Patient\" to start the AI voice call."}
               onDismiss={() => setShowRosterBanner(false)}
             />
           ) : null}
