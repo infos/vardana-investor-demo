@@ -3385,11 +3385,11 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
       setSelectedPatient(sarah);
       setView("voiceCall");
     } else {
-      // Desktop: show simplified roster for 2s then go directly to voice call
+      // Desktop: show simplified roster for 5s then go directly to voice call
       const timer = setTimeout(() => {
         setSelectedPatient(sarah);
         setView("voiceCall");
-      }, 2000);
+      }, 5000);
       return () => clearTimeout(timer);
     }
   }, [isScriptedDemo, view, isMobile]);
