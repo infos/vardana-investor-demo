@@ -5,6 +5,7 @@ import HomePage from './HomePage.jsx'
 import DemoPage from './DemoPage.jsx'
 import ScriptedDemoPage from './demo/ScriptedDemoPage.jsx'
 import LiveDemoPage from './demo/LiveDemoPage.jsx'
+import ROICalculator from './ROICalculator.jsx'
 
 function navigate(path) {
   window.history.pushState({}, '', path);
@@ -27,6 +28,7 @@ function Router() {
   if (pathname === '/demo/scripted') return <ScriptedDemoPage navigate={navigate} />;
   if (pathname === '/demo/live') return <LiveDemoPage navigate={navigate} />;
   if (pathname === '/demo') return <DemoPage navigate={navigate} />;
+  if (pathname === '/roi') return <ROICalculator />;
   return <HomePage navigate={navigate} />;
 }
 
