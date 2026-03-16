@@ -20,7 +20,9 @@ export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Dem
   ];
 
   return (
-    <div>
+    <>
+      {/* Main content — grows to fill space */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
       <h1 style={{
         fontFamily: DT.font.display,
         fontSize: 28,
@@ -102,7 +104,7 @@ export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Dem
       </div>
 
       {/* What you'll see */}
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 0 }}>
         <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: DT.text.faint, marginBottom: 12 }}>
           What you'll see
         </div>
@@ -117,14 +119,16 @@ export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Dem
           ))}
         </div>
       </div>
+      </div>
 
-      {/* Bottom row */}
+      {/* Bottom row — anchored at bottom */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexDirection: isMobile ? 'column-reverse' : 'row',
         gap: isMobile ? 12 : 0,
+        paddingTop: 24,
       }}>
         <ProgressDots steps={2} current={1} />
         <div style={{
@@ -146,6 +150,6 @@ export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Dem
       </div>
 
       <FhirFootnote />
-    </div>
+    </>
   );
 }

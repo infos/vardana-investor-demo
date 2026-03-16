@@ -9,11 +9,11 @@ export function DemoShell({ children, maxWidth = 560 }) {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      justifyContent: 'center',
+      justifyContent: 'space-between',
       padding: 32,
       fontFamily: DT.font.body,
     }}>
-      <div style={{ width: '100%', maxWidth }}>
+      <div style={{ width: '100%', maxWidth, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         {children}
       </div>
     </div>

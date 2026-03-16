@@ -166,7 +166,7 @@ const VOICE_TRANSCRIPT = [
   { t: 17500, speaker: "AI", text: "Combined with the ankle swelling and fatigue, I wanna make sure your care team is aware today." },
   { t: 21000, speaker: "Sarah", text: "Is that serious? Should I be worried?" },
   { t: 23500, speaker: "AI", text: "We're being careful, not alarmed. I'm letting Rachel Kim know right now so she can follow up with you and your cardiologist today. Are you having any trouble breathing?" },
-  { t: 29000, speaker: "Sarah", text: "Especially when lying flat a little. Had to use an extra pillow last night." },
+  { t: 29000, speaker: "Sarah", text: "Yes. Especially when lying flat a little. I had to use an extra pillow last night." },
   { t: 32500, speaker: "AI", text: "That's helpful. I've sent a priority alert to your coordinator with everything we discussed. Rachel will call you today. In the meantime, please stay on your medications and keep sodium low." },
 ];
 
