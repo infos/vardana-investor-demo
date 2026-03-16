@@ -11,7 +11,7 @@ export default function AboutSlide({ onBack, onSkip, onNext }) {
     {
       icon: <PhoneIcon size={18} color={DT.amber.hover} />,
       title: 'Voice-first AI',
-      body: 'Proactive daily outreach by phone \u2014 no app required',
+      body: 'Proactive daily outreach by phone -- no app required',
     },
     {
       icon: <ActivityIcon size={18} color={DT.amber.hover} />,
@@ -40,17 +40,6 @@ export default function AboutSlide({ onBack, onSkip, onNext }) {
       }}>
         What Vardana Does
       </h1>
-
-      <p style={{
-        fontSize: 15,
-        lineHeight: 1.7,
-        color: DT.text.secondary,
-        textAlign: 'center',
-        margin: '0 0 16px',
-      }}>
-        CHF patients face their highest risk in the 90 days after hospital discharge.
-        1 in 4 are readmitted within 30 days.
-      </p>
 
       <p style={{
         fontSize: 15,
