@@ -3375,24 +3375,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
   const [epicPatients, setEpicPatients] = useState([]);
   const [epicLoading, setEpicLoading] = useState(false);
 
-  // Scripted demo: mobile skips roster entirely, desktop shows roster 2s then goes to call
-  useEffect(() => {
-    if (!isScriptedDemo || view !== "roster") return;
-    const sarah = ROSTER.find(p => p.id === 1);
-    if (!sarah) return;
-    if (isMobile) {
-      // Mobile: skip roster, go directly to voice call
-      setSelectedPatient(sarah);
-      setView("voiceCall");
-    } else {
-      // Desktop: show simplified roster for 5s then go directly to voice call
-      const timer = setTimeout(() => {
-        setSelectedPatient(sarah);
-        setView("voiceCall");
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [isScriptedDemo, view, isMobile]);
+  // Scripted demo: user clicks Sarah Chen on roster, then clicks Contact Patient to start call
 
   // Listen for cross-tab escalation events from patient chat (Video 2 demo moment)
   useEffect(() => {
