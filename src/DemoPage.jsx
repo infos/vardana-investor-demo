@@ -156,9 +156,9 @@ export default function DemoPage({ navigate }) {
           title="Live Demo"
           description="Explore the platform yourself. Navigate the coordinator view, patient portal, and AI reasoning at your own pace."
           bullets={[
-            'Coordinator dashboard -- Sarah flagged red',
+            'Coordinator dashboard: Sarah flagged red',
             'Evidence chain + AI clinical reasoning',
-            'Patient portal -- recovery journey view',
+            'Patient portal, recovery journey view',
             'Initiate voice or SMS outreach',
           ]}
           bulletColor={DT.jade.default}
@@ -173,9 +173,9 @@ export default function DemoPage({ navigate }) {
           title="Scripted Demo"
           description="Watch a pre-rendered AI voice call with Sarah Chen. Decompensation detected mid-call. FHIR alert fires in real time."
           bullets={[
-            'Guided walkthrough -- About Vardana + scenario',
-            'Coordinator roster -- Sarah flagged',
-            'Live AI voice call -- automated, no mic needed',
+            'Guided walkthrough: About Vardana + scenario',
+            'Coordinator roster: Sarah flagged',
+            'Live AI voice call, automated, no mic needed',
             'Risk score escalates 68 > 84, P1 alert fires',
           ]}
           bulletColor={DT.amber.default}

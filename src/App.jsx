@@ -398,7 +398,7 @@ function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, ris
           const isSarahRow = p.id === 1;
           const showPointer = isScriptedDemo && isSarahRow;
           return (
-          <div key={p.id} style={{ position: "relative", opacity: isScriptedDemo && !isSarahRow ? 0.35 : 1, transition: "all 0.3s ease" }}>
+          <div key={p.id} style={{ position: "relative", display: isScriptedDemo && !isSarahRow ? "none" : "block", opacity: 1, transition: "all 0.3s ease" }}>
           <button onClick={() => onSelect(p)} style={{ width: "100%", background: c.card, border: `1px solid ${p.alert ? "#FECACA" : c.border}`, borderRadius: c.radius, padding: "16px 20px", cursor: "pointer", fontFamily: c.font, textAlign: "left", boxShadow: isScriptedDemo && isSarahRow ? "0 0 0 2px rgba(245,158,11,0.4)" : c.shadow, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 16, borderLeft: p.alert ? `4px solid ${c.red}` : `4px solid transparent`, animation: isScriptedDemo && isSarahRow ? "amberBorderPulse 1.5s ease-in-out infinite" : "none" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -601,7 +601,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitD
   const isMobileView = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState("transcript"); // transcript | chart (mobile only)
   // ── state ──
-  const [uiState, setUiState] = useState(autoStartScripted ? "intro" : "setup"); // setup|intro|loading|dialing|connected|active|alert|done|closing
+  const [uiState, setUiState] = useState(autoStartScripted ? "loading" : "setup"); // setup|loading|dialing|connected|active|alert|done|closing
   const [alertZoom, setAlertZoom] = useState(false);
   const [apiError, setApiError] = useState("");
   const [audioUnlocked, setAudioUnlocked] = useState(!autoStartScripted);
@@ -1507,7 +1507,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitD
             <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.5, marginBottom: 14, flex: 1 }}>
               Pre-rendered {VOICE_TRANSCRIPT.length}-line conversation via ElevenLabs TTS. Fully automated — just watch and listen.
             </div>
-            <button onClick={() => { unlockAudio(); setDemoMode("scripted"); setUiState("intro"); }}
+            <button onClick={() => { unlockAudio(); setDemoMode("scripted"); startElevenLabs(); }}
               style={{ width: "100%", padding: "11px", borderRadius: 9, background: "linear-gradient(135deg, #F59E0B, #D97706)", color: "white", border: "none", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: c.font }}>
               🎙 Start Scripted Demo
             </button>
@@ -1519,27 +1519,6 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitD
         <button onClick={() => onComplete(null)}
           style={{ width: "100%", marginTop: 8, padding: "9px", border: "none", background: "none", color: "#334155", fontSize: 12, cursor: "pointer", fontFamily: c.font }}>
           ← Return to Dashboard
-        </button>
-      </div>
-    </div>
-  );
-
-  // ─────────────────────────────────────────────
-  // INTRO SLIDE (before scripted call)
-  // ─────────────────────────────────────────────
-  if (uiState === "intro") return (
-    <div style={{ position: "fixed", inset: 0, background: c.navy, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: c.font, padding: 24 }}>
-      <div style={{ maxWidth: 600, textAlign: "center", animation: "fadeIn 0.8s ease" }}>
-        <div style={{ fontSize: 22, fontWeight: 400, color: "white", letterSpacing: "-0.02em", fontFamily: DS.fontDisplay, marginBottom: 48 }}>Vardana<span style={{ color: DS.color.amber[400] }}>.</span></div>
-        <div style={{ fontSize: isMobileView ? 28 : 40, fontWeight: 900, color: "white", lineHeight: 1.2, marginBottom: 24, fontFamily: DS.fontDisplay }}>
-          1 in 4 CHF patients is readmitted within 30 days.
-        </div>
-        <div style={{ fontSize: isMobileView ? 16 : 20, color: "#94A3B8", lineHeight: 1.6, marginBottom: 48 }}>
-          Vardana's AI concierge monitors patients daily and alerts their care team before a crisis.
-        </div>
-        <button onClick={() => startElevenLabs()}
-          style={{ padding: "14px 36px", borderRadius: 10, background: "linear-gradient(135deg, #F59E0B, #D97706)", color: "white", border: "none", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: c.font, letterSpacing: "0.02em" }}>
-          Watch the Demo
         </button>
       </div>
     </div>
@@ -3385,6 +3364,7 @@ function ScriptedGuidanceBanner({ text, onDismiss }) {
 
 // ── Main App ──
 function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo = false }) {
+  const isMobile = useIsMobile();
   const [view, setView] = useState("roster"); // roster | patient | voiceCall | smsPath
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showOutreachModal, setShowOutreachModal] = useState(false);
@@ -3395,15 +3375,24 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
   const [epicPatients, setEpicPatients] = useState([]);
   const [epicLoading, setEpicLoading] = useState(false);
 
-  // Scripted demo: auto-navigate to Sarah after 4s
+  // Scripted demo: mobile skips roster entirely, desktop shows roster 2s then goes to call
   useEffect(() => {
     if (!isScriptedDemo || view !== "roster") return;
-    const timer = setTimeout(() => {
-      const sarah = ROSTER.find(p => p.id === 1);
-      if (sarah) { setSelectedPatient(sarah); setView("patient"); setShowDetailBanner(true); }
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, [isScriptedDemo, view]);
+    const sarah = ROSTER.find(p => p.id === 1);
+    if (!sarah) return;
+    if (isMobile) {
+      // Mobile: skip roster, go directly to voice call
+      setSelectedPatient(sarah);
+      setView("voiceCall");
+    } else {
+      // Desktop: show simplified roster for 2s then go directly to voice call
+      const timer = setTimeout(() => {
+        setSelectedPatient(sarah);
+        setView("voiceCall");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isScriptedDemo, view, isMobile]);
 
   // Listen for cross-tab escalation events from patient chat (Video 2 demo moment)
   useEffect(() => {

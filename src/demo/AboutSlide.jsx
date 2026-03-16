@@ -11,7 +11,7 @@ export default function AboutSlide({ onBack, onSkip, onNext }) {
     {
       icon: <PhoneIcon size={18} color={DT.amber.hover} />,
       title: 'Voice-first AI',
-      body: 'Proactive daily outreach by phone -- no app required',
+      body: 'Proactive daily outreach by phone, no app required',
     },
     {
       icon: <ActivityIcon size={18} color={DT.amber.hover} />,
