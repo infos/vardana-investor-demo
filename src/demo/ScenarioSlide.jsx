@@ -8,15 +8,15 @@ export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Dem
   const isMobile = useIsMobile();
 
   const warnings = [
-    { color: DT.amber.hover, text: 'Weight +2.3 lbs / 48hrs -- exceeded 2 lb threshold' },
-    { color: DT.amber.hover, text: 'BP reversed -- 136/86 (best was 126/78)' },
+    { color: DT.amber.hover, text: 'Weight +2.3 lbs / 48hrs, exceeded 2 lb threshold' },
+    { color: DT.amber.hover, text: 'BP reversed, 136/86 (best was 126/78)' },
     { color: DT.crimson, text: 'Patient reported fatigue + ankle swelling this morning' },
   ];
 
   const bullets = [
-    "Nurse Rachel Kim's coordinator dashboard -- Sarah flagged red",
-    'Vardana AI calls Sarah -- risk score escalates 68 > 84 in real time',
-    'P1 alert fires -- FHIR flag posted to Epic mid-call',
+    "Coordinator dashboard: Sarah Chen flagged red",
+    'Vardana AI calls Sarah, risk score escalates 68 to 84 in real time',
+    'P1 alert fires, FHIR flag posted to Epic mid-call',
   ];
 
   return (
@@ -66,7 +66,7 @@ export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Dem
             Sarah Chen <span style={{ fontWeight: 400, color: DT.text.secondary }}>67F</span>
           </div>
           <div style={{ fontSize: 13, color: DT.text.muted, fontFamily: DT.font.body }}>
-            Day 15 of 90 / Stabilize &rarr; Optimize
+            Day 15 of 90 &middot; Stabilize &rarr; Optimize
           </div>
         </div>
         <div style={{ fontSize: 12, color: DT.text.muted, marginTop: 4 }}>
