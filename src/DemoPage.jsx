@@ -156,30 +156,30 @@ export default function DemoPage({ navigate }) {
           title="Live Demo"
           description="Explore the platform yourself. Navigate the coordinator view, patient portal, and AI reasoning at your own pace."
           bullets={[
-            'Coordinator dashboard \u2014 Sarah flagged red',
+            'Coordinator dashboard -- Sarah flagged red',
             'Evidence chain + AI clinical reasoning',
-            'Patient portal \u2014 recovery journey view',
+            'Patient portal -- recovery journey view',
             'Initiate voice or SMS outreach',
           ]}
           bulletColor={DT.jade.default}
-          ctaLabel="Start Live Demo \u2192"
+          ctaLabel="Start Live Demo"
           ctaBackground={DT.jade.default}
           ctaColor="white"
           onClick={() => navigate('/demo/live')}
         />
         <DemoCard
-          badge="~90 SECONDS \u00B7 NO MIC"
+          badge="~90 SECONDS / NO MIC"
           badgeColor={DT.amber.default}
           title="Scripted Demo"
           description="Watch a pre-rendered AI voice call with Sarah Chen. Decompensation detected mid-call. FHIR alert fires in real time."
           bullets={[
-            'Guided walkthrough \u2014 About Vardana + scenario',
-            'Coordinator roster \u2014 Sarah flagged',
-            'Live AI voice call via ElevenLabs',
-            'Risk score escalates 68 \u2192 84 \u00B7 P1 alert fires',
+            'Guided walkthrough -- About Vardana + scenario',
+            'Coordinator roster -- Sarah flagged',
+            'Live AI voice call -- automated, no mic needed',
+            'Risk score escalates 68 > 84, P1 alert fires',
           ]}
           bulletColor={DT.amber.default}
-          ctaLabel="Watch Scripted Demo \u2192"
+          ctaLabel="Watch Scripted Demo"
           ctaBackground={DT.amber.default}
           ctaColor={DT.bg.page}
           onClick={() => navigate('/demo/scripted')}

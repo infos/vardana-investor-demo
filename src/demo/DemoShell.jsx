@@ -20,7 +20,7 @@ export function DemoShell({ children, maxWidth = 560 }) {
   );
 }
 
-export function BackButton({ onClick, label = '\u2190 Back' }) {
+export function BackButton({ onClick, label = '< Back' }) {
   return (
     <button onClick={onClick} style={{
       background: 'none',

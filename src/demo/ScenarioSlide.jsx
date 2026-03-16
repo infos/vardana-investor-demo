@@ -4,19 +4,19 @@ import { ProgressDots, PrimaryButton, GhostButton, FhirFootnote } from './DemoSh
 import { AlertIcon, CheckIcon } from './icons';
 import { useIsMobile } from './useIsMobile';
 
-export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Demo \u2192', ctaSlot }) {
+export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Demo', ctaSlot }) {
   const isMobile = useIsMobile();
 
   const warnings = [
-    { color: DT.amber.hover, text: 'Weight +2.3 lbs / 48hrs \u2014 exceeded 2 lb threshold' },
-    { color: DT.amber.hover, text: 'BP reversed \u2014 136/86 (best was 126/78)' },
+    { color: DT.amber.hover, text: 'Weight +2.3 lbs / 48hrs -- exceeded 2 lb threshold' },
+    { color: DT.amber.hover, text: 'BP reversed -- 136/86 (best was 126/78)' },
     { color: DT.crimson, text: 'Patient reported fatigue + ankle swelling this morning' },
   ];
 
   const bullets = [
-    'Nurse Rachel Kim\u2019s coordinator dashboard \u2014 Sarah flagged red',
-    'Vardana AI calls Sarah \u2014 risk score escalates 68 \u2192 84 in real time',
-    'P1 alert fires \u2014 FHIR flag posted to Epic mid-call',
+    "Nurse Rachel Kim's coordinator dashboard -- Sarah flagged red",
+    'Vardana AI calls Sarah -- risk score escalates 68 > 84 in real time',
+    'P1 alert fires -- FHIR flag posted to Epic mid-call',
   ];
 
   return (

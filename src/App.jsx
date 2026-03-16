@@ -355,7 +355,7 @@ function Header({ onBack, patientSelected, onSwitchRole }) {
 }
 
 // ── Roster View ──
-function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, riskOverrides = {}, guidanceBanner }) {
+function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, riskOverrides = {}, guidanceBanner, isScriptedDemo = false }) {
   const isMobile = useIsMobile();
   const alertCount = ROSTER.filter(p => p.alert).length;
   return (
@@ -386,8 +386,10 @@ function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, ris
           const ro = riskOverrides[p.id];
           const displayRisk = ro ? ro.score : p.risk;
           const displayLevel = ro ? ro.level : p.riskLevel;
+          const showPointer = isScriptedDemo && p.id === 1;
           return (
-          <button key={p.id} onClick={() => onSelect(p)} style={{ width: "100%", background: c.card, border: `1px solid ${p.alert ? "#FECACA" : c.border}`, borderRadius: c.radius, padding: "16px 20px", cursor: "pointer", fontFamily: c.font, textAlign: "left", boxShadow: c.shadow, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 16, borderLeft: p.alert ? `4px solid ${c.red}` : `4px solid transparent` }}>
+          <div key={p.id} style={{ position: "relative" }}>
+          <button onClick={() => onSelect(p)} style={{ width: "100%", background: c.card, border: `1px solid ${p.alert ? "#FECACA" : c.border}`, borderRadius: c.radius, padding: "16px 20px", cursor: "pointer", fontFamily: c.font, textAlign: "left", boxShadow: c.shadow, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 16, borderLeft: p.alert ? `4px solid ${c.red}` : `4px solid transparent` }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>{p.name}</span>
@@ -411,6 +413,12 @@ function RosterView({ onSelect, epicPatients = [], epicLoading, onFetchEpic, ris
             </div>
             <span style={{ fontSize: 16, color: c.textLight }}>›</span>
           </button>
+          {showPointer && (
+            <div style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", animation: "pointerBounce 0.6s ease infinite alternate", pointerEvents: "none", zIndex: 50 }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="#F59E0B"><path d="M4 0 L4 20 L8 16 L12 24 L14 22 L10 14 L16 14 Z"/></svg>
+            </div>
+          )}
+          </div>
           );
         })}
       </div>
@@ -579,13 +587,14 @@ function OutreachModal({ patient, onClose, onInitiate }) {
 }
 
 // ── Voice Call Demo ──
-function VoiceCallDemo({ patient, onComplete }) {
+function VoiceCallDemo({ patient, onComplete, autoStartScripted = false }) {
   const isMobileView = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState("transcript"); // transcript | chart (mobile only)
   // ── state ──
-  const [uiState, setUiState] = useState("setup"); // setup|intro|loading|dialing|connected|active|alert|done|closing
+  const [uiState, setUiState] = useState(autoStartScripted ? "intro" : "setup"); // setup|intro|loading|dialing|connected|active|alert|done|closing
   const [alertZoom, setAlertZoom] = useState(false);
   const [apiError, setApiError] = useState("");
+  const [audioUnlocked, setAudioUnlocked] = useState(!autoStartScripted);
   const [loadProgress, setLoadProgress] = useState(0);
   const [transcript, setTranscript]   = useState([]);
   const [fhirLog, setFhirLog]         = useState([]);
@@ -623,7 +632,7 @@ function VoiceCallDemo({ patient, onComplete }) {
   const [activeSpeaker, setActiveSpeaker] = useState(null);
 
   // ── live demo state ──
-  const [demoMode, setDemoMode]       = useState(null); // "scripted" | "live"
+  const [demoMode, setDemoMode]       = useState(autoStartScripted ? "scripted" : null); // "scripted" | "live"
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking]   = useState(false);
   const [conversationHistory, setConversationHistory] = useState([]);
@@ -873,6 +882,28 @@ function VoiceCallDemo({ patient, onComplete }) {
       setApiError(err.message || "Audio fetch failed.");
       setUiState("setup");
     }
+  };
+
+  // Auto-start scripted demo when entering from onboarding flow (skip setup + intro)
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (autoStartScripted && !autoStartedRef.current) {
+      autoStartedRef.current = true;
+      // Try to unlock audio context; if browser blocks, show tap-to-start overlay
+      try {
+        unlockAudio();
+        setAudioUnlocked(true);
+        startElevenLabs();
+      } catch {
+        // Browser blocked — overlay will handle it
+      }
+    }
+  }, [autoStartScripted]);
+
+  const handleUnlockAndStart = () => {
+    unlockAudio();
+    setAudioUnlocked(true);
+    startElevenLabs();
   };
 
   // ── Browser TTS fallback ──
@@ -1317,6 +1348,43 @@ function VoiceCallDemo({ patient, onComplete }) {
   const waveOn      = isActive && activeSpeaker !== null && !muted;
 
   // ─────────────────────────────────────────────
+  // TAP-TO-START OVERLAY (mobile autoplay blocked)
+  // ─────────────────────────────────────────────
+  if (autoStartScripted && !audioUnlocked) return (
+    <div
+      onClick={handleUnlockAndStart}
+      style={{
+        position: "fixed", inset: 0,
+        background: "#0C1420",
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        zIndex: 300, cursor: "pointer",
+      }}
+    >
+      <div style={{
+        width: 72, height: 72, borderRadius: "50%",
+        background: "rgba(245,158,11,0.15)",
+        border: "2px solid #F59E0B",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        marginBottom: 20, animation: "pulse 1.5s ease infinite",
+      }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="#F59E0B">
+          <polygon points="5,3 19,12 5,21"/>
+        </svg>
+      </div>
+      <div style={{
+        fontFamily: "'DM Serif Display', Georgia, serif",
+        fontSize: 20, color: "#F5F7FA", marginBottom: 8,
+      }}>
+        Tap to start the demo
+      </div>
+      <div style={{ fontSize: 13, color: "#556882" }}>
+        {patient.name} · Day {patient.day || '15'} · CHF check-in
+      </div>
+    </div>
+  );
+
+  // ─────────────────────────────────────────────
   // SETUP SCREEN
   // ─────────────────────────────────────────────
   if (uiState === "setup") return (
@@ -1434,23 +1502,80 @@ function VoiceCallDemo({ patient, onComplete }) {
   );
 
   // ─────────────────────────────────────────────
-  // CLOSING SLIDE (after scripted call)
+  // CLOSING SLIDE — smooth fade + call summary end screen
   // ─────────────────────────────────────────────
   if (uiState === "closing") return (
-    <div style={{ position: "fixed", inset: 0, background: c.navy, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: c.font, padding: 24 }}>
-      <div style={{ maxWidth: 520, textAlign: "center", animation: "fadeIn 0.8s ease" }}>
-        <div style={{ fontSize: isMobileView ? 36 : 48, fontWeight: 400, color: "white", letterSpacing: "-0.02em", fontFamily: DS.fontDisplay, marginBottom: 16 }}>Vardana<span style={{ color: DS.color.amber[400] }}>.</span></div>
-        <div style={{ fontSize: isMobileView ? 18 : 22, color: "#CBD5E1", lineHeight: 1.5, marginBottom: 48, fontWeight: 500 }}>
-          CHF post-discharge care.
+    <div style={{
+      position: "fixed", inset: 0, background: "#0C1420", zIndex: 300,
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      padding: "32px 24px", textAlign: "center",
+      fontFamily: c.font, animation: "fadeIn 0.8s ease",
+    }}>
+      {/* Vardana logo + wordmark */}
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
+            <rect width="32" height="32" rx="8" fill="#D97706" />
+            <path d="M16 7C11 7 7 11 7 16s4 9 9 9 9-4 9-9-4-9-9-9zm0 14.5c-1.5 0-3-0.8-3.8-2.2l1.3-0.8c0.5 0.9 1.4 1.5 2.5 1.5s2-0.6 2.5-1.5l1.3 0.8c-0.8 1.4-2.3 2.2-3.8 2.2zm4.5-5h-9v-1.5h9v1.5z" fill="white"/>
+          </svg>
+          <span style={{ fontFamily: DS.fontDisplay, fontSize: 22, fontWeight: 400, color: "#F5F7FA", letterSpacing: "-0.02em" }}>Vardana</span>
         </div>
-        <div style={{ fontSize: isMobileView ? 15 : 18, color: "#94A3B8", marginBottom: 48 }}>
-          Request a pilot at <span style={{ color: DS.color.amber[400], fontWeight: 700 }}>vardana.ai</span>
-        </div>
-        <button onClick={() => { setUiState("done"); handleComplete(); }}
-          style={{ padding: "12px 28px", borderRadius: 9, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#CBD5E1", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: c.font }}>
-          Return to Dashboard
-        </button>
       </div>
+
+      {/* Call summary card */}
+      <div style={{
+        background: "#131E2E", border: "1px solid #253550",
+        borderRadius: 16, padding: "20px 28px",
+        maxWidth: 400, width: "100%", marginBottom: 32,
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#3A4F6B", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>
+          Call Summary
+        </div>
+        {[
+          { label: "Risk score", value: "68 → 84", color: "#EF4444" },
+          { label: "Alert fired", value: "P1 — Urgent", color: "#EF4444" },
+          { label: "Coordinator notified", value: "Rachel Kim", color: "#34D399" },
+          { label: "FHIR flag posted", value: "Epic sandbox", color: "#34D399" },
+        ].map((row, i) => (
+          <div key={i} style={{
+            display: "flex", justifyContent: "space-between",
+            alignItems: "center", padding: "8px 0",
+            borderBottom: i < 3 ? "1px solid #1C2B40" : "none",
+          }}>
+            <span style={{ fontSize: 13, color: "#556882" }}>{row.label}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: row.color }}>{row.value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Tagline */}
+      <div style={{ fontFamily: DS.fontDisplay, fontSize: 22, color: "#F5F7FA", letterSpacing: "-0.02em", marginBottom: 6 }}>
+        Vardana.
+      </div>
+      <div style={{ fontSize: 14, color: "#556882", marginBottom: 4 }}>
+        CHF post-discharge care.
+      </div>
+      <div style={{ fontSize: 14, color: "#556882", marginBottom: 32 }}>
+        Request a pilot at{" "}
+        <a href="https://vardana.ai" style={{ color: "#F59E0B", textDecoration: "none" }}>vardana.ai</a>
+      </div>
+
+      {/* Return button */}
+      <button
+        onClick={() => { setUiState("done"); handleComplete(); }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = "#3A4F6B"; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = "#253550"; }}
+        style={{
+          background: "none", border: "1px solid #253550",
+          borderRadius: 10, padding: "10px 24px",
+          fontSize: 13, color: "#556882", cursor: "pointer",
+          fontFamily: "'DM Sans', system-ui, sans-serif",
+          transition: "all 0.2s ease",
+        }}
+      >
+        ← Return to Dashboard
+      </button>
     </div>
   );
 
@@ -1688,8 +1813,26 @@ function VoiceCallDemo({ patient, onComplete }) {
           )}
         </div>
 
-        {/* ── Mobile: FHIR Activity inline below transcript ── */}
-        {isMobileView && (
+        {/* ── Mobile: FHIR Activity fixed at bottom ── */}
+        {isMobileView && fhirLog.length > 0 && (
+          <div ref={fhirSectionRef} style={{
+            position: "fixed", bottom: 0, left: 0, right: 0,
+            height: "25vh", maxHeight: 220,
+            background: "#0C1420",
+            borderTop: "1px solid #1C2B40",
+            padding: "10px 16px",
+            overflow: "hidden",
+            zIndex: 40,
+          }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#3A4F6B", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>FHIR Activity</div>
+            {fhirLog.slice(-3).reverse().map((q, i) => (
+              <div key={i} style={{ fontFamily: DS.fontMono, fontSize: 11, color: i === 0 ? "#34D399" : "#3A4F6B", marginBottom: 4, opacity: 1 - i * 0.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {q.method} {q.path.length > 40 ? q.path.slice(0, 40) + "..." : q.path} → {q.result}
+              </div>
+            ))}
+          </div>
+        )}
+        {isMobileView && fhirLog.length === 0 && (
           <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
             <div ref={fhirSectionRef} style={{ padding: "13px 16px 4px" }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>FHIR Activity</div>
@@ -1829,15 +1972,15 @@ function VoiceCallDemo({ patient, onComplete }) {
               </div>
             )}
 
-            {/* FHIR Activity */}
+            {/* FHIR Activity — newest first */}
             <div ref={fhirSectionRef} style={{ padding: "13px 16px 4px", borderBottom: "none" }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>FHIR Activity</div>
             </div>
             <div style={{ padding: "6px 12px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
               {fhirLog.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#334155", textAlign: "center", marginTop: 12, marginBottom: 12, lineHeight: 1.6 }}>Waiting for AI to<br />begin querying...</div>
-              ) : fhirLog.map((q, i) => (
-                <div key={i} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 7, padding: "7px 9px", border: `1px solid ${q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.05)"}`, animation: i === fhirLog.length - 1 ? "slideUp 0.25s ease, fhirPulse 0.6s ease" : "slideUp 0.25s ease" }}>
+              ) : [...fhirLog].reverse().map((q, i) => (
+                <div key={fhirLog.length - 1 - i} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 7, padding: "7px 9px", border: `1px solid ${q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.05)"}`, animation: i === 0 ? "slideUp 0.25s ease, fhirPulse 0.6s ease" : "slideUp 0.25s ease" }}>
                   <div style={{ display: "flex", gap: 5, alignItems: "center", marginBottom: 3 }}>
                     <span style={{ fontSize: 8, fontWeight: 800, background: q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(37,99,235,0.18)", color: q.color, padding: "1px 4px", borderRadius: 3 }}>{q.method}</span>
                     <span style={{ fontSize: 8, color: "#475569", fontFamily: DS.fontMono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{q.path.length > 34 ? q.path.slice(0, 34) + "…" : q.path}</span>
@@ -1884,6 +2027,7 @@ function VoiceCallDemo({ patient, onComplete }) {
       </div>
 
       <style>{`
+        @keyframes pointerBounce { from { transform: translateY(-50%) translateX(0px); } to { transform: translateY(-50%) translateX(-6px); } }
         @keyframes ping    { 0%   { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.5); opacity: 0; } }
         @keyframes fadeIn  { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -3086,10 +3230,18 @@ function GenericPatientSummary({ patient, onOutreach }) {
   );
 }
 
-function PatientDetail({ patient, onBack, onOutreach, callData, guidanceBanner }) {
+function PatientDetail({ patient, onBack, onOutreach, callData, guidanceBanner, isScriptedDemo = false }) {
+  const [showContactPointer, setShowContactPointer] = useState(isScriptedDemo);
   if (patient.isEpic) return <EpicPatientDetail patient={patient} onOutreach={onOutreach} callData={callData} />;
 
   const isSarahChen = patient.id === 1;
+
+  // Scripted demo: auto-trigger Contact Patient after 2s
+  useEffect(() => {
+    if (!isScriptedDemo) return;
+    const timer = setTimeout(() => { setShowContactPointer(false); onOutreach(); }, 2000);
+    return () => clearTimeout(timer);
+  }, [isScriptedDemo]);
 
   return (
     <div style={{ maxWidth: 960, margin: "0 auto", padding: 24 }}>
@@ -3131,16 +3283,31 @@ function PatientDetail({ patient, onBack, onOutreach, callData, guidanceBanner }
 
       {/* Sticky bottom action bar for alerted patients */}
       {patient.alert && (
-        <div style={{ position: "sticky", bottom: 0, background: "white", borderTop: `1px solid ${c.border}`, padding: "12px 24px", display: "flex", gap: 12, boxShadow: "0 -4px 20px rgba(0,0,0,0.08)", zIndex: 10 }}>
-          <button onClick={onOutreach} style={{ flex: 1, background: DS.color.slate[950], color: "white", border: "none", padding: "12px 16px", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <Icon name="phone" size={14} color="white" /> Initiate Outreach
-          </button>
-          <button style={{ flex: 1, background: "white", color: c.text, border: `1px solid ${c.border}`, padding: "12px 16px", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font }}>
-            Open in EHR
-          </button>
-          <button onClick={onBack} style={{ padding: "12px 16px", background: "white", color: c.textLight, border: `1px solid ${c.border}`, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: c.font }}>
-            Dismiss
-          </button>
+        <div style={{ position: "sticky", bottom: 0, background: isScriptedDemo ? "#0C1420" : "white", borderTop: `1px solid ${isScriptedDemo ? "#1C2B40" : c.border}`, padding: "12px 24px", display: "flex", gap: 12, boxShadow: isScriptedDemo ? "0 -4px 20px rgba(0,0,0,0.3)" : "0 -4px 20px rgba(0,0,0,0.08)", zIndex: 10 }}>
+          {isScriptedDemo ? (
+            <div style={{ position: "relative", width: "100%" }}>
+              <button onClick={onOutreach} style={{ width: "100%", background: "#D97706", color: "white", border: "none", padding: "14px 16px", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <Icon name="phone" size={14} color="white" /> Contact Patient
+              </button>
+              {showContactPointer && (
+                <div style={{ position: "absolute", right: 24, top: "50%", transform: "translateY(-50%)", animation: "pointerBounce 0.6s ease infinite alternate", pointerEvents: "none", zIndex: 50 }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="#F59E0B"><path d="M4 0 L4 20 L8 16 L12 24 L14 22 L10 14 L16 14 Z"/></svg>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <button onClick={onOutreach} style={{ flex: 1, background: DS.color.slate[950], color: "white", border: "none", padding: "12px 16px", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <Icon name="phone" size={14} color="white" /> Initiate Outreach
+              </button>
+              <button style={{ flex: 1, background: "white", color: c.text, border: `1px solid ${c.border}`, padding: "12px 16px", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font }}>
+                Open in EHR
+              </button>
+              <button onClick={onBack} style={{ padding: "12px 16px", background: "white", color: c.textLight, border: `1px solid ${c.border}`, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: c.font }}>
+                Dismiss
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -3193,6 +3360,16 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false }) {
   const [riskOverrides, setRiskOverrides] = useState({}); // { patientId: { score, level } }
   const [epicPatients, setEpicPatients] = useState([]);
   const [epicLoading, setEpicLoading] = useState(false);
+
+  // Scripted demo: auto-navigate to Sarah after 1.5s
+  useEffect(() => {
+    if (!isScriptedDemo || view !== "roster") return;
+    const timer = setTimeout(() => {
+      const sarah = ROSTER.find(p => p.id === 1);
+      if (sarah) { setSelectedPatient(sarah); setView("patient"); setShowDetailBanner(true); }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [isScriptedDemo, view]);
 
   // Listen for cross-tab escalation events from patient chat (Video 2 demo moment)
   useEffect(() => {
@@ -3267,7 +3444,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false }) {
   };
 
   if (view === "voiceCall") {
-    return <VoiceCallDemo patient={selectedPatient} onComplete={(data) => {
+    return <VoiceCallDemo patient={selectedPatient} autoStartScripted={isScriptedDemo} onComplete={(data) => {
       if (data) {
         setCallTranscripts(prev => ({ ...prev, [selectedPatient.id]: data }));
         if (data.riskScore) {
@@ -3297,6 +3474,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false }) {
         <PatientDetail
           patient={selectedPatient}
           onBack={() => setView("roster")}
+          isScriptedDemo={isScriptedDemo}
           onOutreach={() => {
             if (isScriptedDemo) {
               setView("voiceCall");
@@ -3316,6 +3494,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false }) {
         <RosterView
           onSelect={(p) => { setSelectedPatient(enrichPatient(p)); setView("patient"); setShowDetailBanner(isScriptedDemo); }}
           epicPatients={epicPatients} epicLoading={epicLoading} onFetchEpic={fetchEpicPatients} riskOverrides={riskOverrides}
+          isScriptedDemo={isScriptedDemo}
           guidanceBanner={showRosterBanner ? (
             <ScriptedGuidanceBanner
               text="Sarah Chen has been flagged. Click her name, review the AI alert, then click Contact Patient to start the voice call."
