@@ -1,21 +1,20 @@
-import React, { useState } from 'react';
-import { DemoShell, BackButton } from './DemoShell';
-import AboutSlide from './AboutSlide';
-import ScenarioSlide from './ScenarioSlide';
-
 export default function ScriptedDemoPage({ navigate }) {
-  const [step, setStep] = useState('about');
-
   return (
-    <DemoShell>
-      <BackButton onClick={() => step === 'about' ? navigate('/demo') : setStep('about')} />
-      <div style={{ width: '100%', background: '#000' }}>
-        <div style={{
-          position: 'relative',
-          paddingBottom: '56.25%',
-          height: 0,
-          width: '100%',
-        }}>
+    <div style={{ minHeight: '100vh', background: '#0C1420' }}>
+
+      {/* Back link */}
+      <div style={{ padding: '20px 24px' }}>
+        <span
+          onClick={() => navigate('/demo')}
+          style={{ fontSize: 13, color: '#556882', textDecoration: 'none', cursor: 'pointer' }}
+        >
+          &larr; Back
+        </span>
+      </div>
+
+      {/* Video — full width, 16:9 responsive */}
+      <div style={{ width: '100%', background: '#000', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
           <iframe
             src="https://www.loom.com/embed/ab1c85d821684a919d8d7574b5ba2055"
             style={{
@@ -30,19 +29,7 @@ export default function ScriptedDemoPage({ navigate }) {
           />
         </div>
       </div>
-      {step === 'about' ? (
-        <AboutSlide
-          onBack={() => navigate('/demo')}
-          onSkip={() => navigate('/coordinator?demo=scripted')}
-          onNext={() => setStep('scenario')}
-        />
-      ) : (
-        <ScenarioSlide
-          onBack={() => setStep('about')}
-          onEnter={() => navigate('/coordinator?demo=scripted')}
-          enterLabel="Enter Demo &#8594;"
-        />
-      )}
-    </DemoShell>
+
+    </div>
   );
 }
