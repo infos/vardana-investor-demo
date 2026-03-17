@@ -38,14 +38,12 @@ export default function ScriptedDemoPage({ navigate }) {
           </p>
         </div>
       ) : (
-        <div style={{ width: '100%', background: '#000', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
-            <iframe
-              src="https://www.loom.com/embed/8239272d88254e539d3952690b51c33f?hide_owner=true&hide_share=true&hide_title=true&hideEmbedTopBar=true"
-              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-              allowFullScreen
-            />
-          </div>
+        <div style={{ width: '100%', maxHeight: 'calc(100vh - 80px)', aspectRatio: '16 / 9', background: '#000', position: 'relative', overflow: 'hidden' }}>
+          <iframe
+            src="https://www.loom.com/embed/8239272d88254e539d3952690b51c33f?hide_owner=true&hide_share=true&hide_title=true&hideEmbedTopBar=true"
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+            allowFullScreen
+          />
         </div>
       )}
 
