@@ -539,7 +539,7 @@ function OutreachModal({ patient, onClose, onInitiate }) {
 }
 
 // ── Voice Call Demo ──
-function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitDemo = null }) {
+function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoStartLive = false, onExitDemo = null }) {
   const isMobileView = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState("transcript"); // transcript | chart (mobile only)
   // ── state ──
@@ -1020,13 +1020,16 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitD
   // Returns true if Cartesia TTS succeeded, false if it failed
   // No browser TTS fallback mid-call — voice switching is jarring
   const speakAI = async (text, allowBrowserFallback = false) => {
+    // Kill any active speech recognition before AI speaks — prevents 2 voices overlapping
+    if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
+    setIsListening(false);
     setActiveSpeaker("AI");
     try {
       const url = await fetchAudio(text, "AI");
       await playAudioUrl(url);
-      // Echo guard: brief pause after AI audio ends before mic opens,
+      // Echo guard: pause after AI audio ends before mic opens,
       // prevents the mic from picking up the tail end of AI's own speech
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise(r => setTimeout(r, 800));
       setActiveSpeaker(null);
       return true;
     } catch {
@@ -1039,7 +1042,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitD
           utt.volume = mutedRef.current ? 0 : 1;
           await new Promise(resolve => { utt.onend = utt.onerror = resolve; synth.cancel(); synth.speak(utt); });
         }
-        await new Promise(r => setTimeout(r, 400)); // echo guard
+        await new Promise(r => setTimeout(r, 800)); // echo guard
         setActiveSpeaker(null);
         return true; // browser fallback counts as OK for greeting
       }
@@ -1259,6 +1262,14 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitD
     }
     launchCall(() => runLiveConversation());
   };
+
+  // Auto-start live call when autoStartLive is set (skip setup screen)
+  const autoStartLiveRef = useRef(false);
+  useEffect(() => {
+    if (!autoStartLive || autoStartLiveRef.current) return;
+    autoStartLiveRef.current = true;
+    startLiveDemo();
+  }, [autoStartLive]);
 
   const submitTextInput = () => {
     const text = textInput.trim();
@@ -1705,14 +1716,17 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitD
             )}
             {transcript.map((line, i) => {
               const speaking = i === transcript.length - 1 && activeSpeaker === line.speaker;
+              const isPatientLine = line.speaker !== "AI";
+              const patientLabel = demoMode === "live" ? "You" : patient.name;
+              const patientInitial = demoMode === "live" ? "Y" : patient.name.charAt(0);
               return (
                 <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", animation: "slideUp 0.25s ease" }}>
                   <div style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: speaking ? (line.speaker === "AI" ? "rgba(56,189,248,0.2)" : "rgba(167,139,250,0.2)") : "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, marginTop: 3, border: speaking ? `1px solid ${line.speaker === "AI" ? "rgba(56,189,248,0.5)" : "rgba(167,139,250,0.5)"}` : "1px solid transparent", transition: "all 0.3s" }}>
-                    {line.speaker === "AI" ? "V" : patient.name.charAt(0)}
+                    {line.speaker === "AI" ? "V" : patientInitial}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: line.speaker === "AI" ? (speaking ? "#38BDF8" : "#334155") : (speaking ? "#A78BFA" : "#334155"), marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em", transition: "color 0.3s" }}>
-                      {line.speaker === "AI" ? "Vardana AI" : patient.name}
+                      {line.speaker === "AI" ? "Vardana AI" : patientLabel}
                     </div>
                     <div style={{ fontSize: 13, color: speaking ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.72)", lineHeight: 1.6, background: speaking ? (line.speaker === "AI" ? "rgba(56,189,248,0.08)" : "rgba(167,139,250,0.08)") : "rgba(255,255,255,0.03)", padding: "9px 13px", borderRadius: 10, border: `1px solid ${speaking ? (line.speaker === "AI" ? "rgba(56,189,248,0.25)" : "rgba(167,139,250,0.25)") : "rgba(255,255,255,0.05)"}`, transition: "all 0.35s" }}>
                       {line.text}
@@ -1761,7 +1775,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitD
                 value={textInput}
                 onChange={e => setTextInput(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && submitTextInput()}
-                placeholder={isListening ? `Or type ${patient.name.split(' ')[0]}'s response...` : `Type ${patient.name.split(' ')[0]}'s response...`}
+                placeholder={isListening ? "Or type your response..." : "Type your response..."}
                 style={{ flex: 1, padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "white", fontSize: 12, fontFamily: c.font, outline: "none" }}
               />
               <button onClick={submitTextInput} disabled={!textInput.trim()}
@@ -2821,7 +2835,7 @@ function EpicPatientDetail({ patient, onOutreach, callData }) {
             No AI check-in has been conducted yet. Initiate a voice call to have the AI concierge assess this patient using their live Epic FHIR data.
           </div>
           <button onClick={onOutreach} style={{ padding: "10px 16px", borderRadius: DS.radius.md, background: DS.color.slate[900], color: "white", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", gap: 6 }}>
-            <Icon name="chat" size={14} color="white" /> Start AI Check-in
+            <Icon name="phone" size={14} color="white" /> Contact Patient
           </button>
         </div>
       )}
@@ -3181,9 +3195,12 @@ function PatientDetail({ patient, onBack, onOutreach, callData, guidanceBanner, 
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={onOutreach} style={{ padding: "10px 18px", borderRadius: 10, background: DS.color.slate[950], color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", gap: 6, boxShadow: c.shadowMd }}>
-            <Icon name="phone" size={14} color="white" /> Contact Patient
-          </button>
+          {/* Hide header CTA when alert sticky bar is visible (avoid duplicate) */}
+          {!patient.alert && (
+            <button onClick={onOutreach} style={{ padding: "10px 18px", borderRadius: 10, background: DS.color.slate[950], color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", gap: 6, boxShadow: c.shadowMd }}>
+              <Icon name="phone" size={14} color="white" /> Contact Patient
+            </button>
+          )}
           {patient.risk != null && (
             <div style={{ textAlign: "right" }}>
               <RiskBadge level={patient.riskLevel} score={patient.risk} />
@@ -3274,7 +3291,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
   const [view, setView] = useState("roster"); // roster | patient | voiceCall | smsPath
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showOutreachModal, setShowOutreachModal] = useState(false);
-  const [showRosterBanner, setShowRosterBanner] = useState(isScriptedDemo || isLiveDemo);
+  const [showRosterBanner, setShowRosterBanner] = useState(isScriptedDemo);
   const [showDetailBanner, setShowDetailBanner] = useState(isScriptedDemo);
   const [callTranscripts, setCallTranscripts] = useState({});
   const [riskOverrides, setRiskOverrides] = useState({}); // { patientId: { score, level } }
@@ -3356,7 +3373,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
   };
 
   if (view === "voiceCall") {
-    return <VoiceCallDemo patient={selectedPatient} autoStartScripted={isScriptedDemo} onExitDemo={isScriptedDemo ? onSwitchRole : null} onComplete={(data) => {
+    return <VoiceCallDemo patient={selectedPatient} autoStartScripted={isScriptedDemo} autoStartLive={isLiveDemo} onExitDemo={isScriptedDemo ? onSwitchRole : null} onComplete={(data) => {
       if (data) {
         setCallTranscripts(prev => ({ ...prev, [selectedPatient.id]: data }));
         if (data.riskScore) {
@@ -3415,9 +3432,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
           isScriptedDemo={isScriptedDemo}
           guidanceBanner={showRosterBanner ? (
             <ScriptedGuidanceBanner
-              text={isLiveDemo
-                ? "Explore at your own pace. Click Sarah Chen to review her AI alert."
-                : "Sarah Chen has been flagged. Click \"Call Patient\" to start the AI voice call."}
+              text="Sarah Chen has been flagged. Click &quot;Call Patient&quot; to start the AI voice call."
               onDismiss={() => setShowRosterBanner(false)}
             />
           ) : null}
