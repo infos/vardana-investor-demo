@@ -17,7 +17,7 @@ export default function ScriptedDemoPage({ navigate }) {
       {isMobile ? (
         <div style={{ padding: '40px 24px', textAlign: 'center' }}>
           <a
-            href="https://www.loom.com/share/ab1c85d821684a919d8d7574b5ba2055"
+            href="https://www.loom.com/share/8239272d88254e539d3952690b51c33f"
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -41,7 +41,7 @@ export default function ScriptedDemoPage({ navigate }) {
         <div style={{ width: '100%', background: '#000', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
             <iframe
-              src="https://www.loom.com/embed/ab1c85d821684a919d8d7574b5ba2055?hide_owner=true&hide_share=true&hide_title=true&hideEmbedTopBar=true"
+              src="https://www.loom.com/embed/8239272d88254e539d3952690b51c33f?hide_owner=true&hide_share=true&hide_title=true&hideEmbedTopBar=true"
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
               allowFullScreen
             />
