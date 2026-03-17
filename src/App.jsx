@@ -539,7 +539,7 @@ function OutreachModal({ patient, onClose, onInitiate }) {
 }
 
 // ── Voice Call Demo ──
-function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitDemo = null }) {
+function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoStartLive = false, onExitDemo = null }) {
   const isMobileView = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState("transcript"); // transcript | chart (mobile only)
   // ── state ──
@@ -1262,6 +1262,14 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitD
     }
     launchCall(() => runLiveConversation());
   };
+
+  // Auto-start live call when autoStartLive is set (skip setup screen)
+  const autoStartLiveRef = useRef(false);
+  useEffect(() => {
+    if (!autoStartLive || autoStartLiveRef.current) return;
+    autoStartLiveRef.current = true;
+    startLiveDemo();
+  }, [autoStartLive]);
 
   const submitTextInput = () => {
     const text = textInput.trim();
@@ -2827,7 +2835,7 @@ function EpicPatientDetail({ patient, onOutreach, callData }) {
             No AI check-in has been conducted yet. Initiate a voice call to have the AI concierge assess this patient using their live Epic FHIR data.
           </div>
           <button onClick={onOutreach} style={{ padding: "10px 16px", borderRadius: DS.radius.md, background: DS.color.slate[900], color: "white", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", gap: 6 }}>
-            <Icon name="chat" size={14} color="white" /> Start AI Check-in
+            <Icon name="phone" size={14} color="white" /> Contact Patient
           </button>
         </div>
       )}
@@ -3187,9 +3195,12 @@ function PatientDetail({ patient, onBack, onOutreach, callData, guidanceBanner, 
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={onOutreach} style={{ padding: "10px 18px", borderRadius: 10, background: DS.color.slate[950], color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", gap: 6, boxShadow: c.shadowMd }}>
-            <Icon name="phone" size={14} color="white" /> Contact Patient
-          </button>
+          {/* Hide header CTA when alert sticky bar is visible (avoid duplicate) */}
+          {!patient.alert && (
+            <button onClick={onOutreach} style={{ padding: "10px 18px", borderRadius: 10, background: DS.color.slate[950], color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", gap: 6, boxShadow: c.shadowMd }}>
+              <Icon name="phone" size={14} color="white" /> Contact Patient
+            </button>
+          )}
           {patient.risk != null && (
             <div style={{ textAlign: "right" }}>
               <RiskBadge level={patient.riskLevel} score={patient.risk} />
@@ -3280,7 +3291,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
   const [view, setView] = useState("roster"); // roster | patient | voiceCall | smsPath
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showOutreachModal, setShowOutreachModal] = useState(false);
-  const [showRosterBanner, setShowRosterBanner] = useState(isScriptedDemo || isLiveDemo);
+  const [showRosterBanner, setShowRosterBanner] = useState(isScriptedDemo);
   const [showDetailBanner, setShowDetailBanner] = useState(isScriptedDemo);
   const [callTranscripts, setCallTranscripts] = useState({});
   const [riskOverrides, setRiskOverrides] = useState({}); // { patientId: { score, level } }
@@ -3362,7 +3373,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
   };
 
   if (view === "voiceCall") {
-    return <VoiceCallDemo patient={selectedPatient} autoStartScripted={isScriptedDemo} onExitDemo={isScriptedDemo ? onSwitchRole : null} onComplete={(data) => {
+    return <VoiceCallDemo patient={selectedPatient} autoStartScripted={isScriptedDemo} autoStartLive={isLiveDemo} onExitDemo={isScriptedDemo ? onSwitchRole : null} onComplete={(data) => {
       if (data) {
         setCallTranscripts(prev => ({ ...prev, [selectedPatient.id]: data }));
         if (data.riskScore) {
@@ -3421,9 +3432,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
           isScriptedDemo={isScriptedDemo}
           guidanceBanner={showRosterBanner ? (
             <ScriptedGuidanceBanner
-              text={isLiveDemo
-                ? "Explore at your own pace. Click Sarah Chen to review her AI alert."
-                : "Sarah Chen has been flagged. Click \"Call Patient\" to start the AI voice call."}
+              text="Sarah Chen has been flagged. Click &quot;Call Patient&quot; to start the AI voice call."
               onDismiss={() => setShowRosterBanner(false)}
             />
           ) : null}
