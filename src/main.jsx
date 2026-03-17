@@ -4,6 +4,7 @@ import App from './App.jsx'
 import HomePage from './HomePage.jsx'
 import DemoPage from './DemoPage.jsx'
 import ScriptedDemoPage from './demo/ScriptedDemoPage.jsx'
+import RecordedDemoPage from './demo/RecordedDemoPage.jsx'
 import LiveDemoPage from './demo/LiveDemoPage.jsx'
 import ROICalculator from './ROICalculator.jsx'
 
@@ -26,6 +27,7 @@ function Router() {
   if (pathname === '/coordinator') return <App initialRole="coordinator" navigate={navigate} />;
   if (pathname === '/patient') return <App initialRole="patient" navigate={navigate} />;
   if (pathname === '/demo/scripted') return <ScriptedDemoPage navigate={navigate} />;
+  if (pathname === '/demo/recorded') return <RecordedDemoPage navigate={navigate} />;
   if (pathname === '/demo/live') return <LiveDemoPage navigate={navigate} />;
   if (pathname === '/demo') return <DemoPage navigate={navigate} />;
   if (pathname === '/roi') return <ROICalculator />;
