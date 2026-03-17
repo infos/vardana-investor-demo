@@ -486,49 +486,14 @@ function RosterView({ onSelect, onCallPatient, epicPatients = [], epicLoading, o
 
 // ── Outreach Modal ──
 function OutreachModal({ patient, onClose, onInitiate }) {
-  const [channel, setChannel] = useState("voice");
-  const [timing, setTiming] = useState("now");
-  const [schedDate, setSchedDate] = useState("2026-03-01");
-  const [schedTime, setSchedTime] = useState("10:00");
-
-  const channels = [
-    {
-      id: "voice",
-      iconName: "phone",
-      label: "Voice Call",
-      badge: "Demo",
-      badgeColor: c.accent,
-      description: "AI concierge calls the patient directly. Structured conversation captures symptoms, vitals context, and generates a clinical summary. Typical call: 3–5 minutes.",
-      detail: "Best for: complex assessments, high-risk patients, first post-discharge check-in",
-    },
-    {
-      id: "sms",
-      iconName: "sms",
-      label: "SMS",
-      badge: null,
-      description: "Patient receives a text with a check-in link. Can complete a structured assessment asynchronously. Message includes an app download link for richer ongoing monitoring.",
-      detail: "Best for: routine check-ins, lower-acuity patients, patients who prefer async",
-    },
-    {
-      id: "app",
-      iconName: "smartphone",
-      label: "App Notification",
-      badge: null,
-      description: "Push notification to the Vardana patient app. Patient must have the app installed. Opens directly into a guided check-in with full vitals context from Apple/Google Health.",
-      detail: "Best for: engaged patients already using the app",
-    },
-  ];
-
-  const sel = channels.find(ch => ch.id === channel);
-
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15,26,42,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(4px)" }}>
-      <div style={{ background: c.card, borderRadius: 16, width: "100%", maxWidth: 560, boxShadow: "0 24px 64px rgba(0,0,0,0.2)", overflow: "hidden", fontFamily: c.font }}>
+      <div style={{ background: c.card, borderRadius: 16, width: "100%", maxWidth: 480, boxShadow: "0 24px 64px rgba(0,0,0,0.2)", overflow: "hidden", fontFamily: c.font }}>
 
         {/* Header */}
         <div style={{ background: DS.color.slate[950], padding: "18px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "white" }}>Initiate Outreach</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "white" }}>Contact Patient</div>
             <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>{patient.name}{patient.day != null ? ` · Day ${patient.day}` : ""}{patient.risk != null ? ` · Risk ${patient.risk}/100` : ""}</div>
           </div>
           <button onClick={onClose} style={{ background: "rgba(255,255,255,0.12)", border: "none", color: "white", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
@@ -546,55 +511,27 @@ function OutreachModal({ patient, onClose, onInitiate }) {
             </div>
           )}
 
-          {/* Channel selection */}
-          <div style={{ fontSize: 12, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Select Channel</div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-            {channels.map(ch => (
-              <button key={ch.id} onClick={() => setChannel(ch.id)} style={{ flex: 1, padding: "12px 8px", borderRadius: 10, border: `2px solid ${channel === ch.id ? c.accent : c.border}`, background: channel === ch.id ? c.accentLight : c.card, cursor: "pointer", fontFamily: c.font, transition: "all 0.15s", position: "relative" }}>
-                {ch.badge && (
-                  <span style={{ position: "absolute", top: -8, right: -4, fontSize: 9, fontWeight: 800, background: ch.badgeColor, color: "white", padding: "2px 6px", borderRadius: 4 }}>{ch.badge}</span>
-                )}
-                <div style={{ marginBottom: 4, display: "flex", justifyContent: "center" }}><Icon name={ch.iconName} size={20} color={channel === ch.id ? c.accent : c.textMed} /></div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: channel === ch.id ? c.accent : c.text }}>{ch.label}</div>
-              </button>
-            ))}
-          </div>
-
-          {/* Channel description */}
-          <div style={{ background: c.borderLight, borderRadius: 10, padding: "12px 14px", marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: c.textMed, lineHeight: 1.5 }}>{sel.description}</div>
-            <div style={{ fontSize: 12, color: c.textLight, marginTop: 6 }}>{sel.detail}</div>
-          </div>
-
-          {/* Timing */}
-          <div style={{ fontSize: 12, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Timing</div>
-          <div style={{ display: "flex", gap: 8, marginBottom: timing === "scheduled" ? 12 : 20 }}>
-            {["now", "scheduled"].map(t => (
-              <button key={t} onClick={() => setTiming(t)} style={{ flex: 1, padding: "10px 14px", borderRadius: 10, border: `2px solid ${timing === t ? c.accent : c.border}`, background: timing === t ? c.accentLight : c.card, cursor: "pointer", fontFamily: c.font, fontSize: 13, fontWeight: 700, color: timing === t ? c.accent : c.textMed, transition: "all 0.15s" }}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>{t === "now" ? <><Icon name="alert" size={13} /> Immediately</> : <><Icon name="calendar" size={13} /> Schedule</>}</span>
-              </button>
-            ))}
-          </div>
-
-          {timing === "scheduled" && (
-            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, marginBottom: 4 }}>DATE</div>
-                <input type="date" value={schedDate} onChange={e => setSchedDate(e.target.value)} style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${c.border}`, fontFamily: c.font, fontSize: 13, color: c.text, outline: "none" }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, marginBottom: 4 }}>TIME</div>
-                <input type="time" value={schedTime} onChange={e => setSchedTime(e.target.value)} style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${c.border}`, fontFamily: c.font, fontSize: 13, color: c.text, outline: "none" }} />
-              </div>
+          {/* Voice / Chat selection */}
+          <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+            {/* Voice Call */}
+            <div style={{ flex: 1, background: c.borderLight, border: `2px solid ${c.accent}30`, borderRadius: 14, padding: "20px 16px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: "linear-gradient(135deg, #0EA5E9, #0284C7)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}><Icon name="phone" size={22} color="white" /></div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: c.text, marginBottom: 4 }}>Voice Call</div>
+              <div style={{ fontSize: 11, color: c.textLight, lineHeight: 1.5, marginBottom: 14, flex: 1 }}>AI concierge calls the patient directly. Natural conversation captures symptoms and vitals.</div>
+              <button onClick={() => onInitiate("voice", "now")} style={{ width: "100%", padding: "10px", borderRadius: 9, background: "linear-gradient(135deg, #0EA5E9, #0284C7)", color: "white", border: "none", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: c.font }}>Start Voice Call</button>
+              <div style={{ fontSize: 10, color: c.textLight, marginTop: 6 }}>Requires microphone</div>
             </div>
-          )}
+            {/* Chat */}
+            <div style={{ flex: 1, background: c.borderLight, border: `2px solid ${c.purple}30`, borderRadius: 14, padding: "20px 16px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: `linear-gradient(135deg, ${c.purple}, #7C3AED)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}><Icon name="sms" size={22} color="white" /></div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: c.text, marginBottom: 4 }}>Chat</div>
+              <div style={{ fontSize: 11, color: c.textLight, lineHeight: 1.5, marginBottom: 14, flex: 1 }}>AI concierge chats with the patient. Same assessment, at the patient's pace.</div>
+              <button onClick={() => onInitiate("sms", "now")} style={{ width: "100%", padding: "10px", borderRadius: 9, background: `linear-gradient(135deg, ${c.purple}, #7C3AED)`, color: "white", border: "none", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: c.font }}>Start Chat</button>
+              <div style={{ fontSize: 10, color: c.textLight, marginTop: 6 }}>No mic needed</div>
+            </div>
+          </div>
 
-          {/* CTA */}
-          <button onClick={() => onInitiate(channel, timing, schedDate, schedTime)} style={{ width: "100%", padding: "14px", borderRadius: DS.radius.md, background: DS.color.slate[950], color: "white", border: "none", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <Icon name={channel === "voice" ? "phone" : channel === "sms" ? "sms" : "smartphone"} size={16} color="white" />
-            {timing === "now" ? `Initiate ${sel.label} Now` : `Schedule ${sel.label} for ${schedTime}`}
-          </button>
-          <button onClick={onClose} style={{ width: "100%", padding: "10px", marginTop: 8, border: "none", background: "none", color: c.textLight, fontSize: 13, cursor: "pointer", fontFamily: c.font }}>Cancel</button>
+          <button onClick={onClose} style={{ width: "100%", padding: "10px", border: "none", background: "none", color: c.textLight, fontSize: 13, cursor: "pointer", fontFamily: c.font }}>Cancel</button>
         </div>
       </div>
     </div>
@@ -1483,42 +1420,16 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, onExitD
           </div>
         )}
 
-        {/* Two mode cards */}
-        <div style={{ display: "flex", flexDirection: isMobileView ? "column" : "row", gap: 12, marginBottom: 12 }}>
-          {/* Live Demo */}
-          <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(56,189,248,0.2)", borderRadius: 14, padding: "18px 16px", display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg, #0EA5E9, #0284C7)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="phone" size={14} color="white" /></div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "white" }}>Live Demo</div>
-              <div style={{ fontSize: 9, fontWeight: 700, color: "#38BDF8", background: "rgba(56,189,248,0.15)", borderRadius: 4, padding: "2px 6px", textTransform: "uppercase" }}>Recommended</div>
-            </div>
-            <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.5, marginBottom: 14, flex: 1 }}>
-              You speak as {patient.name.split(' ')[0]}. Claude AI responds in real-time as the care concierge. Natural conversation with live FHIR queries.
-            </div>
-            <button onClick={startLiveDemo}
-              style={{ width: "100%", padding: "11px", borderRadius: 9, background: "linear-gradient(135deg, #0EA5E9, #0284C7)", color: "white", border: "none", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: c.font }}>
-              Start Live Demo
-            </button>
-            <div style={{ fontSize: 10, color: "#475569", textAlign: "center", marginTop: 6 }}>Requires microphone · Chrome</div>
+        {/* Start Call */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.5, marginBottom: 14, textAlign: "center" }}>
+            You speak as {patient.name.split(' ')[0]}. Claude AI responds in real-time as the care concierge. Natural conversation with live FHIR queries.
           </div>
-
-          {/* Scripted Demo — Sarah Chen only */}
-          {!isEpic && (
-          <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: "18px 16px", display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg, #F59E0B, #D97706)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>🎙</div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "white" }}>Scripted Demo</div>
-            </div>
-            <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.5, marginBottom: 14, flex: 1 }}>
-              Pre-rendered {VOICE_TRANSCRIPT.length}-line conversation via ElevenLabs TTS. Fully automated — just watch and listen.
-            </div>
-            <button onClick={() => { unlockAudio(); setDemoMode("scripted"); startElevenLabs(); }}
-              style={{ width: "100%", padding: "11px", borderRadius: 9, background: "linear-gradient(135deg, #F59E0B, #D97706)", color: "white", border: "none", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: c.font }}>
-              🎙 Start Scripted Demo
-            </button>
-            <div style={{ fontSize: 10, color: "#475569", textAlign: "center", marginTop: 6 }}>~90 seconds · No mic needed</div>
-          </div>
-          )}
+          <button onClick={startLiveDemo}
+            style={{ width: "100%", padding: "14px", borderRadius: 10, background: "linear-gradient(135deg, #0EA5E9, #0284C7)", color: "white", border: "none", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <Icon name="phone" size={16} color="white" /> Start Call
+          </button>
+          <div style={{ fontSize: 10, color: "#475569", textAlign: "center", marginTop: 8 }}>Requires microphone · Chrome</div>
         </div>
 
         <button onClick={() => onComplete(null)}
@@ -2447,13 +2358,11 @@ function AIReasoningCard({ onOutreach, onBack, isScriptedDemo = false }) {
           </div>
         )}
 
-        {/* Action buttons */}
-        <div style={{ padding: "16px 24px", display: "flex", gap: 10, background: DS.color.slate[50] }}>
-          <button onClick={onOutreach} style={{ flex: 2, padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.slate[950], color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: DS.transition.fast }}>
-            <Icon name="phone" size={14} color="white" /> Initiate Outreach
+        {/* Action button */}
+        <div style={{ padding: "16px 24px", background: DS.color.slate[50] }}>
+          <button onClick={onOutreach} style={{ width: "100%", padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.slate[950], color: "white", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: DS.transition.fast }}>
+            <Icon name="phone" size={14} color="white" /> Contact Patient
           </button>
-          <button onClick={() => setShowEHR(true)} style={{ flex: 1, padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.canvas.white, color: c.text, border: `1px solid ${DS.color.border.default}`, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon name="clipboard" size={14} color={c.textMed} /> Open in EHR</button>
-          <button onClick={onBack} style={{ padding: "13px 16px", borderRadius: DS.radius.md, background: DS.color.canvas.white, color: c.textLight, border: `1px solid ${DS.color.border.subtle}`, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: c.font }}>Dismiss</button>
         </div>
         </>
       )}
@@ -3314,17 +3223,9 @@ function PatientDetail({ patient, onBack, onOutreach, callData, guidanceBanner, 
               )}
             </div>
           ) : (
-            <>
-              <button onClick={onOutreach} style={{ flex: 1, background: DS.color.slate[950], color: "white", border: "none", padding: "12px 16px", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                <Icon name="phone" size={14} color="white" /> Initiate Outreach
+            <button onClick={onOutreach} style={{ width: "100%", background: DS.color.slate[950], color: "white", border: "none", padding: "12px 16px", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <Icon name="phone" size={14} color="white" /> Contact Patient
               </button>
-              <button style={{ flex: 1, background: "white", color: c.text, border: `1px solid ${c.border}`, padding: "12px 16px", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: c.font }}>
-                Open in EHR
-              </button>
-              <button onClick={onBack} style={{ padding: "12px 16px", background: "white", color: c.textLight, border: `1px solid ${c.border}`, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: c.font }}>
-                Dismiss
-              </button>
-            </>
           )}
         </div>
       )}
