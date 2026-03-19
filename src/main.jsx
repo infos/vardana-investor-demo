@@ -7,6 +7,8 @@ import ScriptedDemoPage from './demo/ScriptedDemoPage.jsx'
 import RecordedDemoPage from './demo/RecordedDemoPage.jsx'
 import LiveDemoPage from './demo/LiveDemoPage.jsx'
 import ROICalculator from './ROICalculator.jsx'
+import AdminAnalytics from './AdminAnalytics.jsx'
+import { useAnalytics } from './useAnalytics'
 
 function navigate(path) {
   window.history.pushState({}, '', path);
@@ -15,6 +17,7 @@ function navigate(path) {
 
 function Router() {
   const [path, setPath] = useState(window.location.pathname + window.location.search);
+  useAnalytics();
 
   useEffect(() => {
     const onNav = () => setPath(window.location.pathname + window.location.search);
@@ -31,6 +34,7 @@ function Router() {
   if (pathname === '/demo/live') return <LiveDemoPage navigate={navigate} />;
   if (pathname === '/demo') return <DemoPage navigate={navigate} />;
   if (pathname === '/roi') return <ROICalculator />;
+  if (pathname === '/admin') return <AdminAnalytics />;
   return <HomePage navigate={navigate} />;
 }
 
