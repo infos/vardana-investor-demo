@@ -55,4 +55,12 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ visits, count: visits.length });
   } catch (e) {
-    console.error('[ANALYTICS_ERROR]', e.message)
+    console.error('[ANALYTICS_ERROR]', e.message);
+    return res.status(200).json({ visits: [], count: 0, error: e.message });
+  }
+}
+```
+
+Commit, deploy, then hit the raw API endpoint first before checking the admin page:
+```
+https://vardana.ai/api/analytics?secret=YOUR_SECRET
