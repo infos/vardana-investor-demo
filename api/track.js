@@ -37,7 +37,7 @@ export default async function handler(req, res) {
           Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ value: JSON.stringify(event), ex: 7776000 }),
+          body: JSON.stringify({ value: event, ex: 7776000 }),
       });
     } catch (e) {
       console.error('[DEMO_VISIT_KV_ERROR]', e.message);
