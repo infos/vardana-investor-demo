@@ -1,0 +1,11 @@
+User-agent: *
+Disallow: /demo
+Disallow: /demo/
+Disallow: /coordinator
+Disallow: /coordinator/
+Disallow: /patient
+Disallow: /patient/
+Disallow: /api/
+Disallow: /admin/
+
+Allow: /
