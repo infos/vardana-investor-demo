@@ -1,10 +1,8 @@
 // Demo analytics dashboard API — GET /api/analytics?secret=<value>
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'GET only' });
 
@@ -29,7 +27,7 @@ export default async function handler(req, res) {
       headers: { Authorization: `Bearer ${kvToken}` },
     });
     const scanData = await scanRes.json();
-    const keys = scanData.result[1];
+    const keys = scanData.result[1] || [];
 
     const visits = (
       await Promise.all(
@@ -39,7 +37,12 @@ export default async function handler(req, res) {
               headers: { Authorization: `Bearer ${kvToken}` },
             });
             const data = await r.json();
-            return data.result ? JSON.parse(data.result) : null;
+            // Handle single or double JSON encoding
+            let val = data.result;
+            while (typeof val === 'string') {
+              try { val = JSON.parse(val); } catch { break; }
+            }
+            return val && typeof val === 'object' ? val : null;
           } catch {
             return null;
           }
