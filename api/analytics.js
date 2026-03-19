@@ -33,16 +33,21 @@ module.exports = async function handler(req, res) {
               headers: { Authorization: `Bearer ${kvToken}` },
             });
             const data = await r.json();
-  console.log('[DEBUG_RAW]', JSON.stringify(data));
 
+            // data.result is a triple-encoded string — unwrap fully
             let raw = data.result;
+            while (typeof raw === 'string') {
+              try { raw = JSON.parse(raw); } catch { break; }
+            }
+            // raw is now { value: "json string", ex: number } — extract value
             if (raw && typeof raw === 'object' && raw.value) {
               raw = raw.value;
             }
-            if (typeof raw === 'string') {
-              raw = JSON.parse(raw);
+            // raw.value may still be a string — parse it
+            while (typeof raw === 'string') {
+              try { raw = JSON.parse(raw); } catch { break; }
             }
-            return raw || null;
+            return raw && typeof raw === 'object' ? raw : null;
           } catch {
             return null;
           }
