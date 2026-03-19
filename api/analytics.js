@@ -33,6 +33,7 @@ module.exports = async function handler(req, res) {
               headers: { Authorization: `Bearer ${kvToken}` },
             });
             const data = await r.json();
+  console.log('[DEBUG_RAW]', JSON.stringify(data));
 
             let raw = data.result;
             if (raw && typeof raw === 'object' && raw.value) {
