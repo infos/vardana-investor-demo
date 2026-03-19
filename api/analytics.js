@@ -15,11 +15,7 @@ export default async function handler(req, res) {
   const kvToken = process.env.KV_REST_API_TOKEN;
 
   if (!kvUrl || !kvToken) {
-    return res.status(200).json({
-      visits: [],
-      count: 0,
-      error: 'KV not configured. Check Vercel Function Logs for [DEMO_VISIT] entries.',
-    });
+    return res.status(200).json({ visits: [], count: 0, error: 'KV not configured.' });
   }
 
   try {
@@ -38,19 +34,16 @@ export default async function handler(req, res) {
             });
             const data = await r.json();
 
-            let val = data.result;
-
-            // Unwrap { value: "...", ex: ... } envelope if present
-            if (val && typeof val === 'object' && val.value !== undefined) {
-              val = val.value;
+            // data.result is { value: "json string", ex: number }
+            // Extract the value string and parse it
+            let raw = data.result;
+            if (raw && typeof raw === 'object' && raw.value) {
+              raw = raw.value;
             }
-
-            // Parse string to object (handle single or double encoding)
-            while (typeof val === 'string') {
-              try { val = JSON.parse(val); } catch { break; }
+            if (typeof raw === 'string') {
+              raw = JSON.parse(raw);
             }
-
-            return val && typeof val === 'object' && val.timestamp ? val : null;
+            return raw || null;
           } catch {
             return null;
           }
@@ -62,7 +55,4 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ visits, count: visits.length });
   } catch (e) {
-    console.error('[ANALYTICS_ERROR]', e.message);
-    return res.status(200).json({ visits: [], count: 0, error: e.message });
-  }
-}
+    console.error('[ANALYTICS_ERROR]', e.message)
