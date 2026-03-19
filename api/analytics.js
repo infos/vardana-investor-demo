@@ -37,12 +37,20 @@ export default async function handler(req, res) {
               headers: { Authorization: `Bearer ${kvToken}` },
             });
             const data = await r.json();
-            // Handle single or double JSON encoding
+
             let val = data.result;
+
+            // Unwrap { value: "...", ex: ... } envelope if present
+            if (val && typeof val === 'object' && val.value !== undefined) {
+              val = val.value;
+            }
+
+            // Parse string to object (handle single or double encoding)
             while (typeof val === 'string') {
               try { val = JSON.parse(val); } catch { break; }
             }
-            return val && typeof val === 'object' ? val : null;
+
+            return val && typeof val === 'object' && val.timestamp ? val : null;
           } catch {
             return null;
           }
