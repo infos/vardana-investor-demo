@@ -18,8 +18,9 @@ export async function POST(request: Request): Promise<Response> {
 
     console.log('[ANALYTICS]', JSON.stringify(event));
 
-    const kvUrl = process.env.KV_REST_API_URL;
-    const kvToken = process.env.KV_REST_API_TOKEN;
+    // Support both Upstash (new) and legacy Vercel KV env var names
+    const kvUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+    const kvToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
     if (kvUrl && kvToken) {
       const id = Math.random().toString(36).slice(2, 10);
@@ -65,8 +66,9 @@ export async function GET(request: Request): Promise<Response> {
       });
     }
 
-    const kvUrl = process.env.KV_REST_API_URL;
-    const kvToken = process.env.KV_REST_API_TOKEN;
+    // Support both Upstash (new) and legacy Vercel KV env var names
+    const kvUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+    const kvToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
     if (!kvUrl || !kvToken) {
       return new Response(
