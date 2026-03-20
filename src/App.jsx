@@ -2061,7 +2061,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
             </div>
 
             {/* AI Assessment */}
-            {(demoMode === "live" ? Object.keys(aiAssessment).length > 0 : transcript.length >= 6) && (
+            {(demoMode === "live" ? Object.keys(aiAssessment).length > 0 : transcript.length >= (isMarcusDemo ? 3 : 6)) && (
               <div style={{ padding: "12px 14px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>AI Assessment</div>
                 {(demoMode === "live" ? (isEpic
@@ -2070,12 +2070,22 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                       value: value || "Pending",
                       flag: value && value !== "Pending" && value !== "Normal" && value !== "None"
                     }))
-                  : [
+                  : isMarcusDemo ? [
+                  { label: "BP 158/98", value: "4-day rise", flag: true },
+                  { label: "Glucose", value: "186 mg/dL", flag: false, orange: true },
+                  { label: "Lisinopril", value: aiAssessment.lisinopril || "Pending", flag: (aiAssessment.lisinopril || "").includes("Missed") },
+                  { label: "Headache", value: aiAssessment.headache || "Pending", flag: aiAssessment.headache === "Confirmed" },
+                ] : [
                   { label: "Weight gain", value: aiAssessment.weightGain || "Pending", flag: aiAssessment.weightGain && aiAssessment.weightGain !== "Pending" },
                   { label: "Orthopnea",   value: aiAssessment.orthopnea || "Pending", flag: aiAssessment.orthopnea === "Confirmed" },
                   { label: "Ankle edema", value: aiAssessment.ankleEdema || "Pending", flag: aiAssessment.ankleEdema === "Confirmed" },
                   { label: "Adherence",   value: aiAssessment.adherence || "Pending", flag: false },
-                ]) : [
+                ]) : isMarcusDemo ? [
+                  { label: "BP 158/98", value: "4-day rise", flag: true },
+                  { label: "Glucose", value: "186 mg/dL", flag: false, orange: true },
+                  { label: "Lisinopril", value: transcript.length >= 5 ? "Missed x3 days" : "Pending", flag: transcript.length >= 5 },
+                  { label: "Headache", value: transcript.length >= 3 ? "Confirmed" : "Pending", flag: transcript.length >= 3 },
+                ] : [
                   { label: "Weight gain", value: "+2.3 lbs/48hr", flag: true },
                   { label: "Orthopnea",   value: transcript.length >= 9 ? "Confirmed" : "Pending", flag: transcript.length >= 9 },
                   { label: "Ankle edema", value: "Confirmed", flag: true },
@@ -2083,7 +2093,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                 ]).map((item, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 5 }}>
                     <span style={{ color: "#475569" }}>{item.label}</span>
-                    <span style={{ fontWeight: 700, color: item.flag ? "#F87171" : (item.value === "Pending" ? "#64748B" : "#34D399") }}>{item.value}</span>
+                    <span style={{ fontWeight: 700, color: item.flag ? "#F87171" : (item.orange ? "#D97706" : (item.value === "Pending" ? "#64748B" : "#34D399")) }}>{item.value}</span>
                   </div>
                 ))}
               </div>

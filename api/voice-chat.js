@@ -274,6 +274,50 @@ METADATA FIELDS:
 - phase: greeting | weight_review | symptoms | medications | guidance | escalation | done` + buildPacingInstruction(turn, maxTurns);
 }
 
+function buildMarcusPrompt(ctx, turn, maxTurns, riskResult) {
+  return `You are the Vardana AI Care Concierge conducting a check-in call with Marcus Williams, 58 years old, male. He is on Day 22 of a 90-day Hypertension and Diabetes Management Program.
+
+PATIENT CONTEXT:
+- Conditions: Essential hypertension (I10), Type 2 diabetes mellitus with hyperglycemia (E11.65)
+- Care coordinator: Nurse David Park
+- Primary care: Dr. Angela Torres, Internal Medicine
+- Today's BP reading: 158/98 mmHg. This is a 4-day worsening trend from his best reading of 129/80 on Day 14.
+- Fasting glucose today: 186 mg/dL (above target)
+- Medications: Lisinopril 20mg, Amlodipine 5mg, Metformin 1000mg BID, Atorvastatin 40mg, Aspirin 81mg
+- Known issue: Patient may have missed Lisinopril doses. This is not yet confirmed.
+
+CALL OBJECTIVES (in order):
+1. Ask how he is feeling today
+2. If he reports any symptom, acknowledge it clinically. Do not respond positively to symptoms.
+   A headache in the context of BP 158/98 is a relevant clinical signal. Acknowledge it directly.
+3. Ask about medication adherence, specifically whether he has been taking his blood pressure medications
+4. If headache is confirmed AND BP trend is worsening AND medication was missed:
+   escalate to coordinator. Call this a P2 alert. Name David Park as the coordinator.
+5. Ask safety screening questions: chest pain, shortness of breath, vision changes
+6. If any of those are present: direct to 911 immediately
+7. If none present: instruct patient to take it easy, avoid salty foods, stay hydrated,
+   and await David Park's call today
+
+STRICT RULES:
+- Never suggest changing, adding, or stopping any medication
+- Never diagnose
+- Never respond affirmatively ("great", "wonderful", "that's good to hear") to a symptom report
+- Always acknowledge symptoms and connect them to available data (e.g., "that headache combined with your BP reading")
+- Do not mention Vardana's technical infrastructure
+- Do not mention ElevenLabs, Claude, or any underlying technology
+
+RESPONSE FORMAT: Phone call, 2-4 sentences. Metadata LAST in <metadata> tags.
+Example: Good morning Marcus, this is the Vardana care concierge calling for your Day 22 check-in. I have pulled up your recent readings and want to talk about what I am seeing.
+<metadata>{"fhirQueries":[{"method":"GET","path":"/Patient/marcus-williams","result":"Patient loaded"}],"riskScore":${riskResult?.riskScore ?? 53},"generateAlert":false,"assessment":{"headache":"Pending","lisinopril":"Pending"},"phase":"greeting"}</metadata>
+
+METADATA FIELDS:
+- fhirQueries: FHIR queries run this turn. Use marcus-williams as the subject ID.
+- riskScore: Start at ${riskResult?.riskScore ?? 53}. Increase to 68 if headache confirmed. Increase to 73 if missed medications confirmed.
+- generateAlert: Set true when headache + BP trend + missed meds are all confirmed. This is a P2 alert.
+- assessment: Track confirmed findings. Keys: headache (Pending or Confirmed), lisinopril (Pending or Missed x3 days).
+- phase: greeting | symptoms | medications | guidance | escalation | done` + buildPacingInstruction(turn, maxTurns);
+}
+
 function buildSystemPrompt(ctx, turn, maxTurns, riskResult, vitals, symptoms) {
   const conditionsList = (ctx.conditions || []).filter(c => c.status === 'active').map(c => c.text).join(', ') || 'None recorded';
   const medsList       = (ctx.medications || []).map(m => `${m.name}${m.dosage ? ' (' + m.dosage + ')' : ''}`).join(', ') || 'None recorded';
@@ -563,9 +607,12 @@ export default async function handler(req, res) {
     }
 
     // ── 6. Build system prompt (non-emergency) ──────────────────────────────
-    let systemPrompt = patientContext
-      ? buildSystemPrompt(patientContext, turn, maxTurns, riskResult, vitals, symptoms)
-      : buildSarahPrompt(turn, maxTurns, riskResult, vitals, symptoms, labs);
+    const isMarcusContext = patientContext && /marcus/i.test(patientContext.name || '');
+    let systemPrompt = isMarcusContext
+      ? buildMarcusPrompt(patientContext, turn, maxTurns, riskResult)
+      : patientContext
+        ? buildSystemPrompt(patientContext, turn, maxTurns, riskResult, vitals, symptoms)
+        : buildSarahPrompt(turn, maxTurns, riskResult, vitals, symptoms, labs);
 
     // Chat mode: cap response length to 2-3 sentences
     if (chatMode) {
@@ -603,7 +650,9 @@ export default async function handler(req, res) {
       fhirQueries:  [],
       riskScore:    riskResult.riskScore,
       generateAlert: riskResult.riskLevel === 'high' || riskResult.riskLevel === 'critical',
-      assessment:   patientContext ? {} : { weightGain: 'Pending', orthopnea: 'Pending', ankleEdema: 'Pending', adherence: 'Pending' },
+      assessment:   isMarcusContext
+        ? { headache: 'Pending', lisinopril: 'Pending' }
+        : patientContext ? {} : { weightGain: 'Pending', orthopnea: 'Pending', ankleEdema: 'Pending', adherence: 'Pending' },
       phase:        'greeting',
     };
     if (metaMatch) {
