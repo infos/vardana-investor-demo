@@ -1081,7 +1081,14 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   };
 
   // ── Live demo functions ──
+  // Echo guard: never start speech recognition while AI audio is playing.
+  // speakAI already kills recognition and waits 800ms after playback, but this
+  // adds a safety check so the mic never opens during AI speech.
   const startListening = () => new Promise((resolve, reject) => {
+    // Block if AI is currently speaking — prevents echo pickup
+    if (audioRef.current && audioRef.current._src && audioRef.current._src.playbackState === 2) {
+      return reject(new Error("ai-speaking"));
+    }
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRec) return reject(new Error("Speech recognition not available"));
     const rec = new SpeechRec();
@@ -1248,13 +1255,18 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     setConversationHistory([...history]);
 
     // AI acknowledges greeting and transitions to check-in
-    const negativePattern = /\b(not\s+(so\s+)?(good|great|well|fine)|bad|terrible|awful|horrible|rough|sick|worse|pain|hurt|struggling|miserable|don'?t\s+feel\s+(so\s+)?(good|great|well))\b/i;
+    const negativePattern = /\b(not\s+(so\s+)?(good|great|well|fine)|bad|terrible|awful|horrible|rough|sick|worse|pain|hurt|struggling|miserable|don'?t\s+feel\s+(so\s+)?(good|great|well)|headache|head\s*ache|dizzy|dizziness|nausea|nauseous|ache|aching|sore|soreness|blurry|blurred|chest|faint|lightheaded)\b/i;
     const isNegative = negativePattern.test(greetReply);
     let verifiedMsg;
     if (patient?.id === 1) {
       verifiedMsg = isNegative
         ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. Can you tell me more about how you're feeling?`
         : `That's great to hear, ${firstName}. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. How are you feeling today?`;
+    } else if (isMarcusDemo) {
+      // Marcus: never say "great to hear" — route symptoms to clinical acknowledgment
+      verifiedMsg = isNegative
+        ? `Thank you for telling me that, ${firstName}. I want to make sure we address that. I'm looking at your recent readings now, and your blood pressure today is 158 over 98, which is up from where it was on Day 14. Let me ask you a few more questions.`
+        : `Thank you, ${firstName}. I have your Day ${patient?.day || "22"} readings pulled up. Your blood pressure today is 158 over 98, which has been trending up over the last few days from your best of 129 over 80 on Day 14. How have you been feeling?`;
     } else {
       verifiedMsg = isNegative
         ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing.`
