@@ -139,7 +139,7 @@ export default function DemoPage({ navigate }) {
           Choose Your Demo Experience
         </h1>
         <p style={{ fontSize: 14, color: DT.text.muted, margin: 0, fontFamily: DT.font.body }}>
-          Sarah Chen &middot; 67F &middot; CHF Day 15 of 90 &middot; Decompensation risk scenario
+          Multi-condition demo: CHF, hypertension, diabetes, and beyond
         </p>
       </div>
 

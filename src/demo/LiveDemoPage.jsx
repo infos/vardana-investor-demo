@@ -7,7 +7,10 @@ import { useIsMobile } from './useIsMobile';
 
 export default function LiveDemoPage({ navigate }) {
   const [step, setStep] = useState('about');
+  const [selectedPatient, setSelectedPatient] = useState('sarah');
   const isMobile = useIsMobile();
+
+  const patientParam = selectedPatient === 'marcus' ? '&patient=marcus' : '';
 
   const ctaSlot = (
     <div style={{
@@ -17,7 +20,7 @@ export default function LiveDemoPage({ navigate }) {
       flexDirection: isMobile ? 'column' : 'row',
     }}>
       <GhostButton onClick={() => setStep('about')}>&larr; Back</GhostButton>
-      <PrimaryButton onClick={() => navigate('/coordinator?demo=live')} color={DT.amber.default} textColor={DT.bg.page}>
+      <PrimaryButton onClick={() => navigate(`/coordinator?demo=live${patientParam}`)} color={DT.amber.default} textColor={DT.bg.page}>
         Open Coordinator View &rarr;
       </PrimaryButton>
       <PrimaryButton onClick={() => navigate('/patient')} color={DT.jade.default} textColor="white">
@@ -32,12 +35,13 @@ export default function LiveDemoPage({ navigate }) {
       {step === 'about' ? (
         <AboutSlide
           onBack={() => navigate('/demo')}
-          onSkip={() => navigate('/coordinator?demo=live')}
+          onSkip={() => navigate(`/coordinator?demo=live${patientParam}`)}
           onNext={() => setStep('scenario')}
         />
       ) : (
         <ScenarioSlide
           onBack={() => setStep('about')}
+          onPatientSelect={(patient) => setSelectedPatient(patient)}
           ctaSlot={ctaSlot}
         />
       )}
