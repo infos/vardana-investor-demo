@@ -518,7 +518,7 @@ function RosterView({ onSelect, onCallPatient, epicPatients = [], epicLoading, o
               {ro && <div style={{ fontSize: 10, color: c.teal, fontWeight: 600, marginTop: 2 }}>Assessed during call</div>}
               {!ro && <div style={{ marginTop: 4 }}><TrendArrow trend={p.trend} /></div>}
             </div>
-            {isScriptedDemo && isPrimaryRow && p.alert && (
+            {isPrimaryRow && p.alert && (
               <button onClick={(e) => { e.stopPropagation(); onCallPatient && onCallPatient(p); }} style={{ padding: "8px 16px", borderRadius: 8, background: DS.color.slate[950], color: "white", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", flexShrink: 0, animation: "amberBorderPulse 1.5s ease-in-out infinite" }}>
                 <Icon name="phone" size={13} color="white" /> Call Patient
               </button>

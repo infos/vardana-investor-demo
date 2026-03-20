@@ -4,8 +4,10 @@ import AboutSlide from './AboutSlide';
 import ScenarioSlide from './ScenarioSlide';
 
 export default function RecordedDemoPage({ navigate }) {
+  const conditionParam = new URLSearchParams(window.location.search).get('condition') || '';
+  const defaultPatient = conditionParam.toLowerCase().startsWith('hyp') ? 'marcus' : 'sarah';
   const [step, setStep] = useState('about');
-  const [selectedPatient, setSelectedPatient] = useState('sarah');
+  const [selectedPatient, setSelectedPatient] = useState(defaultPatient);
 
   const patientParam = selectedPatient === 'marcus' ? '&patient=marcus' : '';
 
@@ -24,6 +26,7 @@ export default function RecordedDemoPage({ navigate }) {
           onEnter={(patient) => navigate(`/coordinator?demo=scripted${patient === 'marcus' ? '&patient=marcus' : ''}`)}
           onPatientSelect={(patient) => setSelectedPatient(patient)}
           enterLabel="Enter Demo &#8594;"
+          defaultPatient={defaultPatient}
         />
       )}
     </DemoShell>
