@@ -28,13 +28,17 @@ export default async function handler(req, res) {
 
   console.log('[DEMO_VISIT]', JSON.stringify(event));
 
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+  // Support both Upstash (new) and legacy Vercel KV env var names
+  const kvUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  const kvToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+
+  if (kvUrl && kvToken) {
     try {
       const key = `visit:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`;
-      await fetch(`${process.env.KV_REST_API_URL}/set/${key}`, {
+      await fetch(`${kvUrl}/set/${key}`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
+          Authorization: `Bearer ${kvToken}`,
           'Content-Type': 'application/json',
         },
           body: JSON.stringify({ value: event, ex: 7776000 }),

@@ -5,6 +5,9 @@ import ScenarioSlide from './ScenarioSlide';
 
 export default function RecordedDemoPage({ navigate }) {
   const [step, setStep] = useState('about');
+  const [selectedPatient, setSelectedPatient] = useState('sarah');
+
+  const patientParam = selectedPatient === 'marcus' ? '&patient=marcus' : '';
 
   return (
     <DemoShell>
@@ -12,13 +15,14 @@ export default function RecordedDemoPage({ navigate }) {
       {step === 'about' ? (
         <AboutSlide
           onBack={() => navigate('/demo')}
-          onSkip={() => navigate('/coordinator?demo=scripted')}
+          onSkip={() => navigate(`/coordinator?demo=scripted${patientParam}`)}
           onNext={() => setStep('scenario')}
         />
       ) : (
         <ScenarioSlide
           onBack={() => setStep('about')}
-          onEnter={() => navigate('/coordinator?demo=scripted')}
+          onEnter={(patient) => navigate(`/coordinator?demo=scripted${patient === 'marcus' ? '&patient=marcus' : ''}`)}
+          onPatientSelect={(patient) => setSelectedPatient(patient)}
           enterLabel="Enter Demo &#8594;"
         />
       )}

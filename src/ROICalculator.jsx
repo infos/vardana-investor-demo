@@ -60,7 +60,7 @@ export default function ROICalculator() {
   const [erReductionPct, setErReductionPct] = useState(40);
   const [pmpm, setPmpm] = useState(35);
 
-  const programmCost = patients * pmpm * 12;
+  const programCost = patients * pmpm * 12;
 
   const metrics = useMemo(() => {
     const baseReadmits = patients * (readmitRate / 100);
@@ -103,7 +103,7 @@ export default function ROICalculator() {
       category: `Program Cost ($${pmpm} PMPM)`,
       baseline: `$${pmpm} × ${fmt(patients)} pts × 12 mo`,
       impact: "—",
-      savings: `–${fmtDollar(programmCost)}`,
+      savings: `–${fmtDollar(programCost)}`,
     },
     {
       category: "NET ROI",
@@ -244,7 +244,7 @@ export default function ROICalculator() {
             </div>
             <Slider
               label="Vardana Rate"
-              hint={`Per member per month. Annual program cost = $${pmpm} × ${fmt(patients)} patients × 12 months = ${fmtDollar(programmCost)}.`}
+              hint={`Per member per month. Annual program cost = $${pmpm} × ${fmt(patients)} patients × 12 months = ${fmtDollar(programCost)}.`}
               value={pmpm}
               min={20}
               max={50}
@@ -377,7 +377,7 @@ export default function ROICalculator() {
                 </p>
                 <p style={{ margin: "0 0 10px", color: "#162033", lineHeight: 1.6, fontSize: 14 }}>
                   At Vardana's rate of <strong>${pmpm} PMPM</strong>, the annual program cost is{" "}
-                  <strong>{fmtDollar(programmCost)}</strong> ({fmt(patients)} patients × ${pmpm} × 12 months).
+                  <strong>{fmtDollar(programCost)}</strong> ({fmt(patients)} patients × ${pmpm} × 12 months).
                   After this cost, the net annual benefit is{" "}
                   <strong style={{ color: metrics.netSavings >= 0 ? "#0f9f6e" : "#b45309" }}>
                     {fmtDollar(metrics.netSavings)}
