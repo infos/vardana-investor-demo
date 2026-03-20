@@ -135,9 +135,9 @@ function ScenarioCard({ scenario, selected, onSelect, isMobile }) {
   );
 }
 
-export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Demo', ctaSlot, onPatientSelect }) {
+export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Demo', ctaSlot, onPatientSelect, defaultPatient = 'sarah' }) {
   const isMobile = useIsMobile();
-  const [selected, setSelected] = useState('sarah');
+  const [selected, setSelected] = useState(defaultPatient);
 
   const handleSelect = (scenario) => {
     setSelected(scenario);
