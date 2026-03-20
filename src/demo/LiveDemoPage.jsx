@@ -6,8 +6,11 @@ import ScenarioSlide from './ScenarioSlide';
 import { useIsMobile } from './useIsMobile';
 
 export default function LiveDemoPage({ navigate }) {
+  const conditionParam = new URLSearchParams(window.location.search).get('condition') || '';
+  const defaultPatient = conditionParam.toLowerCase().startsWith('hyp') ? 'marcus' : 'sarah';
+
   const [step, setStep] = useState('about');
-  const [selectedPatient, setSelectedPatient] = useState('sarah');
+  const [selectedPatient, setSelectedPatient] = useState(defaultPatient);
   const isMobile = useIsMobile();
 
   const patientParam = selectedPatient === 'marcus' ? '&patient=marcus' : '';
@@ -42,6 +45,7 @@ export default function LiveDemoPage({ navigate }) {
         <ScenarioSlide
           onBack={() => setStep('about')}
           onPatientSelect={(patient) => setSelectedPatient(patient)}
+          defaultPatient={defaultPatient}
           ctaSlot={ctaSlot}
         />
       )}
