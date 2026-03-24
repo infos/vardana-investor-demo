@@ -36,6 +36,7 @@ const ROSTER = [
   { id: 2, name: "Robert Williams", age: 74, gender: "M", dob: { month: 3, day: 22, year: 1951 }, day: 52, phase: "Optimize", risk: 34, riskLevel: "low", alert: false, trend: "stable", scheduledOutreach: "Today 2:00 PM · Voice", doctor: "Dr. Sarah Patel" },
   { id: 3, name: "Maria Gonzalez", age: 61, gender: "F", dob: { month: 11, day: 5, year: 1964 }, day: 8, phase: "Stabilize", risk: 45, riskLevel: "moderate", alert: false, trend: "improving", scheduledOutreach: "Tomorrow 10:00 AM · SMS", doctor: "Dr. Michael Torres" },
   { id: 4, name: "James Thompson", age: 79, gender: "M", dob: { month: 9, day: 18, year: 1946 }, day: 83, phase: "Maintain", risk: 22, riskLevel: "low", alert: false, trend: "stable", scheduledOutreach: null, doctor: "Dr. Lisa Chen" },
+  { id: 5, name: "Marcus Williams", age: 58, gender: "M", dob: { month: 6, day: 10, year: 1967 }, day: 22, phase: "Stabilize → Optimize", risk: 53, riskLevel: "moderate", alert: true, alertType: "BP worsening trend", alertTime: "12 min ago", trend: "worsening", scheduledOutreach: null, doctor: "Dr. Angela Torres" },
 ];
 
 // ── Patient Clinical Data (Robert, Maria, James) ──
@@ -156,6 +157,36 @@ const PATIENT_CLINICAL_DATA = {
     ],
     allergy: "None known",
     coordinator: "Rachel Kim, RN",
+  },
+  5: {
+    dob: "June 10, 1967",
+    conditions: ["Essential Hypertension (I10)", "Type 2 Diabetes with Hyperglycemia (E11.65)"],
+    medications: [
+      { name: "Lisinopril", dose: "20mg", timing: "Once daily (morning)" },
+      { name: "Amlodipine", dose: "5mg", timing: "Once daily (morning)" },
+      { name: "Metformin", dose: "1000mg", timing: "Twice daily (with meals)" },
+      { name: "Atorvastatin", dose: "40mg", timing: "Once daily (evening)" },
+      { name: "Aspirin", dose: "81mg", timing: "Once daily" },
+    ],
+    vitals: {
+      weight: { current: 212.0, previous: 211.5, unit: "lbs", trend: "stable", status: "good" },
+      bp: { sys: 158, dia: 98, status: "warning", note: "4-day worsening trend from 129/80" },
+      hr: { value: 78, status: "good", note: "Normal sinus rhythm" },
+      spo2: { value: 97, status: "good" },
+      glucose: { value: 186, unit: "mg/dL", status: "elevated" },
+    },
+    labs: [
+      { name: "HbA1c", value: "7.8%", date: "Mar 1", status: "elevated" },
+      { name: "Creatinine", value: "1.1 mg/dL", date: "Mar 1", status: "good" },
+      { name: "eGFR", value: "78 mL/min", date: "Mar 1", status: "good" },
+      { name: "Potassium", value: "4.3 mEq/L", date: "Mar 1", status: "good" },
+    ],
+    recentCheckins: [
+      { date: "Today, 8:15 AM", summary: "AI concierge detected 4-day BP worsening trend (158/98 from best of 129/80). Fasting glucose 186 mg/dL. Suspected missed Lisinopril." },
+      { date: "Yesterday, 8:00 AM", summary: "Routine check-in. BP 152/94. Patient reported feeling fine. Medications confirmed taken." },
+    ],
+    allergy: "None known",
+    coordinator: "David Park, RN",
   },
 };
 
@@ -576,7 +607,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     // For Sarah Chen (id: 1) — return undefined so the API uses the Sarah-specific prompt
     return undefined;
   };
-  const [riskScore, setRiskScore]     = useState(isEpic ? 50 : 68);
+  const [riskScore, setRiskScore]     = useState(isEpic ? 50 : patient?.id === 5 ? 53 : 68);
   const [alertGenerated, setAlertGenerated] = useState(false);
   const [elapsed, setElapsed]   = useState(0);
   const [waveFrame, setWaveFrame] = useState(0);
@@ -723,11 +754,28 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     prevFhirLen.current = fhirLog.length;
   }, [fhirLog.length, isMobileView]);
 
+  // ── Custom audio override for Marcus patient responses ──
+  // When custom recordings exist at /audio/marcus/marcus-response-N.mp3,
+  // use them instead of TTS-generated audio for patient lines.
+  const customAudioCache = useRef({});
+  const tryCustomMarcusAudio = async (lineIndex) => {
+    const url = `/audio/marcus/marcus-response-${lineIndex}.mp3`;
+    if (customAudioCache.current[url] !== undefined) return customAudioCache.current[url];
+    try {
+      const res = await fetch(url, { method: 'HEAD' });
+      customAudioCache.current[url] = res.ok ? url : null;
+      return customAudioCache.current[url];
+    } catch {
+      customAudioCache.current[url] = null;
+      return null;
+    }
+  };
+
   // ── Fetch audio via server-side TTS proxy ──
   const fetchAudioOnce = async (text, speaker) => {
     let res;
     try {
-      res = await fetch("/api/elevenlabs-tts", {
+      res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, speaker }),
@@ -745,7 +793,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     return url;
   };
 
-  // Retry wrapper — tries ElevenLabs up to 2x before giving up
+  // Retry wrapper — tries TTS up to 2x before giving up
   const fetchAudio = async (text, speaker) => {
     try {
       return await fetchAudioOnce(text, speaker);
@@ -792,8 +840,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     }
   };
 
-  // ── ElevenLabs playback sequence ──
-  const playElevenLabs = async (urls) => {
+  // ── TTS playback sequence ──
+  const playTTSSequence = async (urls) => {
     for (let i = 0; i < urls.length; i++) {
       if (cancelRef.current) return;
       const line = VOICE_TRANSCRIPT[i];
@@ -844,14 +892,14 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     return () => { cancelled = true; };
   }, [autoStartScripted]);
 
-  // ── Start demo with ElevenLabs (server-side proxy — no key needed) ──
-  const startElevenLabs = async () => {
+  // ── Start scripted demo with TTS (server-side proxy — no key needed) ──
+  const startScriptedDemo = async () => {
     cancelRef.current = false;
     setApiError("");
     // If pre-loaded (scripted demo), use cached URLs
     if (preloadedUrlsRef.current) {
       setLoadProgress(100);
-      launchCall(() => playElevenLabs(preloadedUrlsRef.current));
+      launchCall(() => playTTSSequence(preloadedUrlsRef.current));
       return;
     }
     setUiState("loading");
@@ -868,7 +916,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         results.forEach((url, j) => { urls[start + j] = url; });
         setLoadProgress(Math.round(Math.min(start + batchSize, VOICE_TRANSCRIPT.length) / VOICE_TRANSCRIPT.length * 100));
       }
-      launchCall(() => playElevenLabs(urls));
+      launchCall(() => playTTSSequence(urls));
     } catch (err) {
       setApiError(err.message || "Audio fetch failed.");
       setUiState("setup");
@@ -893,7 +941,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     if (!autoStartScripted || autoStartedRef.current) return;
     if (audioUnlocked && preloadReady) {
       autoStartedRef.current = true;
-      startElevenLabs();
+      startScriptedDemo();
     }
   }, [autoStartScripted, audioUnlocked, preloadReady]);
 
@@ -903,7 +951,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     // If preload is already done, start immediately; otherwise it will auto-start via effect
     if (preloadReady) {
       autoStartedRef.current = true;
-      startElevenLabs();
+      startScriptedDemo();
     }
   };
 
@@ -983,11 +1031,13 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
   const demoCache = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('cache') === '1';
 
+  const activePatientKey = patient?.id === 5 ? 'marcus' : patient?.id === 1 ? 'sarah' : undefined;
+
   const sendToAPI = async (msgs, turn, maxTurns) => {
     const res = await fetch("/api/voice-chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: msgs, patientContext: getPatientContext(), turn, maxTurns, ...(demoCache && { demoCache: true }) }),
+      body: JSON.stringify({ messages: msgs, patientContext: getPatientContext(), turn, maxTurns, ...(activePatientKey && { patient: activePatientKey }), ...(demoCache && { demoCache: true }) }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -1128,6 +1178,10 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       verifiedMsg = isNegative
         ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. Can you tell me more about how you're feeling?`
         : `That's great to hear, ${firstName}. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. How are you feeling today?`;
+    } else if (patient?.id === 5) {
+      verifiedMsg = isNegative
+        ? `I'm sorry to hear that, ${firstName}. I want to make sure we address that. I'm pulling up your recent readings now. Your blood pressure today is 158 over 98, and I'm seeing a 4-day worsening trend from your best of 129 over 80 on Day 14. How are you feeling?`
+        : `Thank you, ${firstName}. I'm pulling up your recent readings now. Your blood pressure today is 158 over 98, and I'm seeing a 4-day worsening trend from your best of 129 over 80 on Day 14. How are you feeling?`;
     } else {
       verifiedMsg = isNegative
         ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing.`
@@ -1391,7 +1445,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         Tap to start the demo
       </div>
       <div style={{ fontSize: 13, color: "#556882" }}>
-        {patient.name} · Day {patient.day || '15'} · CHF check-in
+        {patient.name} · Day {patient.day || '15'} · {patient.id === 5 ? 'HTN + T2DM check-in' : 'CHF check-in'}
       </div>
       <div style={{ fontSize: 12, color: '#3A4F6B', marginTop: 12 }}>
         {preloadProgress < 100
@@ -1418,7 +1472,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="users" size={22} color="#A78BFA" /></div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "white" }}>{patient.name}, {patient.age}{isEpic ? (patient.epicData?.patient?.gender === 'male' ? 'M' : 'F') : (patient.gender || '')}{isEpic ? ` — ${(patient.epicData?.conditions || []).length} active conditions` : ` — CHF · Day ${patient.day || '?'}/90`}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "white" }}>{patient.name}, {patient.age}{isEpic ? (patient.epicData?.patient?.gender === 'male' ? 'M' : 'F') : (patient.gender || '')}{isEpic ? ` — ${(patient.epicData?.conditions || []).length} active conditions` : patient.id === 5 ? ` — HTN + T2DM · Day ${patient.day || '?'}/90` : ` — CHF · Day ${patient.day || '?'}/90`}</div>
               <div style={{ fontSize: 12, color: "#64748B", marginTop: 3 }}>{isEpic ? 'Live Epic FHIR data · AI check-in with real patient context' : patient.id === 1 ? '2.3 lb weight gain. AI calls to assess. Decompensation detected → FHIR alert fires mid-call.' : `${patient.phase} phase · AI check-in with full clinical context`}</div>
             </div>
           </div>
@@ -1460,7 +1514,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         <div style={{ fontSize: 28, marginBottom: 20 }}>🎙</div>
         <div style={{ fontSize: 16, fontWeight: 800, color: "white", marginBottom: 8 }}>Generating audio</div>
         <div style={{ fontSize: 13, color: "#64748B", marginBottom: 28 }}>
-          Rendering {VOICE_TRANSCRIPT.length} lines via ElevenLabs...
+          Rendering {VOICE_TRANSCRIPT.length} lines via voice synthesis...
         </div>
         {/* Progress bar */}
         <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 8, height: 8, overflow: "hidden", marginBottom: 12 }}>
@@ -1524,7 +1578,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         Vardana.
       </div>
       <div style={{ fontSize: 14, color: "#556882", marginBottom: 4 }}>
-        CHF post-discharge care.
+        AI-powered post-discharge care.
       </div>
       <div style={{ fontSize: 14, color: "#556882", marginBottom: 32 }}>
         Request a pilot at{" "}
@@ -1938,6 +1992,13 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                       value: value || "Pending",
                       flag: value && value !== "Pending" && value !== "Normal" && value !== "None"
                     }))
+                  : patient?.id === 5
+                  ? [
+                    { label: "BP 158/98", value: aiAssessment.bp || "4-day rise", flag: true },
+                    { label: "Glucose",   value: aiAssessment.glucose || "186 mg/dL", flag: true },
+                    { label: "Lisinopril", value: aiAssessment.lisinopril || "Pending", flag: aiAssessment.lisinopril && aiAssessment.lisinopril !== "Pending" },
+                    { label: "Headache",  value: aiAssessment.headache || "Pending", flag: aiAssessment.headache && aiAssessment.headache !== "Pending" },
+                  ]
                   : [
                   { label: "Weight gain", value: aiAssessment.weightGain || "Pending", flag: aiAssessment.weightGain && aiAssessment.weightGain !== "Pending" },
                   { label: "Orthopnea",   value: aiAssessment.orthopnea || "Pending", flag: aiAssessment.orthopnea === "Confirmed" },
@@ -2140,7 +2201,7 @@ function SMSPathDemo({ patient, onComplete }) {
               <div style={{ background: "linear-gradient(135deg, #0F1A2A, #1B3A6B)", padding: "24px", textAlign: "center" }}>
                 <div style={{ width: 72, height: 72, borderRadius: 18, background: "linear-gradient(135deg, #2563EB, #38BDF8)", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>V</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: "white" }}>Vardana Health</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>CHF Care Concierge · Post-Discharge Recovery</div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>AI Care Concierge · Post-Discharge Recovery</div>
                 <div style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: 10 }}>
                   {"★★★★☆".split("").map((s, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 18 }}>{s}</span>)}
                   <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginLeft: 4, lineHeight: 2 }}>4.8 · 2.1K ratings</span>
@@ -3291,8 +3352,8 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
   const [view, setView] = useState("roster"); // roster | patient | voiceCall | smsPath
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showOutreachModal, setShowOutreachModal] = useState(false);
-  const [showRosterBanner, setShowRosterBanner] = useState(isScriptedDemo);
-  const [showDetailBanner, setShowDetailBanner] = useState(isScriptedDemo);
+  const [showRosterBanner, setShowRosterBanner] = useState(false);
+  const [showDetailBanner, setShowDetailBanner] = useState(false);
   const [callTranscripts, setCallTranscripts] = useState({});
   const [riskOverrides, setRiskOverrides] = useState({}); // { patientId: { score, level } }
   const [epicPatients, setEpicPatients] = useState([]);
@@ -3432,7 +3493,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
           isScriptedDemo={isScriptedDemo}
           guidanceBanner={showRosterBanner ? (
             <ScriptedGuidanceBanner
-              text="Sarah Chen has been flagged. Click &quot;Call Patient&quot; to start the AI voice call."
+              text='Sarah Chen has been flagged. Click "Call Patient" to start the AI voice call.'
               onDismiss={() => setShowRosterBanner(false)}
             />
           ) : null}
