@@ -271,7 +271,7 @@ METADATA FIELDS:
 - riskScore: Start at ${riskResult.riskScore} (pre-computed). Adjust +5–+15 as symptoms are confirmed.
 - generateAlert: ${requiresEscal ? `TRUE — risk is ${riskResult.riskLevel.toUpperCase()}. Set true when you say "care team" out loud.` : 'Set true only when multi-signal decompensation is confirmed or new serious symptoms emerge.'}
 - assessment: Track confirmed findings. Update from "Pending" to the confirmed value.
-- phase: greeting | weight_review | symptoms | medications | guidance | escalation | done` + buildPacingInstruction(turn, maxTurns);
+- phase: greeting | weight_review | symptoms | medications | guidance | escalation | done. Only set "done" on your FINAL closing message, never while asking a question.` + buildPacingInstruction(turn, maxTurns);
 }
 
 function buildMarcusPrompt(ctx, turn, maxTurns, riskResult) {
@@ -291,9 +291,9 @@ function buildMarcusPrompt(ctx, turn, maxTurns, riskResult) {
 2. BP REVIEW -- State today's BP (158/98) and note the 4-day worsening trend compared to the Day 14 best (129/80).
 3. SYMPTOM CHECK -- Ask how he is feeling. If he reports any symptom, see SYMPTOM RULE below before proceeding.
 4. MEDICATION ADHERENCE -- Ask specifically whether he has been taking his blood pressure medications this week. Lisinopril is the critical one.
-5. SAFETY SCREEN -- Ask about chest pain, shortness of breath, and vision changes.
-6. ESCALATION -- If headache confirmed AND BP trend worsening AND Lisinopril missed: alert David Park immediately. P2 priority.
-7. CLOSE -- If no emergency symptoms: instruct patient to take it easy, avoid salty foods, stay hydrated, and await David Park's call.
+5. SAFETY SCREEN -- Ask about chest pain, shortness of breath, and vision changes. Wait for the patient to answer EACH question before proceeding. Do NOT set phase to "done" while asking safety questions.
+6. ESCALATION -- After the patient confirms no emergency symptoms: alert David Park immediately (P2 priority). Tell the patient you are notifying their coordinator now.
+7. CLOSE -- Instruct patient to take it easy, avoid salty foods, stay hydrated, and await David Park's call. Only set phase to "done" on this final closing message.
 
 ## SYMPTOM RULE -- CRITICAL
 When a patient reports ANY symptom, you MUST:
@@ -331,7 +331,7 @@ METADATA FIELDS:
 - riskScore: Start at ${riskResult?.riskScore ?? 53}. Increase to 68 if headache confirmed. Increase to 73 if missed medications confirmed.
 - generateAlert: Set true when headache + BP trend + missed meds are all confirmed. This is a P2 alert.
 - assessment: Track confirmed findings. Keys: headache (Pending or Confirmed), lisinopril (Pending or Missed x3 days).
-- phase: greeting | symptoms | medications | guidance | escalation | done` + buildPacingInstruction(turn, maxTurns);
+- phase: greeting | symptoms | medications | guidance | escalation | done. CRITICAL: Only set phase to "done" on your FINAL closing message (step 7). Never set "done" while asking a question or waiting for patient input.` + buildPacingInstruction(turn, maxTurns);
 }
 
 function buildSystemPrompt(ctx, turn, maxTurns, riskResult, vitals, symptoms) {
@@ -387,7 +387,7 @@ METADATA FIELDS:
 - riskScore: Start at ${riskResult?.riskScore ?? 50}. Adjust as symptoms confirmed.
 - generateAlert: ${requiresEscal ? 'TRUE — risk is elevated. Set true when you say "care team" out loud.' : 'Set true when multi-signal decompensation confirmed.'}
 - assessment: Confirmed findings as key-value pairs.
-- phase: greeting | symptoms | medications | general_wellness | guidance | escalation | done` + buildPacingInstruction(turn, maxTurns);
+- phase: greeting | symptoms | medications | general_wellness | guidance | escalation | done. Only set "done" on your FINAL closing message, never while asking a question.` + buildPacingInstruction(turn, maxTurns);
 }
 
 // =============================================================================
