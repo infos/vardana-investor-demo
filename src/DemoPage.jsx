@@ -139,7 +139,7 @@ export default function DemoPage({ navigate }) {
           Choose Your Demo Experience
         </h1>
         <p style={{ fontSize: 14, color: DT.text.muted, margin: 0, fontFamily: DT.font.body }}>
-          Sarah Chen &middot; 67F &middot; CHF Day 15 of 90 &middot; Decompensation risk scenario
+          Multi-condition demo: CHF, hypertension, diabetes, and beyond
         </p>
       </div>
 
@@ -170,7 +170,7 @@ export default function DemoPage({ navigate }) {
         <DemoCard
           badge="~90 SECONDS / NO MIC"
           badgeColor={DT.amber.default}
-          title="Scripted Demo"
+          title="Recorded Demo"
           description="Watch a pre-rendered AI voice call with Sarah Chen. Decompensation detected mid-call. FHIR alert fires in real time."
           bullets={[
             'Guided walkthrough: About Vardana + scenario',
@@ -179,10 +179,10 @@ export default function DemoPage({ navigate }) {
             'Risk score escalates 68 > 84, P1 alert fires',
           ]}
           bulletColor={DT.amber.default}
-          ctaLabel="Watch Scripted Demo"
+          ctaLabel="Watch Recorded Demo"
           ctaBackground={DT.amber.default}
           ctaColor={DT.bg.page}
-          onClick={() => navigate('/demo/scripted')}
+          onClick={() => navigate('/demo/recorded')}
         />
       </div>
 

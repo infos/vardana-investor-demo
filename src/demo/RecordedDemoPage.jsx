@@ -1,36 +1,15 @@
 import React, { useState } from 'react';
-import { DT } from './tokens';
-import { DemoShell, BackButton, PrimaryButton, GhostButton } from './DemoShell';
+import { DemoShell, BackButton } from './DemoShell';
 import AboutSlide from './AboutSlide';
 import ScenarioSlide from './ScenarioSlide';
-import { useIsMobile } from './useIsMobile';
 
-export default function LiveDemoPage({ navigate }) {
+export default function RecordedDemoPage({ navigate }) {
   const conditionParam = new URLSearchParams(window.location.search).get('condition') || '';
   const defaultPatient = conditionParam.toLowerCase().startsWith('hyp') ? 'marcus' : 'sarah';
-
   const [step, setStep] = useState('about');
   const [selectedPatient, setSelectedPatient] = useState(defaultPatient);
-  const isMobile = useIsMobile();
 
   const patientParam = selectedPatient === 'marcus' ? '&patient=marcus' : '';
-
-  const ctaSlot = (
-    <div style={{
-      display: 'flex',
-      gap: 8,
-      width: isMobile ? '100%' : 'auto',
-      flexDirection: isMobile ? 'column' : 'row',
-    }}>
-      <GhostButton onClick={() => setStep('about')}>&larr; Back</GhostButton>
-      <PrimaryButton onClick={() => navigate(`/coordinator?demo=live${patientParam}`)} color={DT.amber.default} textColor={DT.bg.page}>
-        Open Coordinator View &rarr;
-      </PrimaryButton>
-      <PrimaryButton onClick={() => navigate('/patient')} color={DT.jade.default} textColor="white">
-        Open Patient Portal &rarr;
-      </PrimaryButton>
-    </div>
-  );
 
   return (
     <DemoShell>
@@ -38,15 +17,16 @@ export default function LiveDemoPage({ navigate }) {
       {step === 'about' ? (
         <AboutSlide
           onBack={() => navigate('/demo')}
-          onSkip={() => navigate(`/coordinator?demo=live${patientParam}`)}
+          onSkip={() => navigate(`/coordinator?demo=scripted${patientParam}`)}
           onNext={() => setStep('scenario')}
         />
       ) : (
         <ScenarioSlide
           onBack={() => setStep('about')}
+          onEnter={(patient) => navigate(`/coordinator?demo=scripted${patient === 'marcus' ? '&patient=marcus' : ''}`)}
           onPatientSelect={(patient) => setSelectedPatient(patient)}
+          enterLabel="Enter Demo &#8594;"
           defaultPatient={defaultPatient}
-          ctaSlot={ctaSlot}
         />
       )}
     </DemoShell>

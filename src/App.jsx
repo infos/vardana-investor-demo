@@ -211,6 +211,103 @@ const FHIR_QUERIES = [
   { t: 33600, method: "POST", path: "/Communication", result: "Coordinator alert dispatched → Rachel Kim", color: "#DC2626" },
 ];
 
+// ── Marcus Williams HTN/DM Data ──
+const MARCUS_BP_DATA = [
+  { day: 1, date: "Feb 25", sys: 148, dia: 94 },
+  { day: 3, date: "Feb 27", sys: 145, dia: 91 },
+  { day: 5, date: "Mar 1", sys: 142, dia: 88 },
+  { day: 7, date: "Mar 3", sys: 138, dia: 86 },
+  { day: 10, date: "Mar 6", sys: 134, dia: 84 },
+  { day: 12, date: "Mar 8", sys: 131, dia: 82 },
+  { day: 14, date: "Mar 10", sys: 129, dia: 80 },
+  { day: 16, date: "Mar 12", sys: 130, dia: 81 },
+  { day: 17, date: "Mar 13", sys: 132, dia: 83 },
+  { day: 18, date: "Mar 14", sys: 136, dia: 87 },
+  { day: 19, date: "Mar 15", sys: 141, dia: 90 },
+  { day: 20, date: "Mar 16", sys: 148, dia: 94 },
+  { day: 21, date: "Mar 17", sys: 154, dia: 96 },
+  { day: 22, date: "Mar 18", sys: 158, dia: 98 },
+];
+
+const MARCUS_GLUCOSE_DATA = [
+  { day: 1, date: "Feb 25", glucose: 182 },
+  { day: 3, date: "Feb 27", glucose: 175 },
+  { day: 5, date: "Mar 1", glucose: 168 },
+  { day: 7, date: "Mar 3", glucose: 162 },
+  { day: 10, date: "Mar 6", glucose: 155 },
+  { day: 12, date: "Mar 8", glucose: 148 },
+  { day: 14, date: "Mar 10", glucose: 144 },
+  { day: 16, date: "Mar 12", glucose: 146 },
+  { day: 17, date: "Mar 13", glucose: 149 },
+  { day: 18, date: "Mar 14", glucose: 158 },
+  { day: 19, date: "Mar 15", glucose: 166 },
+  { day: 20, date: "Mar 16", glucose: 172 },
+  { day: 21, date: "Mar 17", glucose: 178 },
+  { day: 22, date: "Mar 18", glucose: 186 },
+];
+
+const MARCUS_ROSTER = [
+  { id: 101, name: "Marcus Williams", age: 58, gender: "M", dob: { month: 6, day: 3, year: 1967 }, day: 22, phase: "Stabilize \u2192 Optimize", risk: 53, riskLevel: "high", alert: true, alertType: "BP crisis risk", alertTime: "12 min ago", trend: "worsening", scheduledOutreach: null, doctor: "Dr. Angela Torres" },
+  { id: 2, name: "Robert Williams", age: 74, gender: "M", dob: { month: 3, day: 22, year: 1951 }, day: 52, phase: "Optimize", risk: 34, riskLevel: "low", alert: false, trend: "stable", scheduledOutreach: "Today 2:00 PM \u00b7 Voice", doctor: "Dr. Sarah Patel" },
+  { id: 3, name: "Maria Gonzalez", age: 61, gender: "F", dob: { month: 11, day: 5, year: 1964 }, day: 8, phase: "Stabilize", risk: 45, riskLevel: "moderate", alert: false, trend: "improving", scheduledOutreach: "Tomorrow 10:00 AM \u00b7 SMS", doctor: "Dr. Michael Torres" },
+  { id: 4, name: "James Thompson", age: 79, gender: "M", dob: { month: 9, day: 18, year: 1946 }, day: 83, phase: "Maintain", risk: 22, riskLevel: "low", alert: false, trend: "stable", scheduledOutreach: null, doctor: "Dr. Lisa Chen" },
+];
+
+const MARCUS_CLINICAL_DATA = {
+  101: {
+    dob: "June 3, 1967",
+    conditions: ["Essential Hypertension", "Type 2 Diabetes with Hyperglycemia", "Hyperlipidemia", "Obesity (BMI 31.4)"],
+    medications: [
+      { name: "Lisinopril", dose: "20mg", timing: "Once daily (morning)" },
+      { name: "Amlodipine", dose: "5mg", timing: "Once daily" },
+      { name: "Metformin", dose: "1000mg", timing: "Twice daily (with meals)" },
+      { name: "Atorvastatin", dose: "40mg", timing: "Once daily (evening)" },
+      { name: "Aspirin", dose: "81mg", timing: "Once daily" },
+    ],
+    vitals: {
+      bp: { sys: 158, dia: 98, status: "critical", note: "4-day worsening, was 129/80 on Day 14" },
+      glucose: { value: 186, unit: "mg/dL", status: "warning", note: "Fasting, elevated" },
+      hr: { value: 78, status: "good", note: "Normal sinus rhythm" },
+      spo2: { value: 97, status: "good" },
+    },
+    labs: [
+      { name: "HbA1c", value: "8.4%", date: "Feb 25", status: "elevated" },
+      { name: "Fasting Glucose", value: "182 mg/dL", date: "Feb 25", status: "elevated" },
+      { name: "LDL", value: "118 mg/dL", date: "Feb 25", status: "borderline" },
+      { name: "Creatinine", value: "1.1 mg/dL", date: "Feb 25", status: "good" },
+      { name: "eGFR", value: "72 mL/min", date: "Feb 25", status: "good" },
+      { name: "Microalbumin/Cr", value: "42 mg/g", date: "Feb 25", status: "elevated" },
+    ],
+    recentCheckins: [
+      { date: "Today, 7:30 AM", summary: "AI concierge detected 4-day BP worsening trend. BP 158/98. Patient reports headache. Missed Lisinopril x3 days. Escalated to care coordinator." },
+      { date: "Yesterday, 7:30 AM", summary: "Routine check-in. BP 154/96, trending up. Patient confirmed taking Amlodipine but ran out of Lisinopril." },
+    ],
+    allergy: "Penicillin (rash)",
+    coordinator: "David Park, RN",
+  },
+};
+
+const MARCUS_VOICE_TRANSCRIPT = [
+  { t: 1200, speaker: "AI", text: "Good morning, Marcus. This is your Vardana Care Concierge calling for your daily check-in. You are on Day 22 of your 90-day program. Before we start, I want to let you know I am pulling up your recent readings." },
+  { t: 7000, speaker: "AI", text: "I can see your blood pressure this morning was 158 over 98. That is higher than where you were last week, when you were at 129 over 80. How are you feeling today?" },
+  { t: 12000, speaker: "Marcus", text: "Honestly, I have had a bit of a headache since I woke up. Nothing terrible, but it is there." },
+  { t: 16000, speaker: "AI", text: "Thank you for telling me that. A headache combined with a rising blood pressure trend over the last few days is something I want to make sure your care team knows about. Can I ask, have you been taking your blood pressure medications consistently this week?" },
+  { t: 23000, speaker: "Marcus", text: "Actually, no. I ran out of Lisinopril a few days ago and I kept forgetting to call the pharmacy. I have been taking the other one though." },
+  { t: 28500, speaker: "AI", text: "I appreciate you being honest with me. Missing Lisinopril for a few days, combined with the BP trend and the headache, means your care team should follow up with you today. I am sending a priority alert to Nurse David Park right now. He will reach out to help get your medication sorted and check in on how you are feeling. Are you having any chest pain, shortness of breath, or vision changes?" },
+  { t: 37000, speaker: "Marcus", text: "No, nothing like that. Just the headache." },
+  { t: 39500, speaker: "AI", text: "Good. Please take it easy this morning, avoid salty foods, and stay hydrated. David will be in touch today. If the headache gets worse or you develop any chest pain or vision changes before he calls, please call 911 or go to the emergency room. You are doing the right thing by staying on top of this." },
+];
+
+const MARCUS_FHIR_QUERIES = [
+  { t: 5500, method: "GET", path: "/Patient/marcus-williams", result: "Patient demographics loaded", color: "#2563EB" },
+  { t: 6200, method: "GET", path: "/Observation?subject=marcus-williams&code=85354-9", result: "14 BP readings \u00b7 Latest: 158/98 mmHg", color: "#D97706" },
+  { t: 6900, method: "GET", path: "/Observation?subject=marcus-williams&code=41604-0", result: "14 glucose readings \u00b7 Latest: 186 mg/dL", color: "#D97706" },
+  { t: 7500, method: "GET", path: "/MedicationRequest?subject=marcus-williams&status=active", result: "5 active medications", color: "#2563EB" },
+  { t: 8100, method: "GET", path: "/CarePlan?patient=marcus-williams&status=active", result: "Day 22/90 \u00b7 HTN + T2DM Program", color: "#2563EB" },
+  { t: 34000, method: "POST", path: "/Flag", result: "P2 Alert created \u00b7 bp-crisis-risk \u00b7 severity=high", color: "#DC2626" },
+  { t: 34600, method: "POST", path: "/Communication", result: "Coordinator alert dispatched \u2192 David Park", color: "#DC2626" },
+];
+
 // ── Design System Tokens ──
 const DS = {
   fontDisplay: "'DM Serif Display', 'Georgia', serif",
@@ -359,13 +456,13 @@ function TrendArrow({ trend }) {
 }
 
 // ── Header ──
-function Header({ onBack, patientSelected, onSwitchRole }) {
+function Header({ onBack, patientSelected, onSwitchRole, coordinatorName = "Rachel Kim", coordinatorInitials = "RK" }) {
   const isMobile = useIsMobile();
   return (
     <div style={{ background: DS.color.slate[950], color: "white", padding: isMobile ? "10px 14px" : "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 100, gap: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 12, minWidth: 0 }}>
         {patientSelected && onBack && (
-          <button onClick={onBack} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "white", borderRadius: 8, padding: "5px 10px", cursor: "pointer", fontSize: 13, fontFamily: c.font, fontWeight: 600, flexShrink: 0 }}>←{!isMobile && " Back"}</button>
+          <button onClick={onBack} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "white", borderRadius: 8, padding: "5px 10px", cursor: "pointer", fontSize: 13, fontFamily: c.font, fontWeight: 600, flexShrink: 0 }}>&#8592;{!isMobile && " Back"}</button>
         )}
         <span style={{ fontSize: isMobile ? 17 : 20, fontWeight: 400, fontFamily: DS.fontDisplay, letterSpacing: "-0.02em", flexShrink: 0 }}>
           Vardana<span style={{ color: DS.color.amber[400] }}>.</span>
@@ -378,17 +475,17 @@ function Header({ onBack, patientSelected, onSwitchRole }) {
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 16, fontSize: 13, flexShrink: 0 }}>
         {onSwitchRole && <button onClick={onSwitchRole} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontSize: 11, fontFamily: c.font, fontWeight: 600 }}>Switch Role</button>}
-        {!isMobile && <span style={{ opacity: 0.6 }}>Nurse Rachel Kim</span>}
-        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12 }}>RK</div>
+        {!isMobile && <span style={{ opacity: 0.6 }}>Nurse {coordinatorName}</span>}
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12 }}>{coordinatorInitials}</div>
       </div>
     </div>
   );
 }
 
 // ── Roster View ──
-function RosterView({ onSelect, onCallPatient, epicPatients = [], epicLoading, onFetchEpic, riskOverrides = {}, guidanceBanner, isScriptedDemo = false }) {
+function RosterView({ onSelect, onCallPatient, epicPatients = [], epicLoading, onFetchEpic, riskOverrides = {}, guidanceBanner, isScriptedDemo = false, roster = ROSTER, primaryPatientId = 1 }) {
   const isMobile = useIsMobile();
-  const alertCount = ROSTER.filter(p => p.alert).length;
+  const alertCount = roster.filter(p => p.alert).length;
   const [showPointerArrow, setShowPointerArrow] = useState(false);
 
   // In scripted mode, show pointer after 1.5s (amber pulse shows immediately, pointer appears later)
@@ -405,7 +502,7 @@ function RosterView({ onSelect, onCallPatient, epicPatients = [], epicLoading, o
         <div>
           <h1 style={{ fontSize: isMobile ? 19 : 22, fontWeight: 800, color: c.text, margin: 0, fontFamily: c.font }}>Patient Roster</h1>
           <p style={{ fontSize: isMobile ? 12 : 13, color: c.textLight, margin: "4px 0 0", fontFamily: c.font }}>
-            {ROSTER.length} patients · {alertCount} pending alert{alertCount !== 1 && "s"}
+            {roster.length} patients · {alertCount} pending alert{alertCount !== 1 && "s"}
           </p>
         </div>
         {!isMobile && <div style={{ fontSize: 12, color: c.textLight, fontFamily: c.font }}>{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} · {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>}
@@ -422,15 +519,15 @@ function RosterView({ onSelect, onCallPatient, epicPatients = [], epicLoading, o
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {ROSTER.sort((a, b) => (b.alert ? 1 : 0) - (a.alert ? 1 : 0) || b.risk - a.risk).map(p => {
+        {[...roster].sort((a, b) => (b.alert ? 1 : 0) - (a.alert ? 1 : 0) || b.risk - a.risk).map(p => {
           const ro = riskOverrides[p.id];
           const displayRisk = ro ? ro.score : p.risk;
           const displayLevel = ro ? ro.level : p.riskLevel;
-          const isSarahRow = p.id === 1;
-          const showPointer = isScriptedDemo && isSarahRow;
+          const isPrimaryRow = p.id === primaryPatientId;
+          const showPointer = isScriptedDemo && isPrimaryRow;
           return (
           <div key={p.id} style={{ position: "relative", display: "block", opacity: 1, transition: "all 0.3s ease" }}>
-          <button onClick={() => onSelect(p)} style={{ width: "100%", background: c.card, border: `1px solid ${p.alert ? "#FECACA" : c.border}`, borderRadius: c.radius, padding: "16px 20px", cursor: "pointer", fontFamily: c.font, textAlign: "left", boxShadow: isScriptedDemo && isSarahRow ? "0 0 0 2px rgba(245,158,11,0.4)" : c.shadow, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 16, borderLeft: p.alert ? `4px solid ${c.red}` : `4px solid transparent`, animation: isScriptedDemo && isSarahRow ? "amberBorderPulse 1.5s ease-in-out infinite" : "none" }}>
+          <button onClick={() => onSelect(p)} style={{ width: "100%", background: c.card, border: `1px solid ${p.alert ? "#FECACA" : c.border}`, borderRadius: c.radius, padding: "16px 20px", cursor: "pointer", fontFamily: c.font, textAlign: "left", boxShadow: isScriptedDemo && isPrimaryRow ? "0 0 0 2px rgba(245,158,11,0.4)" : c.shadow, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 16, borderLeft: p.alert ? `4px solid ${c.red}` : `4px solid transparent`, animation: isScriptedDemo && isPrimaryRow ? "amberBorderPulse 1.5s ease-in-out infinite" : "none" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>{p.name}</span>
@@ -452,7 +549,7 @@ function RosterView({ onSelect, onCallPatient, epicPatients = [], epicLoading, o
               {ro && <div style={{ fontSize: 10, color: c.teal, fontWeight: 600, marginTop: 2 }}>Assessed during call</div>}
               {!ro && <div style={{ marginTop: 4 }}><TrendArrow trend={p.trend} /></div>}
             </div>
-            {isScriptedDemo && isSarahRow && p.alert && (
+            {isPrimaryRow && p.alert && (
               <button onClick={(e) => { e.stopPropagation(); onCallPatient && onCallPatient(p); }} style={{ padding: "8px 16px", borderRadius: 8, background: DS.color.slate[950], color: "white", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", flexShrink: 0, animation: "amberBorderPulse 1.5s ease-in-out infinite" }}>
                 <Icon name="phone" size={13} color="white" /> Call Patient
               </button>
@@ -570,7 +667,7 @@ function OutreachModal({ patient, onClose, onInitiate }) {
 }
 
 // ── Voice Call Demo ──
-function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoStartLive = false, onExitDemo = null }) {
+function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoStartLive = false, onExitDemo = null, isMarcusDemo = false }) {
   const isMobileView = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState("transcript"); // transcript | chart (mobile only)
   // ── state ──
@@ -582,6 +679,9 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   const [transcript, setTranscript]   = useState([]);
   const [fhirLog, setFhirLog]         = useState([]);
   const isEpic = patient?.isEpic;
+  const ACTIVE_TRANSCRIPT = isMarcusDemo ? MARCUS_VOICE_TRANSCRIPT : VOICE_TRANSCRIPT;
+  const ACTIVE_FHIR = isMarcusDemo ? MARCUS_FHIR_QUERIES : FHIR_QUERIES;
+  const ACTIVE_CLINICAL = isMarcusDemo ? MARCUS_CLINICAL_DATA : PATIENT_CLINICAL_DATA;
   const getPatientContext = () => {
     if (isEpic && patient.epicData) {
       return {
@@ -593,8 +693,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         diagnosticReports: patient.epicData.diagnosticReports || [],
       };
     }
-    // For non-Epic ROSTER patients (Robert, Maria, James), build context from PATIENT_CLINICAL_DATA
-    const clinicalData = PATIENT_CLINICAL_DATA[patient?.id];
+    // For non-Epic ROSTER patients, build context from clinical data
+    const clinicalData = ACTIVE_CLINICAL[patient?.id];
     if (clinicalData) {
       return {
         name: patient.name, age: patient.age,
@@ -607,7 +707,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     // For Sarah Chen (id: 1) — return undefined so the API uses the Sarah-specific prompt
     return undefined;
   };
-  const [riskScore, setRiskScore]     = useState(isEpic ? 50 : patient?.id === 5 ? 53 : 68);
+  const [riskScore, setRiskScore]     = useState(isEpic ? 50 : isMarcusDemo ? 53 : 68);
   const [alertGenerated, setAlertGenerated] = useState(false);
   const [elapsed, setElapsed]   = useState(0);
   const [waveFrame, setWaveFrame] = useState(0);
@@ -809,13 +909,40 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   };
 
   // ── shared effects that fire at specific line indices ──
-  // Lines: 0=AI greeting+weight, 1=Sarah symptoms, 2=AI readings, 3=AI care team,
-  //        4=Sarah worried, 5=AI escalate+breathing?, 6=Sarah breathing, 7=AI alert+guidance
-  const triggerEffects = (idx) => {
+  const triggerEffects = isMarcusDemo ? (idx) => {
+    // Marcus script: 0=AI greeting, 1=AI BP readings, 2=Marcus headache, 3=AI meds question,
+    //                4=Marcus missed meds, 5=AI escalate, 6=Marcus no chest pain, 7=AI guidance
+    if (idx === 0) {
+      // AI greeting — fire FHIR queries for Marcus
+      [0, 520, 1060, 1620, 2200].forEach((d, i) =>
+        addTimer(() => { if (!cancelRef.current) setFhirLog(p => [...p, ACTIVE_FHIR[i]]); }, d)
+      );
+    }
+    if (idx === 1) setRiskScore(53);   // AI shows BP readings — baseline risk
+    if (idx === 2) setRiskScore(68);   // Marcus reports headache → risk jumps
+    if (idx === 4) setRiskScore(73);   // Marcus confirms missed meds → P2 alert threshold
+    if (idx === 5) {
+      setRiskScore(73);               // AI triggers alert at 70+
+      addTimer(() => {
+        if (cancelRef.current) return;
+        setFhirLog(p => [...p, ACTIVE_FHIR[5]]);
+        addTimer(() => {
+          if (cancelRef.current) return;
+          setFhirLog(p => [...p, ACTIVE_FHIR[6]]);
+          setAlertGenerated(true);
+          setUiState("alert");
+          setAlertZoom(true);
+          addTimer(() => { if (!cancelRef.current) setAlertZoom(false); }, 4000);
+        }, 900);
+      }, 1200);
+    }
+  } : (idx) => {
+    // Sarah script: 0=AI greeting+weight, 1=Sarah symptoms, 2=AI readings, 3=AI care team,
+    //               4=Sarah worried, 5=AI escalate+breathing?, 6=Sarah breathing, 7=AI alert+guidance
     if (idx === 2) {
       // AI pulls up readings — fire clinical FHIR queries
       [0, 520, 1060, 1620, 2200].forEach((d, i) =>
-        addTimer(() => { if (!cancelRef.current) setFhirLog(p => [...p, FHIR_QUERIES[i]]); }, d)
+        addTimer(() => { if (!cancelRef.current) setFhirLog(p => [...p, ACTIVE_FHIR[i]]); }, d)
       );
     }
     if (idx === 1) setRiskScore(72);   // Sarah reports symptoms → baseline risk visible
@@ -826,10 +953,10 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       setRiskScore(84);               // AI triggers alert → critical
       addTimer(() => {
         if (cancelRef.current) return;
-        setFhirLog(p => [...p, FHIR_QUERIES[5]]);
+        setFhirLog(p => [...p, ACTIVE_FHIR[5]]);
         addTimer(() => {
           if (cancelRef.current) return;
-          setFhirLog(p => [...p, FHIR_QUERIES[6]]);
+          setFhirLog(p => [...p, ACTIVE_FHIR[6]]);
           setAlertGenerated(true);
           setUiState("alert");
           // Zoom into alert section for 4 seconds
@@ -844,7 +971,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   const playTTSSequence = async (urls) => {
     for (let i = 0; i < urls.length; i++) {
       if (cancelRef.current) return;
-      const line = VOICE_TRANSCRIPT[i];
+      const line = ACTIVE_TRANSCRIPT[i];
       setTranscript(p => [...p, line]);
       setActiveSpeaker(line.speaker);
       triggerEffects(i);
@@ -853,7 +980,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
       setActiveSpeaker(null);
       if (cancelRef.current) return;
-      const gap = VOICE_TRANSCRIPT[i + 1]?.speaker !== line.speaker ? 680 : 260;
+      const gap = ACTIVE_TRANSCRIPT[i + 1]?.speaker !== line.speaker ? 680 : 260;
       await new Promise(r => setTimeout(r, gap));
     }
     if (!cancelRef.current) setUiState("closing");
@@ -870,16 +997,16 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     let cancelled = false;
     (async () => {
       try {
-        const urls = new Array(VOICE_TRANSCRIPT.length);
+        const urls = new Array(ACTIVE_TRANSCRIPT.length);
         const batchSize = 4;
-        for (let start = 0; start < VOICE_TRANSCRIPT.length; start += batchSize) {
+        for (let start = 0; start < ACTIVE_TRANSCRIPT.length; start += batchSize) {
           if (cancelled || cancelRef.current) return;
-          const batch = VOICE_TRANSCRIPT.slice(start, start + batchSize);
+          const batch = ACTIVE_TRANSCRIPT.slice(start, start + batchSize);
           const results = await Promise.all(
             batch.map((line) => fetchAudio(line.text, line.speaker))
           );
           results.forEach((url, j) => { urls[start + j] = url; });
-          setPreloadProgress(Math.round(Math.min(start + batchSize, VOICE_TRANSCRIPT.length) / VOICE_TRANSCRIPT.length * 100));
+          setPreloadProgress(Math.round(Math.min(start + batchSize, ACTIVE_TRANSCRIPT.length) / ACTIVE_TRANSCRIPT.length * 100));
         }
         if (!cancelled) {
           preloadedUrlsRef.current = urls;
@@ -905,16 +1032,16 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     setUiState("loading");
     try {
       // Fetch audio in parallel batches of 4 for faster loading
-      const urls = new Array(VOICE_TRANSCRIPT.length);
+      const urls = new Array(ACTIVE_TRANSCRIPT.length);
       const batchSize = 4;
-      for (let start = 0; start < VOICE_TRANSCRIPT.length; start += batchSize) {
+      for (let start = 0; start < ACTIVE_TRANSCRIPT.length; start += batchSize) {
         if (cancelRef.current) return;
-        const batch = VOICE_TRANSCRIPT.slice(start, start + batchSize);
+        const batch = ACTIVE_TRANSCRIPT.slice(start, start + batchSize);
         const results = await Promise.all(
           batch.map((line) => fetchAudio(line.text, line.speaker))
         );
         results.forEach((url, j) => { urls[start + j] = url; });
-        setLoadProgress(Math.round(Math.min(start + batchSize, VOICE_TRANSCRIPT.length) / VOICE_TRANSCRIPT.length * 100));
+        setLoadProgress(Math.round(Math.min(start + batchSize, ACTIVE_TRANSCRIPT.length) / ACTIVE_TRANSCRIPT.length * 100));
       }
       launchCall(() => playTTSSequence(urls));
     } catch (err) {
@@ -968,11 +1095,11 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     };
     let idx = 0;
     const playNext = () => {
-      if (cancelRef.current || idx >= VOICE_TRANSCRIPT.length) {
+      if (cancelRef.current || idx >= ACTIVE_TRANSCRIPT.length) {
         if (!cancelRef.current) setUiState("closing");
         return;
       }
-      const line = VOICE_TRANSCRIPT[idx];
+      const line = ACTIVE_TRANSCRIPT[idx];
       setTranscript(p => [...p, line]);
       setActiveSpeaker(line.speaker);
       triggerEffects(idx);
@@ -984,7 +1111,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       utt.onend = utt.onerror = () => {
         setActiveSpeaker(null);
         idx++;
-        const gap = VOICE_TRANSCRIPT[idx]?.speaker !== line.speaker ? 700 : 280;
+        const gap = ACTIVE_TRANSCRIPT[idx]?.speaker !== line.speaker ? 700 : 280;
         setTimeout(playNext, gap);
       };
       synth.cancel();
@@ -1002,7 +1129,14 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   };
 
   // ── Live demo functions ──
+  // Echo guard: never start speech recognition while AI audio is playing.
+  // speakAI already kills recognition and waits 800ms after playback, but this
+  // adds a safety check so the mic never opens during AI speech.
   const startListening = () => new Promise((resolve, reject) => {
+    // Block if AI is currently speaking — prevents echo pickup
+    if (audioRef.current && audioRef.current._src && audioRef.current._src.playbackState === 2) {
+      return reject(new Error("ai-speaking"));
+    }
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRec) return reject(new Error("Speech recognition not available"));
     const rec = new SpeechRec();
@@ -1104,7 +1238,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   // Play the pre-cached failsafe message and end the call gracefully
   const playFailsafeAndEnd = async () => {
     const pfName = patient?.name?.split(' ')[0] || 'there';
-    const pfCoord = PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
+    const pfCoord = ACTIVE_CLINICAL[patient?.id]?.coordinator || PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
     const failsafeText = `I'm sorry ${pfName}, we're experiencing a brief technical issue. Don't worry — I've shared everything from our conversation with your care coordinator ${pfCoord.split(',')[0]}, and they will follow up with you today. Take care.`;
     setTranscript(p => [...p, { speaker: "AI", text: failsafeText }]);
     setActiveSpeaker("AI");
@@ -1140,7 +1274,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     const history = [];
     const firstName = patient?.name?.split(' ')[0] || 'there';
     // Pre-cache failsafe audio in background (don't await — let it load while call runs)
-    const coordinatorName = PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
+    const coordinatorName = ACTIVE_CLINICAL[patient?.id]?.coordinator || PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
     const failsafeMsg = `I'm sorry ${firstName}, we're experiencing a brief technical issue. Don't worry — I've shared everything from our conversation with your care coordinator ${coordinatorName.split(',')[0]}, and they will follow up with you today. Take care.`;
     fetchAudioOnce(failsafeMsg, "AI")
       .then(url => { failsafeAudio.current = url; })
@@ -1171,17 +1305,18 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     setConversationHistory([...history]);
 
     // AI acknowledges greeting and transitions to check-in
-    const negativePattern = /\b(not\s+(so\s+)?(good|great|well|fine)|bad|terrible|awful|horrible|rough|sick|worse|pain|hurt|struggling|miserable|don'?t\s+feel\s+(so\s+)?(good|great|well))\b/i;
+    const negativePattern = /\b(not\s+(so\s+)?(good|great|well|fine)|bad|terrible|awful|horrible|rough|sick|worse|pain|hurt|struggling|miserable|don'?t\s+feel\s+(so\s+)?(good|great|well)|headache|head\s*ache|dizzy|dizziness|nausea|nauseous|ache|aching|sore|soreness|blurry|blurred|chest|faint|lightheaded)\b/i;
     const isNegative = negativePattern.test(greetReply);
     let verifiedMsg;
     if (patient?.id === 1) {
       verifiedMsg = isNegative
         ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. Can you tell me more about how you're feeling?`
         : `That's great to hear, ${firstName}. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. How are you feeling today?`;
-    } else if (patient?.id === 5) {
+    } else if (isMarcusDemo) {
+      // Marcus: never say "great to hear" — route symptoms to clinical acknowledgment
       verifiedMsg = isNegative
-        ? `I'm sorry to hear that, ${firstName}. I want to make sure we address that. I'm pulling up your recent readings now. Your blood pressure today is 158 over 98, and I'm seeing a 4-day worsening trend from your best of 129 over 80 on Day 14. How are you feeling?`
-        : `Thank you, ${firstName}. I'm pulling up your recent readings now. Your blood pressure today is 158 over 98, and I'm seeing a 4-day worsening trend from your best of 129 over 80 on Day 14. How are you feeling?`;
+        ? `Thank you for telling me that, ${firstName}. I want to make sure we address that. I'm looking at your recent readings now, and your blood pressure today is 158 over 98, which is up from where it was on Day 14. Let me ask you a few more questions.`
+        : `Thank you, ${firstName}. I have your Day ${patient?.day || "22"} readings pulled up. Your blood pressure today is 158 over 98, which has been trending up over the last few days from your best of 129 over 80 on Day 14. How have you been feeling?`;
     } else {
       verifiedMsg = isNegative
         ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing.`
@@ -1288,7 +1423,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         processMetadata(finalData);
       } catch {
         // Fallback if API fails
-        const coordName = PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
+        const coordName = ACTIVE_CLINICAL[patient?.id]?.coordinator || PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
         closingMsg = `Well ${firstName}, it was great checking in with you today. I've noted everything from our conversation, and your care coordinator ${coordName.split(',')[0]} will have a full summary. If anything changes or you have concerns before your next check-in, don't hesitate to reach out. Take care!`;
       }
       setTranscript(p => [...p, { speaker: "AI", text: closingMsg }]);
@@ -1445,7 +1580,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         Tap to start the demo
       </div>
       <div style={{ fontSize: 13, color: "#556882" }}>
-        {patient.name} · Day {patient.day || '15'} · {patient.id === 5 ? 'HTN + T2DM check-in' : 'CHF check-in'}
+        {patient.name} · Day {patient.day || '15'} · {isMarcusDemo ? 'HTN/DM check-in' : 'CHF check-in'}
       </div>
       <div style={{ fontSize: 12, color: '#3A4F6B', marginTop: 12 }}>
         {preloadProgress < 100
@@ -1514,13 +1649,13 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         <div style={{ fontSize: 28, marginBottom: 20 }}>🎙</div>
         <div style={{ fontSize: 16, fontWeight: 800, color: "white", marginBottom: 8 }}>Generating audio</div>
         <div style={{ fontSize: 13, color: "#64748B", marginBottom: 28 }}>
-          Rendering {VOICE_TRANSCRIPT.length} lines via voice synthesis...
+          Rendering {ACTIVE_TRANSCRIPT.length} lines via ElevenLabs...
         </div>
         {/* Progress bar */}
         <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 8, height: 8, overflow: "hidden", marginBottom: 12 }}>
           <div style={{ height: "100%", borderRadius: 8, background: "linear-gradient(90deg, #F59E0B, #38BDF8)", width: `${loadProgress}%`, transition: "width 0.4s ease" }} />
         </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#94A3B8" }}>{loadProgress}% · Line {Math.ceil(loadProgress / (100 / VOICE_TRANSCRIPT.length))} of {VOICE_TRANSCRIPT.length}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#94A3B8" }}>{loadProgress}% · Line {Math.ceil(loadProgress / (100 / ACTIVE_TRANSCRIPT.length))} of {ACTIVE_TRANSCRIPT.length}</div>
       </div>
     </div>
   );
@@ -1556,12 +1691,17 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         <div style={{ fontSize: 11, fontWeight: 700, color: "#3A4F6B", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>
           Call Summary
         </div>
-        {[
-          { label: "Risk score", value: "68 → 84", color: "#EF4444" },
-          { label: "Alert fired", value: "P1 — Urgent", color: "#EF4444" },
+        {(isMarcusDemo ? [
+          { label: "Risk score", value: "53 \u2192 73", color: "#EF4444" },
+          { label: "Alert fired", value: "P2: BP Crisis Risk", color: "#EF4444" },
+          { label: "Coordinator notified", value: "David Park", color: "#34D399" },
+          { label: "FHIR flag posted", value: "Epic sandbox", color: "#34D399" },
+        ] : [
+          { label: "Risk score", value: "68 \u2192 84", color: "#EF4444" },
+          { label: "Alert fired", value: "P1: Urgent", color: "#EF4444" },
           { label: "Coordinator notified", value: "Rachel Kim", color: "#34D399" },
           { label: "FHIR flag posted", value: "Epic sandbox", color: "#34D399" },
-        ].map((row, i) => (
+        ]).map((row, i) => (
           <div key={i} style={{
             display: "flex", justifyContent: "space-between",
             alignItems: "center", padding: "8px 0",
@@ -1578,7 +1718,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         Vardana.
       </div>
       <div style={{ fontSize: 14, color: "#556882", marginBottom: 4 }}>
-        AI-powered post-discharge care.
+        {isMarcusDemo ? "Chronic condition management across CHF, hypertension, diabetes, and beyond." : "CHF post-discharge care."}
       </div>
       <div style={{ fontSize: 14, color: "#556882", marginBottom: 32 }}>
         Request a pilot at{" "}
@@ -1669,7 +1809,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
             <div style={{ fontSize: 9, fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>Risk</div>
             <div style={{ fontSize: 18, fontWeight: 900, color: riskColor, fontVariantNumeric: "tabular-nums", transition: "all 0.9s" }}>{riskScore}</div>
             {alertGenerated && (
-              <div style={{ fontSize: 9, fontWeight: 800, color: "#F87171", background: "rgba(220,38,38,0.15)", borderRadius: 4, padding: "2px 6px" }}>P1 ALERT</div>
+              <div style={{ fontSize: 9, fontWeight: 800, color: "#F87171", background: "rgba(220,38,38,0.15)", borderRadius: 4, padding: "2px 6px" }}>{isMarcusDemo ? "P2 ALERT" : "P1 ALERT"}</div>
             )}
           </div>
         </div>
@@ -1711,17 +1851,17 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
             {alertZoom && <div style={{ position: "absolute", inset: -12, borderRadius: 16, background: "rgba(220,38,38,0.08)", border: "2px solid rgba(220,38,38,0.3)", animation: "fhirPulse 1.5s ease infinite", pointerEvents: "none" }} />}
             {/* Risk gauge */}
             <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: "14px 16px", width: "100%", textAlign: "center", marginTop: 4 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>Decompensation Risk</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>{isMarcusDemo ? "BP Crisis Risk" : "Decompensation Risk"}</div>
               <div style={{ fontSize: 42, fontWeight: 900, color: riskColor, fontVariantNumeric: "tabular-nums", lineHeight: 1, transition: "all 0.9s ease" }}>{riskScore}</div>
               <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>/ 100</div>
-              {riskScore > 68 && <div style={{ fontSize: 10, fontWeight: 700, color: riskColor, marginTop: 6 }}>↑ Updated live during call</div>}
+              {riskScore > (isMarcusDemo ? 53 : 68) && <div style={{ fontSize: 10, fontWeight: 700, color: riskColor, marginTop: 6 }}>&#8593; Updated live during call</div>}
             </div>
 
             {/* Alert */}
             {alertGenerated && (
               <div style={{ background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.35)", borderRadius: 10, padding: "10px 12px", width: "100%", marginTop: 8, animation: "fadeIn 0.4s ease" }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: "#F87171", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={11} color="#F87171" /> P1 ALERT GENERATED</div>
-                <div style={{ fontSize: 10, color: "#FCA5A5", lineHeight: 1.4 }}>FHIR Flag posted · Coordinator notified</div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: "#F87171", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={11} color="#F87171" /> {isMarcusDemo ? "P2 ALERT GENERATED" : "P1 ALERT GENERATED"}</div>
+                <div style={{ fontSize: 10, color: "#FCA5A5", lineHeight: 1.4 }}>{isMarcusDemo ? "BP Crisis Risk \u00b7 Coordinator: David Park" : "FHIR Flag posted \u00b7 Coordinator notified"}</div>
               </div>
             )}
           </div>
@@ -1983,7 +2123,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
             </div>
 
             {/* AI Assessment */}
-            {(demoMode === "live" ? Object.keys(aiAssessment).length > 0 : transcript.length >= 6) && (
+            {(demoMode === "live" ? Object.keys(aiAssessment).length > 0 : transcript.length >= (isMarcusDemo ? 3 : 6)) && (
               <div style={{ padding: "12px 14px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>AI Assessment</div>
                 {(demoMode === "live" ? (isEpic
@@ -1992,19 +2132,22 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                       value: value || "Pending",
                       flag: value && value !== "Pending" && value !== "Normal" && value !== "None"
                     }))
-                  : patient?.id === 5
-                  ? [
-                    { label: "BP 158/98", value: aiAssessment.bp || "4-day rise", flag: true },
-                    { label: "Glucose",   value: aiAssessment.glucose || "186 mg/dL", flag: true },
-                    { label: "Lisinopril", value: aiAssessment.lisinopril || "Pending", flag: aiAssessment.lisinopril && aiAssessment.lisinopril !== "Pending" },
-                    { label: "Headache",  value: aiAssessment.headache || "Pending", flag: aiAssessment.headache && aiAssessment.headache !== "Pending" },
-                  ]
-                  : [
+                  : isMarcusDemo ? [
+                  { label: "BP 158/98", value: "4-day rise", flag: true },
+                  { label: "Glucose", value: "186 mg/dL", flag: false, orange: true },
+                  { label: "Lisinopril", value: aiAssessment.lisinopril || "Pending", flag: (aiAssessment.lisinopril || "").includes("Missed") },
+                  { label: "Headache", value: aiAssessment.headache || "Pending", flag: aiAssessment.headache === "Confirmed" },
+                ] : [
                   { label: "Weight gain", value: aiAssessment.weightGain || "Pending", flag: aiAssessment.weightGain && aiAssessment.weightGain !== "Pending" },
                   { label: "Orthopnea",   value: aiAssessment.orthopnea || "Pending", flag: aiAssessment.orthopnea === "Confirmed" },
                   { label: "Ankle edema", value: aiAssessment.ankleEdema || "Pending", flag: aiAssessment.ankleEdema === "Confirmed" },
                   { label: "Adherence",   value: aiAssessment.adherence || "Pending", flag: false },
-                ]) : [
+                ]) : isMarcusDemo ? [
+                  { label: "BP 158/98", value: "4-day rise", flag: true },
+                  { label: "Glucose", value: "186 mg/dL", flag: false, orange: true },
+                  { label: "Lisinopril", value: transcript.length >= 5 ? "Missed x3 days" : "Pending", flag: transcript.length >= 5 },
+                  { label: "Headache", value: transcript.length >= 3 ? "Confirmed" : "Pending", flag: transcript.length >= 3 },
+                ] : [
                   { label: "Weight gain", value: "+2.3 lbs/48hr", flag: true },
                   { label: "Orthopnea",   value: transcript.length >= 9 ? "Confirmed" : "Pending", flag: transcript.length >= 9 },
                   { label: "Ankle edema", value: "Confirmed", flag: true },
@@ -2012,7 +2155,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                 ]).map((item, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 5 }}>
                     <span style={{ color: "#475569" }}>{item.label}</span>
-                    <span style={{ fontWeight: 700, color: item.flag ? "#F87171" : (item.value === "Pending" ? "#64748B" : "#34D399") }}>{item.value}</span>
+                    <span style={{ fontWeight: 700, color: item.flag ? "#F87171" : (item.orange ? "#D97706" : (item.value === "Pending" ? "#64748B" : "#34D399")) }}>{item.value}</span>
                   </div>
                 ))}
               </div>
@@ -3347,7 +3490,7 @@ function ScriptedGuidanceBanner({ text, onDismiss }) {
 }
 
 // ── Main App ──
-function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo = false }) {
+function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo = false, isMarcusDemo = false }) {
   const isMobile = useIsMobile();
   const [view, setView] = useState("roster"); // roster | patient | voiceCall | smsPath
   const [selectedPatient, setSelectedPatient] = useState(null);
@@ -3433,8 +3576,14 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
     }
   };
 
+  // Determine which roster and clinical data to use
+  const activeRoster = isMarcusDemo ? MARCUS_ROSTER : ROSTER;
+  const activeClinicalData = isMarcusDemo ? { ...PATIENT_CLINICAL_DATA, ...MARCUS_CLINICAL_DATA } : PATIENT_CLINICAL_DATA;
+  const primaryPatientId = isMarcusDemo ? 101 : 1;
+  const coordinatorName = isMarcusDemo ? "David Park, RN" : "Rachel Kim, RN";
+
   if (view === "voiceCall") {
-    return <VoiceCallDemo patient={selectedPatient} autoStartScripted={isScriptedDemo} autoStartLive={isLiveDemo} onExitDemo={isScriptedDemo ? onSwitchRole : null} onComplete={(data) => {
+    return <VoiceCallDemo patient={selectedPatient} autoStartScripted={isScriptedDemo} autoStartLive={isLiveDemo} onExitDemo={isScriptedDemo ? onSwitchRole : null} isMarcusDemo={isMarcusDemo} onComplete={(data) => {
       if (data) {
         setCallTranscripts(prev => ({ ...prev, [selectedPatient.id]: data }));
         if (data.riskScore) {
@@ -3464,7 +3613,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
           100% { box-shadow: 0 0 0 2px rgba(245,158,11,0.2); }
         }
       `}</style>
-      <Header patientSelected={view === "patient"} onBack={() => setView("roster")} onSwitchRole={onSwitchRole} />
+      <Header patientSelected={view === "patient"} onBack={() => setView("roster")} onSwitchRole={onSwitchRole} coordinatorName={isMarcusDemo ? "David Park" : "Rachel Kim"} coordinatorInitials={isMarcusDemo ? "DP" : "RK"} />
       {view === "patient" && selectedPatient ? (
         <PatientDetail
           patient={selectedPatient}
@@ -3491,9 +3640,13 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
           onCallPatient={(p) => { setSelectedPatient(enrichPatient(p)); setView("voiceCall"); }}
           epicPatients={epicPatients} epicLoading={epicLoading} onFetchEpic={fetchEpicPatients} riskOverrides={riskOverrides}
           isScriptedDemo={isScriptedDemo}
+          roster={activeRoster}
+          primaryPatientId={primaryPatientId}
           guidanceBanner={showRosterBanner ? (
             <ScriptedGuidanceBanner
-              text='Sarah Chen has been flagged. Click "Call Patient" to start the AI voice call.'
+              text={isMarcusDemo
+                ? "Marcus Williams has been flagged. Click &quot;Call Patient&quot; to start the AI voice call."
+                : "Sarah Chen has been flagged. Click &quot;Call Patient&quot; to start the AI voice call."}
               onDismiss={() => setShowRosterBanner(false)}
             />
           ) : null}
@@ -3956,11 +4109,14 @@ function PatientExperienceView({ onSwitchRole }) {
 // ── App Entry (routed via main.jsx) ──
 export default function App({ initialRole, navigate }) {
   const goBack = () => navigate('/demo');
-  const demoParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('demo') : null;
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const demoParam = searchParams.get('demo');
+  const patientParam = searchParams.get('patient');
   const isScriptedDemo = demoParam === 'scripted';
   const isLiveDemo = demoParam === 'live';
+  const isMarcusDemo = patientParam === 'marcus';
 
-  if (initialRole === "coordinator") return <CareCoordinatorView onSwitchRole={goBack} isScriptedDemo={isScriptedDemo} isLiveDemo={isLiveDemo} />;
+  if (initialRole === "coordinator") return <CareCoordinatorView onSwitchRole={goBack} isScriptedDemo={isScriptedDemo} isLiveDemo={isLiveDemo} isMarcusDemo={isMarcusDemo} />;
   if (initialRole === "patient") return <PatientExperienceView onSwitchRole={goBack} />;
 
   // Fallback — redirect to demo page

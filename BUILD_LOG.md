@@ -1,135 +1,173 @@
-# Build Log — Scripted Demo UX Fixes
+# Build Log — Vardana Investor Demo
 
-**Date:** 2026-03-16
+**Repository:** `infos/vardana-investor-demo` on GitHub
 **Branch:** `claude/review-changes-mmn0c8pifc1z30xo-BeVMz`
-**Commit:** `40ef665`
+**Last updated:** 2026-03-17
+**Latest commit:** `f08f835`
 
 ---
 
-## Task Overview
+## Deployment
 
-Implemented 5 UX fixes for the Vardana investor demo scripted and live demo flows. All changes target improved readability, timing, audio reliability, and mobile responsiveness.
-
----
-
-## Codebase Exploration
-
-**Files identified for modification:**
-- `src/App.jsx` — Main monolith (~4000 lines) containing CareCoordinatorView, RosterView, PatientDetail, AIReasoningCard, SupportingData, VoiceCallDemo, PatientChat, PatientExperienceView
-- `src/demo/LiveDemoPage.jsx` — Live demo onboarding slides
-- `src/demo/AboutSlide.jsx` — Reviewed (no changes needed, "1 in 4" paragraph already removed)
-
-**Key components mapped:**
-- Auto-navigation: `CareCoordinatorView` useEffect with 1.5s timeout → Sarah select; `PatientDetail` useEffect with 2s timeout → onOutreach
-- Audio: `startElevenLabs()` fetches in batches of 4, `playElevenLabs()` plays sequentially with 680ms/260ms gaps
-- Tap-to-start overlay: shown when `autoStartScripted && !audioUnlocked`
-- FHIR Activity: right panel, already hidden on mobile via `!isMobileView` guard
-- Closing screen: `uiState === "closing"` renders fade-in summary card
+- **Hosting:** Vercel (SPA with API routes)
+- **Config:** `vercel.json` — Cache-Control no-cache, SPA rewrites, `/api/*` serverless functions
+- **Repo URL:** `https://github.com/infos/vardana-investor-demo`
+- **Branch:** `claude/review-changes-mmn0c8pifc1z30xo-BeVMz` (32 commits ahead of `master`)
 
 ---
 
-## Fix 1 — Transition Delays: Slower Auto-Navigation
+## Repository Structure
 
-**Problem:** Roster visible for only 1.5s, Sarah detail for 2s — too fast to read.
-
-**Changes in `src/App.jsx`:**
-
-| Location | Before | After |
-|---|---|---|
-| `CareCoordinatorView` useEffect (line ~3330) | `setTimeout(..., 1500)` | `setTimeout(..., 4000)` |
-| `PatientDetail` useEffect (line ~3205) | `setTimeout(onOutreach, 2000)` | Pointer at `setTimeout(5000)`, navigate at `setTimeout(7000)` |
-| `RosterView` | Pointer shown immediately | Pointer hidden for 1.5s via `showPointerArrow` state, then appears |
-
-**New animation added:**
-```css
-@keyframes amberBorderPulse {
-  0% { box-shadow: 0 0 0 2px rgba(245,158,11,0.2); }
-  50% { box-shadow: 0 0 0 4px rgba(245,158,11,0.5); }
-  100% { box-shadow: 0 0 0 2px rgba(245,158,11,0.2); }
-}
+```
+vardana-investor-demo/
+├── api/
+│   └── elevenlabs-tts.js        # Serverless TTS proxy (ElevenLabs)
+├── src/
+│   ├── App.jsx                  # Main monolith (~3700 lines): Coordinator, Roster, Patient, Voice Call
+│   ├── DemoPage.jsx             # Demo entry/landing page
+│   ├── ROICalculator.jsx        # CHF ROI calculator (/roi route)
+│   ├── main.jsx                 # Router: /, /demo, /roi, /coordinator
+│   └── demo/
+│       ├── DemoShell.jsx        # Shared demo layout shell
+│       ├── LiveDemoPage.jsx     # Live demo onboarding slides
+│       ├── ScriptedDemoPage.jsx # Scripted demo — Loom video embed
+│       ├── AboutSlide.jsx       # "About Vardana" intro slide
+│       ├── ScenarioSlide.jsx    # "The Scenario" slide
+│       ├── icons.jsx            # SVG icon components
+│       ├── tokens.js            # Design tokens
+│       └── useIsMobile.js       # Mobile detection hook
+├── vercel.json                  # Deployment config
+├── BUILD_LOG.md                 # This file
+└── package.json
 ```
 
 ---
 
-## Fix 2 — Roster Readability in Scripted Mode
+## Changelog (All Commits)
 
-**Problem:** Viewer doesn't know where to look with 4 equally-styled patient rows.
+### Phase 1 — Initial Demo UX Fixes (commit `40ef665`)
 
-**Changes in `src/App.jsx` — `RosterView`:**
-- Non-Sarah patients: `opacity: 0.35` when `isScriptedDemo && !isSarahRow`
-- Sarah's row: `boxShadow: "0 0 0 2px rgba(245,158,11,0.4)"` + `amberBorderPulse` animation
-- Epic EHR section: `display: "none"` when `isScriptedDemo || isMobile`
-- "1 patient needs attention" banner: kept visible (reinforces context)
+5 UX fixes targeting timing, readability, audio reliability, and mobile responsiveness.
 
----
+**Fix 1 — Slower Auto-Navigation**
+- Roster display: 1.5s → 4s before auto-navigating to Sarah
+- Sarah detail: 2s → 7s with pointer appearing at 5s
+- Added `amberBorderPulse` animation on Sarah's roster row
 
-## Fix 3 — Sarah Detail: Reduced Content in Scripted Mode
+**Fix 2 — Roster Readability in Scripted Mode**
+- Non-Sarah patients dimmed to `opacity: 0.35`
+- Sarah's row highlighted with amber border pulse
+- Epic EHR section hidden in scripted/mobile mode
 
-**Problem:** Too much content for 7 seconds of viewing time.
+**Fix 3 — Reduced Content in Scripted Mode**
+- Hidden: accordion, action buttons, SupportingData charts
+- Visible: header, risk badge, alert card, evidence chain, narrative, recommended actions, sticky CTA
 
-**Changes in `src/App.jsx`:**
+**Fix 4 — Audio Pre-fetch Strategy**
+- Parallel preload of all TTS segments on mount
+- Progress indicator in tap-to-start overlay
+- Zero-gap playback from cached blob URLs
 
-| Section | Scripted Mode |
-|---|---|
-| Patient header + risk badge | Visible |
-| Alert card (decompensation) | Visible |
-| Evidence chain (Weight, BP, Patient Report, Trajectory) | Visible |
-| Clinical narrative | Visible |
-| Recommended actions | Visible |
-| "What Sarah told Vardana today" accordion | **Hidden** |
-| Action buttons (Initiate Outreach / Open in EHR / Dismiss) inside AIReasoningCard | **Hidden** |
-| SupportingData (weight chart, BP chart, labs, meds) | **Hidden** |
-| Sticky bottom CTA (single amber Contact Patient) | Visible (with pointer at 5s) |
-
-**Implementation:** `AIReasoningCard` now accepts `isScriptedDemo` prop; accordion + action buttons wrapped in `{!isScriptedDemo && (...)}`. SupportingData render wrapped in `{!isScriptedDemo && (...)}` in `PatientDetail`.
+**Fix 5 — Live Demo Path Fixes**
+- Live demo navigates to `/coordinator?demo=live`
+- No auto-navigation/dimming/pointer in live mode
+- Markdown bold rendering in PatientChat
 
 ---
 
-## Fix 4 — Audio Pre-fetch Strategy
+### Phase 2 — Voice, Slides, and ROI Calculator
 
-**Problem:** Sequential fetch-and-play causes gaps between audio segments.
+**Faster AI voice + slide layout** (`267af56`)
+- TTS speed 0.88 → 0.95
+- Sarah transcript: added "Yes." prefix and "I had" phrasing
+- AboutSlide/ScenarioSlide: flex layout pins CTA to viewport bottom
+- `vercel.json`: Cache-Control no-cache for all routes
 
-**Before:**
-```
-startElevenLabs() → fetch batches → loading screen → launchCall → playElevenLabs
-```
-Audio fetched before play, but only started on explicit user action or auto-start.
-
-**After:**
-```
-mount → preload all segments in parallel (background) → show progress in overlay
-user tap (or auto-unlock) + preload complete → play from cached URLs → zero gap
-```
-
-**New state/refs added:**
-- `preloadedUrlsRef` — cached array of blob URLs
-- `preloadProgress` — 0-100% shown in tap-to-start overlay
-- `preloadReady` — boolean, true when all segments fetched
-
-**Tap-to-start overlay updated:**
-```jsx
-<div style={{ fontSize: 12, color: '#3A4F6B', marginTop: 12 }}>
-  {preloadProgress < 100 ? `Loading... ${preloadProgress}%` : 'Ready — tap to start'}
-</div>
-```
-
-**Auto-start logic refactored:** Two separate effects — one tries to unlock audio on mount, another watches for `audioUnlocked && preloadReady` to trigger playback. This ensures playback starts only when both conditions are met.
+**ROI Calculator** (`4634c86`)
+- New `/roi` route with interactive CHF ROI calculator
+- Sliders for patient population, readmission rates, ED visits, pricing
+- Displays net savings, ROI %, payback period, savings breakdown table, narrative
+- File: `src/ROICalculator.jsx` (420 lines)
 
 ---
 
-## Fix 5 — Live Demo Path Fixes
+### Phase 3 — Scripted Demo Flow Streamlining
 
-**Problem:** Live demo path lacked guidance banner and some mobile fixes.
+**Clean up demo text** (`45b520d`)
+- Removed all `--` separators, replaced with commas/colons
+- Removed "1 in 4 CHF patients" intro splash
+- Desktop: show only Sarah row, auto-navigate to call after 2s
+- Mobile: skip roster, go straight to voice call
 
-**Changes:**
+**Stabilize Sarah's voice** (`d56a52f`)
+- ElevenLabs stability: 0.55 → 0.78
+- Style: 0.35 → 0.10 (prevents pitch variation)
 
-| File | Change |
-|---|---|
-| `src/demo/LiveDemoPage.jsx` | Skip and coordinator CTA now navigate to `/coordinator?demo=live` instead of `/coordinator` |
-| `src/App.jsx` — App entry | Detects `?demo=live` param, passes `isLiveDemo` prop to `CareCoordinatorView` |
-| `src/App.jsx` — `CareCoordinatorView` | Accepts `isLiveDemo` prop; shows roster banner with "Explore at your own pace" text |
-| `src/App.jsx` — `CareCoordinatorView` | No auto-navigation, no dimming, no pointer in live mode |
-| `src/App.jsx` — `PatientChat` | `**bold**` markdown now rendered via `split(/(\*\*[^*]+\*\*)/)` with `<strong>` tags |
+**Roster timing iterations** (`3ffd6c9` → `c836cf6` → `b7ad765`)
+- Extended roster display 2s → 5s
+- Then removed auto-navigation entirely (manual click required)
+- Added "Call Patient" button directly on Sarah's roster row
+- All patients visible again (not just Sarah)
+- Pointer arrow targets the Call Patient button
+
+---
+
+### Phase 4 — Loom Video Embed
+
+**Video embed evolution** (`72d7d50` → `f06f409` → `4e563f3` → `58b93cf`)
+- Started with Loom iframe → switched to Descript → back to Loom
+- Final: ScriptedDemoPage is now just a back link + responsive Loom embed
+- Removed all slide state, step logic, feature cards, navigation buttons
+
+**Mobile + sizing refinements** (`532e470` → `98fdb52` → `a8c5bc6` → `0a656be`)
+- Mobile: "Watch Demo" button linking to Loom share URL (no iframe)
+- Desktop: responsive iframe with `maxHeight: calc(100vh - 80px)`
+- Updated to latest Loom recording
+- Clean Loom params: hide_owner, hide_share, hide_title, hideEmbedTopBar
+
+---
+
+### Phase 5 — Patient View & Live Demo Polish
+
+**Simplify patient view** (`ea8ccbf`)
+- Removed "Open in EHR" and "Dismiss" buttons, keeping single "Contact Patient" CTA
+- Replaced 3-channel outreach modal (Voice/SMS/App + timing) with simple Voice/Chat picker
+- Removed scripted/live demo mode selection — auto-show live call setup
+- Renamed "Initiate Outreach" → "Contact Patient" throughout
+
+**Fix live mode echo/overlap** (`3ef3c23`)
+- Echo guard: 400ms → 800ms
+- Kill active speech recognition before AI speaks
+- Patient transcript labeled "You" instead of "Sarah Chen" in live mode
+- Text input placeholder: "your response" (not "Sarah's response")
+
+**Fix live demo UX** (`f08f835`)
+- Hide scripted demo banner in live mode
+- Remove duplicate "Contact Patient" button when sticky bar is showing
+- Rename Epic "Start AI Check-in" → "Contact Patient"
+- Auto-start voice call in live mode (skip setup screen)
+
+---
+
+## Files Changed (vs master)
+
+| File | Lines Added | Lines Removed | Summary |
+|---|---|---|---|
+| `src/App.jsx` | ~600 | ~400 | Core demo logic, roster, patient detail, voice call |
+| `src/ROICalculator.jsx` | 420 | 0 | New ROI calculator page |
+| `src/demo/ScriptedDemoPage.jsx` | 52 | 0 | Loom video embed |
+| `src/demo/DemoShell.jsx` | 147 | 0 | Demo layout shell |
+| `src/demo/ScenarioSlide.jsx` | 155 | 0 | Scenario onboarding slide |
+| `src/demo/LiveDemoPage.jsx` | 46 | 0 | Live demo onboarding |
+| `src/demo/AboutSlide.jsx` | ~97 | ~80 | Slide layout, text cleanup |
+| `src/demo/icons.jsx` | 53 | 0 | SVG icon components |
+| `src/demo/tokens.js` | 38 | 0 | Design tokens |
+| `src/demo/useIsMobile.js` | 13 | 0 | Mobile detection hook |
+| `src/DemoPage.jsx` | ~10 | ~5 | Demo entry page tweaks |
+| `src/main.jsx` | 18 | 2 | Added /roi and /demo routes |
+| `api/elevenlabs-tts.js` | ~6 | ~3 | TTS stability/speed params |
+| `vercel.json` | 11 | 0 | Cache-Control, rewrites |
+| **Total** | **~1920** | **~540** | |
 
 ---
 
@@ -138,39 +176,8 @@ user tap (or auto-unlock) + preload complete → play from cached URLs → zero 
 ```
 npx vite build
 ✓ 839 modules transformed
-✓ built in 2.81s
-dist/assets/index-DrzAwctI.js  733.10 kB │ gzip: 198.49 kB
+✓ built in ~3s
+dist/assets/index-*.js  ~733 kB │ gzip: ~198 kB
 ```
 
 No errors. Chunk size warning is pre-existing (monolith architecture).
-
----
-
-## Commit & Push
-
-```
-git add src/App.jsx src/demo/LiveDemoPage.jsx
-git commit -m "Slower auto-navigation, pre-fetch audio, and live demo UX fixes"
-git push -u origin claude/review-changes-mmn0c8pifc1z30xo-BeVMz
-```
-
-**Commit hash:** `40ef665`
-**Files changed:** 2
-**Insertions:** 147
-**Deletions:** 65
-
----
-
-## Updated Timing Summary
-
-| Step | Duration |
-|---|---|
-| Roster visible before auto-navigate | 4s |
-| Amber pulse on Sarah's row | Immediate (1.5s animation loop) |
-| Pointer appears on roster | After 1.5s |
-| Sarah detail visible before auto-navigate | 7s |
-| Pointer appears on Contact Patient | After 5s |
-| Audio preload | Parallel on mount, shown as % |
-| Inter-segment audio gap | ~0ms (pre-fetched) |
-| Total automated flow (after Enter Demo) | ~95s |
-| Total including slides | ~110-115s |

@@ -1,0 +1,456 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "marcus-williams",
+        "active": true,
+        "name": [{"use": "official", "family": "Williams", "given": ["Marcus"]}],
+        "gender": "male",
+        "birthDate": "1967-06-03",
+        "telecom": [{"system": "phone", "value": "206-555-0287", "use": "home"}],
+        "address": [{"line": ["3214 MLK Jr Way"], "city": "Seattle", "state": "WA", "postalCode": "98144"}],
+        "generalPractitioner": [{"display": "Dr. Angela Torres, Internal Medicine"}]
+      },
+      "request": {"method": "PUT", "url": "Patient/marcus-williams"}
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-htn",
+        "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
+        "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
+        "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "I10", "display": "Essential (primary) hypertension"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "onsetDateTime": "2018-04-12"
+      },
+      "request": {"method": "PUT", "url": "Condition/cond-htn"}
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-t2dm",
+        "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
+        "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
+        "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "E11.65", "display": "Type 2 diabetes mellitus with hyperglycemia"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "onsetDateTime": "2021-09-08"
+      },
+      "request": {"method": "PUT", "url": "Condition/cond-t2dm"}
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-hyperlipidemia",
+        "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
+        "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
+        "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "E78.5", "display": "Hyperlipidemia"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "onsetDateTime": "2019-02-14"
+      },
+      "request": {"method": "PUT", "url": "Condition/cond-hyperlipidemia"}
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-obesity",
+        "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
+        "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
+        "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "E66.01", "display": "Obesity, BMI 31.4"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "onsetDateTime": "2019-02-14"
+      },
+      "request": {"method": "PUT", "url": "Condition/cond-obesity"}
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "med-lisinopril",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "314076", "display": "Lisinopril 20 MG Oral Tablet"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "dosageInstruction": [{"text": "20mg daily AM", "timing": {"repeat": {"frequency": 1, "period": 1, "periodUnit": "d"}}}]
+      },
+      "request": {"method": "PUT", "url": "MedicationRequest/med-lisinopril"}
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "med-amlodipine",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "197361", "display": "Amlodipine 5 MG Oral Tablet"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "dosageInstruction": [{"text": "5mg daily", "timing": {"repeat": {"frequency": 1, "period": 1, "periodUnit": "d"}}}]
+      },
+      "request": {"method": "PUT", "url": "MedicationRequest/med-amlodipine"}
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "med-metformin",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "861007", "display": "Metformin hydrochloride 1000 MG Oral Tablet"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "dosageInstruction": [{"text": "1000mg BID with meals", "timing": {"repeat": {"frequency": 2, "period": 1, "periodUnit": "d"}}}]
+      },
+      "request": {"method": "PUT", "url": "MedicationRequest/med-metformin"}
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "med-atorvastatin",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "617312", "display": "Atorvastatin 40 MG Oral Tablet"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "dosageInstruction": [{"text": "40mg daily PM", "timing": {"repeat": {"frequency": 1, "period": 1, "periodUnit": "d"}}}]
+      },
+      "request": {"method": "PUT", "url": "MedicationRequest/med-atorvastatin"}
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "med-aspirin",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "243670", "display": "Aspirin 81 MG Oral Tablet"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "dosageInstruction": [{"text": "81mg daily", "timing": {"repeat": {"frequency": 1, "period": 1, "periodUnit": "d"}}}]
+      },
+      "request": {"method": "PUT", "url": "MedicationRequest/med-aspirin"}
+    },
+    {
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "id": "allergy-penicillin",
+        "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", "code": "active"}]},
+        "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification", "code": "confirmed"}]},
+        "code": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "7980", "display": "Penicillin"}]},
+        "patient": {"reference": "Patient/marcus-williams"},
+        "reaction": [{"manifestation": [{"coding": [{"system": "http://snomed.info/sct", "code": "271807003", "display": "Rash"}]}]}],
+        "criticality": "low"
+      },
+      "request": {"method": "PUT", "url": "AllergyIntolerance/allergy-penicillin"}
+    },
+    {
+      "resource": {
+        "resourceType": "Observation", "id": "bp-day01", "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "effectiveDateTime": "2026-02-25T07:30:00-08:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6", "display": "Systolic blood pressure"}]}, "valueQuantity": {"value": 148, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4", "display": "Diastolic blood pressure"}]}, "valueQuantity": {"value": 94, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/bp-day01"}
+    },
+    {
+      "resource": {
+        "resourceType": "Observation", "id": "bp-day03", "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "effectiveDateTime": "2026-02-27T07:30:00-08:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 145, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 91, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/bp-day03"}
+    },
+    {
+      "resource": {
+        "resourceType": "Observation", "id": "bp-day05", "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "effectiveDateTime": "2026-03-01T07:30:00-08:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 142, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 88, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/bp-day05"}
+    },
+    {
+      "resource": {
+        "resourceType": "Observation", "id": "bp-day07", "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "effectiveDateTime": "2026-03-03T07:30:00-08:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 138, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 86, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/bp-day07"}
+    },
+    {
+      "resource": {
+        "resourceType": "Observation", "id": "bp-day10", "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "effectiveDateTime": "2026-03-06T07:30:00-08:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 134, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 84, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/bp-day10"}
+    },
+    {
+      "resource": {
+        "resourceType": "Observation", "id": "bp-day12", "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "effectiveDateTime": "2026-03-08T07:30:00-08:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 131, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 82, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/bp-day12"}
+    },
+    {
+      "resource": {
+        "resourceType": "Observation", "id": "bp-day14", "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "effectiveDateTime": "2026-03-10T07:30:00-08:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 129, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 80, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/bp-day14"}
+    },
+    {
+      "resource": {
+        "resourceType": "Observation", "id": "bp-day16", "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "effectiveDateTime": "2026-03-12T07:30:00-08:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 130, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 81, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/bp-day16"}
+    },
+    {
+      "resource": {
+        "resourceType": "Observation", "id": "bp-day17", "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "effectiveDateTime": "2026-03-13T07:30:00-08:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 132, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 83, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/bp-day17"}
+    },
+    {
+      "resource": {
+        "resourceType": "Observation", "id": "bp-day18", "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "effectiveDateTime": "2026-03-14T07:30:00-08:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 136, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 87, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/bp-day18"}
+    },
+    {
+      "resource": {
+        "resourceType": "Observation", "id": "bp-day19", "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "effectiveDateTime": "2026-03-15T07:30:00-08:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 141, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 90, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/bp-day19"}
+    },
+    {
+      "resource": {
+        "resourceType": "Observation", "id": "bp-day20", "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "effectiveDateTime": "2026-03-16T07:30:00-08:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 148, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 94, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/bp-day20"}
+    },
+    {
+      "resource": {
+        "resourceType": "Observation", "id": "bp-day21", "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "effectiveDateTime": "2026-03-17T07:30:00-08:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 154, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 96, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/bp-day21"}
+    },
+    {
+      "resource": {
+        "resourceType": "Observation", "id": "bp-day22", "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "effectiveDateTime": "2026-03-18T07:30:00-08:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 158, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 98, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/bp-day22"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "glucose-day01", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "41604-0", "display": "Fasting glucose"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-02-25T07:30:00-08:00", "valueQuantity": {"value": 182, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/glucose-day01"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "glucose-day03", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "41604-0"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-02-27T07:30:00-08:00", "valueQuantity": {"value": 175, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/glucose-day03"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "glucose-day05", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "41604-0"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-03-01T07:30:00-08:00", "valueQuantity": {"value": 168, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/glucose-day05"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "glucose-day07", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "41604-0"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-03-03T07:30:00-08:00", "valueQuantity": {"value": 162, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/glucose-day07"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "glucose-day10", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "41604-0"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-03-06T07:30:00-08:00", "valueQuantity": {"value": 155, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/glucose-day10"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "glucose-day12", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "41604-0"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-03-08T07:30:00-08:00", "valueQuantity": {"value": 148, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/glucose-day12"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "glucose-day14", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "41604-0"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-03-10T07:30:00-08:00", "valueQuantity": {"value": 144, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/glucose-day14"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "glucose-day16", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "41604-0"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-03-12T07:30:00-08:00", "valueQuantity": {"value": 146, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/glucose-day16"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "glucose-day17", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "41604-0"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-03-13T07:30:00-08:00", "valueQuantity": {"value": 149, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/glucose-day17"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "glucose-day18", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "41604-0"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-03-14T07:30:00-08:00", "valueQuantity": {"value": 158, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/glucose-day18"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "glucose-day19", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "41604-0"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-03-15T07:30:00-08:00", "valueQuantity": {"value": 166, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/glucose-day19"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "glucose-day20", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "41604-0"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-03-16T07:30:00-08:00", "valueQuantity": {"value": 172, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/glucose-day20"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "glucose-day21", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "41604-0"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-03-17T07:30:00-08:00", "valueQuantity": {"value": 178, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/glucose-day21"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "glucose-day22", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "41604-0"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-03-18T07:30:00-08:00", "valueQuantity": {"value": 186, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/glucose-day22"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lab-hba1c", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "4548-4", "display": "Hemoglobin A1c"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-02-25", "valueQuantity": {"value": 8.4, "unit": "%", "system": "http://unitsofmeasure.org", "code": "%"}},
+      "request": {"method": "PUT", "url": "Observation/lab-hba1c"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lab-fasting-glucose", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "1558-6", "display": "Fasting glucose"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-02-25", "valueQuantity": {"value": 182, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/lab-fasting-glucose"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lab-ldl", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "2089-1", "display": "LDL Cholesterol"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-02-25", "valueQuantity": {"value": 118, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/lab-ldl"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lab-creatinine", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "2160-0", "display": "Creatinine"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-02-25", "valueQuantity": {"value": 1.1, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/lab-creatinine"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lab-egfr", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "69405-9", "display": "Glomerular filtration rate"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-02-25", "valueQuantity": {"value": 72, "unit": "mL/min", "system": "http://unitsofmeasure.org", "code": "mL/min"}},
+      "request": {"method": "PUT", "url": "Observation/lab-egfr"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lab-potassium", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "2823-3", "display": "Potassium"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-02-25", "valueQuantity": {"value": 4.0, "unit": "mEq/L", "system": "http://unitsofmeasure.org", "code": "meq/L"}},
+      "request": {"method": "PUT", "url": "Observation/lab-potassium"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lab-microalbumin-cr", "status": "final", "code": {"coding": [{"system": "http://loinc.org", "code": "14959-1", "display": "Microalbumin/Creatinine ratio"}]}, "subject": {"reference": "Patient/marcus-williams"}, "effectiveDateTime": "2026-02-25", "valueQuantity": {"value": 42, "unit": "mg/g", "system": "http://unitsofmeasure.org", "code": "mg/g"}},
+      "request": {"method": "PUT", "url": "Observation/lab-microalbumin-cr"}
+    },
+    {
+      "resource": {
+        "resourceType": "DiagnosticReport",
+        "id": "dr-program-start",
+        "status": "final",
+        "code": {"coding": [{"system": "http://loinc.org", "code": "51990-0", "display": "Basic metabolic panel"}]},
+        "subject": {"reference": "Patient/marcus-williams"},
+        "effectiveDateTime": "2026-02-25",
+        "result": [
+          {"reference": "Observation/lab-hba1c"},
+          {"reference": "Observation/lab-fasting-glucose"},
+          {"reference": "Observation/lab-ldl"},
+          {"reference": "Observation/lab-creatinine"},
+          {"reference": "Observation/lab-egfr"},
+          {"reference": "Observation/lab-potassium"},
+          {"reference": "Observation/lab-microalbumin-cr"}
+        ]
+      },
+      "request": {"method": "PUT", "url": "DiagnosticReport/dr-program-start"}
+    },
+    {
+      "resource": {
+        "resourceType": "CarePlan",
+        "id": "marcus-williams-careplan",
+        "status": "active",
+        "intent": "plan",
+        "title": "90-Day Hypertension + Diabetes Management Program",
+        "subject": {"reference": "Patient/marcus-williams"},
+        "period": {"start": "2026-02-25", "end": "2026-05-25"},
+        "activity": [
+          {"detail": {"description": "Daily morning BP monitoring", "status": "in-progress"}},
+          {"detail": {"description": "Twice-daily glucose monitoring", "status": "in-progress"}},
+          {"detail": {"description": "Weekly coordinator check-in call", "status": "in-progress"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "CarePlan/marcus-williams-careplan"}
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "enc-enrollment",
+        "status": "finished",
+        "class": {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "AMB", "display": "ambulatory"},
+        "type": [{"coding": [{"system": "http://snomed.info/sct", "code": "185349003", "display": "Outpatient encounter"}]}],
+        "subject": {"reference": "Patient/marcus-williams"},
+        "period": {"start": "2026-02-25", "end": "2026-02-25"}
+      },
+      "request": {"method": "PUT", "url": "Encounter/enc-enrollment"}
+    }
+  ]
+}
