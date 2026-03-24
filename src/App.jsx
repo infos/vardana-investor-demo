@@ -1180,6 +1180,44 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     return res.json();
   };
 
+  // Streaming version: calls onTextChunk as text arrives, returns final metadata
+  const sendToAPIStreaming = async (msgs, turn, maxTurns, onTextChunk) => {
+    const res = await fetch("/api/voice-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: msgs, patientContext: getPatientContext(), turn, maxTurns, stream: true, ...(activePatientKey && { patient: activePatientKey }) }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `API ${res.status}`);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let result = null;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        let data;
+        try { data = JSON.parse(part.slice(6)); } catch { continue; }
+        if (data.type === 'text' && data.content) {
+          onTextChunk(data.content);
+        } else if (data.type === 'done') {
+          result = data;
+        } else if (data.type === 'error') {
+          throw new Error(data.error || 'Stream error');
+        }
+      }
+    }
+    if (!result) throw new Error('Stream ended without completion');
+    return result;
+  };
+
   const processMetadata = (data) => {
     if (data.fhirQueries?.length) {
       data.fhirQueries.forEach((q, i) => {
@@ -1334,8 +1372,9 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     }
 
     // Conversation loop — AI already spoke, so start by listening
+    const maxTurns = 20;
     let conversationEnded = false;
-    for (let turn = 0; turn < 12; turn++) {
+    for (let turn = 0; turn < maxTurns; turn++) {
       if (cancelRef.current) return;
 
       // Listen for patient
@@ -1367,25 +1406,42 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       history.push({ role: "user", content: userText });
       setConversationHistory([...history]);
 
-      // Get AI response
+      // Get AI response — stream text into transcript for instant feedback
       setIsThinking(true);
       let aiData;
+      let streamedText = '';
+      let streamIdx = null;
       try {
-        aiData = await sendToAPI(history, turn, 12);
+        aiData = await sendToAPIStreaming(history, turn, maxTurns, (chunk) => {
+          if (streamIdx === null) {
+            // First chunk — stop "thinking" indicator and add streaming transcript entry
+            setIsThinking(false);
+            setTranscript(p => { streamIdx = p.length; return [...p, { speaker: "AI", text: chunk }]; });
+            streamedText = chunk;
+          } else {
+            streamedText += chunk;
+            setTranscript(p => p.map((t, i) => i === streamIdx ? { ...t, text: streamedText } : t));
+          }
+        });
       } catch (err) {
         setIsThinking(false);
-        // Graceful exit on API error — play failsafe goodbye
         await playFailsafeAndEnd();
         return;
       }
       setIsThinking(false);
       if (cancelRef.current) return;
 
+      // Finalize transcript with cleaned reply (metadata stripped)
+      if (streamIdx !== null) {
+        setTranscript(p => p.map((t, i) => i === streamIdx ? { ...t, text: aiData.reply } : t));
+      } else {
+        setTranscript(p => [...p, { speaker: "AI", text: aiData.reply }]);
+      }
+
       // Process metadata
       processMetadata(aiData);
       history.push({ role: "assistant", content: aiData.reply });
       setConversationHistory([...history]);
-      setTranscript(p => [...p, { speaker: "AI", text: aiData.reply }]);
 
       // Speak response — no browser fallback mid-call
       const ttsOk = await speakAI(aiData.reply);
@@ -1423,7 +1479,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     if (!conversationEnded && !cancelRef.current) {
       let closingMsg;
       try {
-        const finalData = await sendToAPI(history, 12, 12); // remaining=0 triggers FINAL pacing
+        const finalData = await sendToAPI(history, maxTurns, maxTurns); // remaining=0 triggers FINAL pacing
         closingMsg = finalData.reply;
         processMetadata(finalData);
       } catch {
