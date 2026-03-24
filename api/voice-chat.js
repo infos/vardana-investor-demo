@@ -500,7 +500,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST')   return res.status(405).json({ error: 'POST only' });
   if (!API_KEY)                return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
 
-  const { messages, patientContext, evalMode, turn, maxTurns, chatMode, patient: patientParam } = req.body || {};
+  const { messages, patientContext, evalMode, turn, maxTurns, chatMode, patient: patientParam, stream: streamRequested } = req.body || {};
   if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'messages array required' });
 
   // ── Demo response cache: pre-seeded responses for Sarah Chen to eliminate latency ──
@@ -636,6 +636,8 @@ export default async function handler(req, res) {
     }
 
     // ── 7. Call Claude ──────────────────────────────────────────────────────
+    const useStreaming = streamRequested && !evalMode;
+
     const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -648,6 +650,7 @@ export default async function handler(req, res) {
         max_tokens: chatMode ? 150 : 350,
         system: systemPrompt,
         messages,
+        ...(useStreaming && { stream: true }),
       }),
     });
 
@@ -656,32 +659,86 @@ export default async function handler(req, res) {
       return res.status(apiRes.status).json({ error: `Anthropic API ${apiRes.status}: ${err}` });
     }
 
+    // Helper: build metadata from full text + risk result
+    const buildMetadata = (fullText) => {
+      const metaMatch = fullText.match(/<metadata>\s*([\s\S]*?)(?:<\/metadata>|$)/);
+      const reply = fullText.replace(/<metadata>[\s\S]*$/, '').trim();
+      let metadata = {
+        fhirQueries: [],
+        riskScore: riskResult.riskScore,
+        generateAlert: riskResult.riskLevel === 'high' || riskResult.riskLevel === 'critical',
+        assessment: isMarcusContext
+          ? { headache: 'Pending', lisinopril: 'Pending' }
+          : patientContext ? {} : { weightGain: 'Pending', orthopnea: 'Pending', ankleEdema: 'Pending', adherence: 'Pending' },
+        phase: 'greeting',
+      };
+      if (metaMatch) {
+        try { metadata = { ...metadata, ...JSON.parse(metaMatch[1]) }; } catch {}
+      }
+      metadata.fhirQueries = [...preFetchQueries, ...(metadata.fhirQueries || [])];
+      if (metadata.riskScore < riskResult.riskScore) metadata.riskScore = riskResult.riskScore;
+      if (riskResult.riskLevel === 'high' || riskResult.riskLevel === 'critical') {
+        metadata.generateAlert = true;
+      }
+      return { reply, metadata };
+    };
+
+    // ── 7b. Streaming path ────────────────────────────────────────────────
+    if (useStreaming) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('X-Accel-Buffering', 'no');
+      res.status(200);
+
+      let fullText = '';
+      let inMetadata = false;
+      const reader = apiRes.body.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = '';
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          sseBuffer += decoder.decode(value, { stream: true });
+
+          const lines = sseBuffer.split('\n');
+          sseBuffer = lines.pop();
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
+            let event;
+            try { event = JSON.parse(line.slice(6)); } catch { continue; }
+            if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+              const text = event.delta.text;
+              fullText += text;
+              // Stop forwarding once <metadata> tag starts
+              if (!inMetadata) {
+                if (fullText.includes('<metadata>')) {
+                  inMetadata = true;
+                  const before = text.split('<metadata>')[0];
+                  if (before) res.write(`data: ${JSON.stringify({ type: 'text', content: before })}\n\n`);
+                } else {
+                  res.write(`data: ${JSON.stringify({ type: 'text', content: text })}\n\n`);
+                }
+              }
+            }
+          }
+        }
+      } catch (streamErr) {
+        res.write(`data: ${JSON.stringify({ type: 'error', error: streamErr.message })}\n\n`);
+        return res.end();
+      }
+
+      const { reply, metadata } = buildMetadata(fullText);
+      res.write(`data: ${JSON.stringify({ type: 'done', reply, ...metadata })}\n\n`);
+      return res.end();
+    }
+
+    // ── 7c. Non-streaming path (chat mode, eval mode, legacy) ─────────────
     const data     = await apiRes.json();
     const fullText = data.content?.[0]?.text || '';
-    const metaMatch = fullText.match(/<metadata>\s*([\s\S]*?)(?:<\/metadata>|$)/);
-    const reply     = fullText.replace(/<metadata>[\s\S]*$/, '').trim();
-
-    // ── 7. Merge metadata ───────────────────────────────────────────────────
-    let metadata = {
-      fhirQueries:  [],
-      riskScore:    riskResult.riskScore,
-      generateAlert: riskResult.riskLevel === 'high' || riskResult.riskLevel === 'critical',
-      assessment:   isMarcusContext
-        ? { headache: 'Pending', lisinopril: 'Pending' }
-        : patientContext ? {} : { weightGain: 'Pending', orthopnea: 'Pending', ankleEdema: 'Pending', adherence: 'Pending' },
-      phase:        'greeting',
-    };
-    if (metaMatch) {
-      try { metadata = { ...metadata, ...JSON.parse(metaMatch[1]) }; } catch {}
-    }
-
-    // Pre-fetch queries go first (they represent server-side FHIR calls before LLM)
-    metadata.fhirQueries = [...preFetchQueries, ...(metadata.fhirQueries || [])];
-    // Never let the LLM lower the algorithmic risk score or suppress a warranted alert
-    if (metadata.riskScore < riskResult.riskScore) metadata.riskScore = riskResult.riskScore;
-    if (riskResult.riskLevel === 'high' || riskResult.riskLevel === 'critical') {
-      metadata.generateAlert = true;
-    }
+    const { reply, metadata } = buildMetadata(fullText);
 
     const response = { reply, ...metadata };
 
