@@ -1453,8 +1453,11 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         return;
       }
 
-      // Check if done — when AI says goodbye, let patient respond before ending
-      if (aiData.phase === "done") {
+      // Check if done — when AI says goodbye, let patient respond before ending.
+      // If the AI ended with a question, it's not truly done — continue the loop
+      // so the patient can answer and get a proper closing response.
+      const endsWithQuestion = /\?\s*$/.test(aiData.reply);
+      if (aiData.phase === "done" && !endsWithQuestion) {
         conversationEnded = true;
         // Patient gets to say goodbye back
         if (!cancelRef.current) {
