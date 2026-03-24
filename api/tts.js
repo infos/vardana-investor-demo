@@ -6,7 +6,7 @@ const CARTESIA_KEY = (process.env.CARTESIA_API_KEY || '').trim();
 const TTS_VOICES = {
   AI: '0fbdXLXuDBZXm2IHek4L',
   Sarah: 'RGb96Dcl0k5eVje8EBch',
-  Marcus: process.env.MARCUS_VOICE_ID || 'TX3LPaxmHKxFdv7VOQHJ',
+  Marcus: process.env.MARCUS_VOICE_ID || '9N8nIBnvZ0Hbs6qhIqpt',
 };
 
 // Cartesia fallback voices
