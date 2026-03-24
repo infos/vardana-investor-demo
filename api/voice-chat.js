@@ -500,7 +500,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST')   return res.status(405).json({ error: 'POST only' });
   if (!API_KEY)                return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
 
-  const { messages, patientContext, evalMode, turn, maxTurns, chatMode } = req.body || {};
+  const { messages, patientContext, evalMode, turn, maxTurns, chatMode, patient: patientParam } = req.body || {};
   if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'messages array required' });
 
   // ── Demo response cache: pre-seeded responses for Sarah Chen to eliminate latency ──
