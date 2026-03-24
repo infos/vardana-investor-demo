@@ -1280,53 +1280,58 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       .then(url => { failsafeAudio.current = url; })
       .catch(() => {}); // silent fail — we'll try again in playFailsafeAndEnd
 
-    // AI opening line
-    const dayInfo = patient?.day ? ` Day ${patient.day}` : "";
-    const greeting = `Good morning ${firstName}. This is the Vardana care concierge calling for your${dayInfo} check-in. How are you feeling today?`;
-    setTranscript(p => [...p, { speaker: "AI", text: greeting }]);
-    history.push({ role: "assistant", content: greeting });
-    setConversationHistory([...history]);
-    await speakAI(greeting, true); // allow browser fallback for the very first line
-    if (cancelRef.current) return;
-
-    // Wait for patient to respond to greeting
-    let greetReply;
-    try {
-      greetReply = await startListening();
-    } catch {
-      setIsListening(false);
-      setActiveSpeaker(null);
-      greetReply = await new Promise(resolve => { window._liveTextResolve = resolve; });
-    }
-    if (cancelRef.current) return;
-    setActiveSpeaker(null);
-    setTranscript(p => [...p, { speaker: firstName, text: greetReply }]);
-    history.push({ role: "user", content: greetReply });
-    setConversationHistory([...history]);
-
-    // AI acknowledges greeting and transitions to check-in
-    const negativePattern = /\b(not\s+(so\s+)?(good|great|well|fine)|bad|terrible|awful|horrible|rough|sick|worse|pain|hurt|struggling|miserable|don'?t\s+feel\s+(so\s+)?(good|great|well)|headache|head\s*ache|dizzy|dizziness|nausea|nauseous|ache|aching|sore|soreness|blurry|blurred|chest|faint|lightheaded)\b/i;
-    const isNegative = negativePattern.test(greetReply);
-    let verifiedMsg;
-    if (patient?.id === 1) {
-      verifiedMsg = isNegative
-        ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. Can you tell me more about how you're feeling?`
-        : `That's great to hear, ${firstName}. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. How are you feeling today?`;
-    } else if (isMarcusDemo) {
-      // Marcus: never say "great to hear" — route symptoms to clinical acknowledgment
-      verifiedMsg = isNegative
-        ? `Thank you for telling me that, ${firstName}. I want to make sure we address that. I'm looking at your recent readings now, and your blood pressure today is 158 over 98, which is up from where it was on Day 14. Let me ask you a few more questions.`
-        : `Thank you, ${firstName}. I have your Day ${patient?.day || "22"} readings pulled up. Your blood pressure today is 158 over 98, which has been trending up over the last few days from your best of 129 over 80 on Day 14. How have you been feeling?`;
+    // Marcus: clinical opener replaces generic greeting + throwaway exchange
+    if (isMarcusDemo) {
+      const marcusGreeting = `Good morning, ${firstName}. I have your Day ${patient.day || 22} readings pulled up. Your blood pressure today is 158 over 98, which has been trending up over the last few days from your best of 129 over 80 on Day 14. How have you been feeling?`;
+      setTranscript(p => [...p, { speaker: "AI", text: marcusGreeting }]);
+      history.push({ role: "assistant", content: marcusGreeting });
+      setConversationHistory([...history]);
+      await speakAI(marcusGreeting, true);
+      if (cancelRef.current) return;
     } else {
-      verifiedMsg = isNegative
-        ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing.`
-        : `That's great to hear, ${firstName}. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing. How are you feeling overall?`;
+      // All other patients: generic greeting → patient response → clinical transition
+      const dayInfo = patient?.day ? ` Day ${patient.day}` : "";
+      const greeting = `Good morning ${firstName}. This is the Vardana care concierge calling for your${dayInfo} check-in. How are you feeling today?`;
+      setTranscript(p => [...p, { speaker: "AI", text: greeting }]);
+      history.push({ role: "assistant", content: greeting });
+      setConversationHistory([...history]);
+      await speakAI(greeting, true);
+      if (cancelRef.current) return;
+
+      // Wait for patient to respond to greeting
+      let greetReply;
+      try {
+        greetReply = await startListening();
+      } catch {
+        setIsListening(false);
+        setActiveSpeaker(null);
+        greetReply = await new Promise(resolve => { window._liveTextResolve = resolve; });
+      }
+      if (cancelRef.current) return;
+      setActiveSpeaker(null);
+      setTranscript(p => [...p, { speaker: firstName, text: greetReply }]);
+      history.push({ role: "user", content: greetReply });
+      setConversationHistory([...history]);
+
+      // AI acknowledges greeting and transitions to check-in
+      const negativePattern = /\b(not\s+(so\s+)?(good|great|well|fine)|bad|terrible|awful|horrible|rough|sick|worse|pain|hurt|struggling|miserable|don'?t\s+feel\s+(so\s+)?(good|great|well))\b/i;
+      const isNegative = negativePattern.test(greetReply);
+      let verifiedMsg;
+      if (patient?.id === 1) {
+        verifiedMsg = isNegative
+          ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. Can you tell me more about how you're feeling?`
+          : `That's great to hear, ${firstName}. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. How are you feeling today?`;
+      } else {
+        verifiedMsg = isNegative
+          ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing.`
+          : `That's great to hear, ${firstName}. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing. How are you feeling overall?`;
+      }
+      setTranscript(p => [...p, { speaker: "AI", text: verifiedMsg }]);
+      history.push({ role: "assistant", content: verifiedMsg });
+      setConversationHistory([...history]);
+      await speakAI(verifiedMsg);
+      if (cancelRef.current) return;
     }
-    setTranscript(p => [...p, { speaker: "AI", text: verifiedMsg }]);
-    history.push({ role: "assistant", content: verifiedMsg });
-    setConversationHistory([...history]);
-    await speakAI(verifiedMsg);
-    if (cancelRef.current) return;
 
     // Conversation loop — AI already spoke, so start by listening
     let conversationEnded = false;
