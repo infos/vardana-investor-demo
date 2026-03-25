@@ -116,7 +116,12 @@ export default async function handler(req, res) {
     }
 
     if (!audioBuf) {
-      return res.status(503).json({ error: 'All TTS providers unavailable. Set TTS_API_KEY or CARTESIA_API_KEY.' });
+      const hasKeys = !!(TTS_API_KEY || CARTESIA_KEY);
+      return res.status(503).json({
+        error: hasKeys
+          ? 'TTS providers returned errors (possibly rate-limited). Try again in a moment.'
+          : 'All TTS providers unavailable. Set TTS_API_KEY or CARTESIA_API_KEY.',
+      });
     }
 
     res.setHeader('Content-Type', 'audio/mpeg');

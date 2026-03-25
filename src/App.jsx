@@ -994,22 +994,19 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   const [preloadProgress, setPreloadProgress] = useState(0);
   const [preloadReady, setPreloadReady] = useState(false);
 
-  // Pre-fetch all audio segments on mount for scripted demo
+  // Pre-fetch all audio segments on mount for scripted demo (sequential to avoid rate limits)
   useEffect(() => {
     if (!autoStartScripted || preloadedUrlsRef.current) return;
     let cancelled = false;
     (async () => {
       try {
         const urls = new Array(ACTIVE_TRANSCRIPT.length);
-        const batchSize = 4;
-        for (let start = 0; start < ACTIVE_TRANSCRIPT.length; start += batchSize) {
+        for (let i = 0; i < ACTIVE_TRANSCRIPT.length; i++) {
           if (cancelled || cancelRef.current) return;
-          const batch = ACTIVE_TRANSCRIPT.slice(start, start + batchSize);
-          const results = await Promise.all(
-            batch.map((line) => fetchAudio(line.text, line.speaker))
-          );
-          results.forEach((url, j) => { urls[start + j] = url; });
-          setPreloadProgress(Math.round(Math.min(start + batchSize, ACTIVE_TRANSCRIPT.length) / ACTIVE_TRANSCRIPT.length * 100));
+          urls[i] = await fetchAudio(ACTIVE_TRANSCRIPT[i].text, ACTIVE_TRANSCRIPT[i].speaker);
+          setPreloadProgress(Math.round((i + 1) / ACTIVE_TRANSCRIPT.length * 100));
+          // Small delay between requests to avoid TTS provider rate limits
+          if (i < ACTIVE_TRANSCRIPT.length - 1) await new Promise(r => setTimeout(r, 300));
         }
         if (!cancelled) {
           preloadedUrlsRef.current = urls;
@@ -1034,17 +1031,13 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     }
     setUiState("loading");
     try {
-      // Fetch audio in parallel batches of 4 for faster loading
+      // Fetch audio sequentially to avoid TTS provider rate limits
       const urls = new Array(ACTIVE_TRANSCRIPT.length);
-      const batchSize = 4;
-      for (let start = 0; start < ACTIVE_TRANSCRIPT.length; start += batchSize) {
+      for (let i = 0; i < ACTIVE_TRANSCRIPT.length; i++) {
         if (cancelRef.current) return;
-        const batch = ACTIVE_TRANSCRIPT.slice(start, start + batchSize);
-        const results = await Promise.all(
-          batch.map((line) => fetchAudio(line.text, line.speaker))
-        );
-        results.forEach((url, j) => { urls[start + j] = url; });
-        setLoadProgress(Math.round(Math.min(start + batchSize, ACTIVE_TRANSCRIPT.length) / ACTIVE_TRANSCRIPT.length * 100));
+        urls[i] = await fetchAudio(ACTIVE_TRANSCRIPT[i].text, ACTIVE_TRANSCRIPT[i].speaker);
+        setLoadProgress(Math.round((i + 1) / ACTIVE_TRANSCRIPT.length * 100));
+        if (i < ACTIVE_TRANSCRIPT.length - 1) await new Promise(r => setTimeout(r, 300));
       }
       launchCall(() => playTTSSequence(urls));
     } catch (err) {
