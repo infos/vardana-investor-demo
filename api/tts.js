@@ -95,7 +95,8 @@ export default async function handler(req, res) {
     let audioBuf;
     let ttsProvider = 'none';
 
-    let lastError = '';
+    let primaryError = '';
+    let fallbackError = '';
 
     // Primary voice synthesis provider
     if (TTS_API_KEY) {
@@ -103,7 +104,7 @@ export default async function handler(req, res) {
         audioBuf = await primaryTTS(text, speaker || 'AI');
         ttsProvider = 'primary';
       } catch (e) {
-        lastError = e.message;
+        primaryError = e.message;
         console.error('[TTS] Primary failed, trying fallback:', e.message);
       }
     }
@@ -114,16 +115,17 @@ export default async function handler(req, res) {
         audioBuf = await cartesiaTTS(text, speaker || 'AI');
         ttsProvider = 'cartesia';
       } catch (e) {
-        lastError = e.message;
+        fallbackError = e.message;
         console.error('[TTS] Fallback also failed:', e.message);
       }
     }
 
     if (!audioBuf) {
       const hasKeys = !!(TTS_API_KEY || CARTESIA_KEY);
+      const details = [primaryError && `primary: ${primaryError}`, fallbackError && `fallback: ${fallbackError}`].filter(Boolean).join('; ');
       return res.status(503).json({
         error: hasKeys
-          ? `TTS provider error: ${lastError || 'unknown'}`
+          ? `TTS failed — ${details || 'unknown'}`
           : 'All TTS providers unavailable. Set TTS_API_KEY or CARTESIA_API_KEY.',
       });
     }
