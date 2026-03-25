@@ -326,9 +326,9 @@ const DS = {
   },
   color: {
     slate: {
-      950: "#0C1420", 900: "#131E2E", 800: "#1C2B40", 700: "#253550",
-      600: "#3A4F6B", 500: "#556882", 400: "#7A90A8", 300: "#A8BAC8",
-      200: "#D1DCE6", 100: "#EBF0F5", 50: "#F5F7FA",
+      950: "#1E3A5F", 900: "#1E3A5F", 800: "#1E3A5F", 700: "#2A4E7A",
+      600: "#4A6380", 500: "#7A96B0", 400: "#A8BAC8", 300: "#D1D9E0",
+      200: "#E8EDF3", 100: "#EEF1F5", 50: "#F6F7F9",
     },
     amber: {
       700: "#92400E", 600: "#B45309", 500: "#D97706", 400: "#F59E0B",
@@ -339,7 +339,7 @@ const DS = {
       100: "#D1FAE5", 50: "#ECFDF5",
     },
     crimson: {
-      700: "#991B1B", 600: "#DC2626", 500: "#EF4444", 100: "#FEE2E2", 50: "#FEF2F2",
+      700: "#8B1A1A", 600: "#A93226", 500: "#C0392B", 100: "#FEE2E2", 50: "#FEF2F2",
     },
     canvas: { warm: "#F6F4F0", cool: "#F1F4F8", white: "#FFFFFF" },
     border: { subtle: "#E4E9EF", default: "#D1D9E0", strong: "#A8BAC8" },
@@ -1756,7 +1756,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
     return (
       <div style={{
-        position: "fixed", inset: 0, background: "#0C1420", zIndex: 300,
+        position: "fixed", inset: 0, background: "#F6F7F9", zIndex: 300,
         display: "flex", flexDirection: "column",
         alignItems: "center",
         padding: "32px 24px",
@@ -1767,10 +1767,10 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         <div style={{ marginBottom: 24, textAlign: "center" }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
-              <rect width="32" height="32" rx="8" fill="#D97706" />
+              <rect width="32" height="32" rx="8" fill="#3DBFA0" />
               <path d="M16 7C11 7 7 11 7 16s4 9 9 9 9-4 9-9-4-9-9-9zm0 14.5c-1.5 0-3-0.8-3.8-2.2l1.3-0.8c0.5 0.9 1.4 1.5 2.5 1.5s2-0.6 2.5-1.5l1.3 0.8c-0.8 1.4-2.3 2.2-3.8 2.2zm4.5-5h-9v-1.5h9v1.5z" fill="white"/>
             </svg>
-            <span style={{ fontFamily: DS.fontDisplay, fontSize: 22, fontWeight: 400, color: "#F5F7FA", letterSpacing: "-0.02em" }}>Vardana</span>
+            <span style={{ fontFamily: DS.fontDisplay, fontSize: 22, fontWeight: 400, color: "#1E3A5F", letterSpacing: "-0.02em" }}>Vardana</span>
           </div>
         </div>
 
@@ -1787,16 +1787,17 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         }}>
           {/* LEFT — Call Summary card */}
           <div style={{
-            background: "#131E2E", border: "1px solid #253550",
+            background: "#FFFFFF", border: "1px solid #D1D9E0",
             borderRadius: 16, padding: "20px 28px",
             flex: isMobileView ? "none" : "0 0 340px",
             width: isMobileView ? "100%" : "auto",
             alignSelf: "flex-start",
+            boxShadow: "0 2px 6px rgba(30,58,95,0.07)",
           }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#3A4F6B", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
               Call Summary
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#F5F7FA", marginBottom: 16, fontFamily: DS.fontDisplay, letterSpacing: "-0.01em" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#1E3A5F", marginBottom: 16, fontFamily: DS.fontDisplay, letterSpacing: "-0.01em" }}>
               {summaryHeader}
             </div>
 
@@ -1804,26 +1805,26 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
               <div key={i} style={{
                 display: "flex", justifyContent: "space-between",
                 alignItems: "center", padding: "8px 0",
-                borderBottom: i < summaryRows.length - 1 ? "1px solid #1C2B40" : "none",
+                borderBottom: i < summaryRows.length - 1 ? "1px solid #E8EDF3" : "none",
               }}>
-                <span style={{ fontSize: 13, color: "#556882" }}>{row.label}</span>
+                <span style={{ fontSize: 13, color: "#7A96B0" }}>{row.label}</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: row.color }}>{row.value}</span>
               </div>
             ))}
 
             {/* Key findings */}
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #1C2B40" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#3A4F6B", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #E8EDF3" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>
                 Key Findings
               </div>
               {keyFindings.map((finding, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 3, flexShrink: 0 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 3, flexShrink: 0 }}>
                     <circle cx="12" cy="12" r="10" />
                     <line x1="12" y1="8" x2="12" y2="12" />
                     <line x1="12" y1="16" x2="12.01" y2="16" />
                   </svg>
-                  <span style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.5 }}>{finding}</span>
+                  <span style={{ fontSize: 13, color: "#4A6380", lineHeight: 1.5 }}>{finding}</span>
                 </div>
               ))}
             </div>
@@ -1831,17 +1832,18 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
           {/* RIGHT — Transcript card */}
           <div style={{
-            background: "#131E2E", border: "1px solid #253550",
+            background: "#FFFFFF", border: "1px solid #D1D9E0",
             borderRadius: 16, padding: "20px 24px",
             flex: 1,
             display: "flex", flexDirection: "column",
             minHeight: 0,
             maxHeight: isMobileView ? 400 : "none",
+            boxShadow: "0 2px 6px rgba(30,58,95,0.07)",
           }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#3A4F6B", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
               Call Transcript
             </div>
-            <div style={{ fontSize: 12, color: "#556882", marginBottom: 16 }}>
+            <div style={{ fontSize: 12, color: "#7A96B0", marginBottom: 16 }}>
               Call completed {closingDate} -- Duration: ~90 seconds
             </div>
 
@@ -1854,9 +1856,10 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                 <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                   <div style={{
                     width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                    background: "rgba(255,255,255,0.06)",
+                    background: line.speaker === "AI" ? "#E8F5F1" : "#EDE9FE",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 11, color: line.speaker === "AI" ? "#38BDF8" : "#A78BFA",
+                    fontSize: 11, fontWeight: 700,
+                    color: line.speaker === "AI" ? "#1A7A61" : "#7C3AED",
                     marginTop: 3,
                     border: "1px solid transparent",
                   }}>
@@ -1865,16 +1868,16 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                   <div style={{ flex: 1 }}>
                     <div style={{
                       fontSize: 10, fontWeight: 700,
-                      color: line.speaker === "AI" ? "#334155" : "#334155",
+                      color: "#7A96B0",
                       marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em",
                     }}>
                       {line.speaker === "AI" ? "Vardana AI" : patientLabel}
                     </div>
                     <div style={{
-                      fontSize: 13, color: "rgba(255,255,255,0.72)", lineHeight: 1.6,
-                      background: "rgba(255,255,255,0.03)",
+                      fontSize: 13, color: "#4A6380", lineHeight: 1.6,
+                      background: line.speaker === "AI" ? "#F6F7F9" : "#FAFBFC",
                       padding: "9px 13px", borderRadius: 10,
-                      border: "1px solid rgba(255,255,255,0.05)",
+                      border: "1px solid #E8EDF3",
                     }}>
                       {line.text}
                     </div>
@@ -1885,8 +1888,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
             {/* View full transcript link */}
             {/* TODO: link to persisted transcript once pilot logging is live */}
-            <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #1C2B40" }}>
-              <a href="#" onClick={e => e.preventDefault()} style={{ fontSize: 12, color: "#3A4F6B", textDecoration: "none" }}>
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #E8EDF3" }}>
+              <a href="#" onClick={e => e.preventDefault()} style={{ fontSize: 12, color: "#A8BAC8", textDecoration: "none" }}>
                 View full transcript
               </a>
             </div>
@@ -1895,25 +1898,25 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
         {/* Tagline + CTA */}
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontFamily: DS.fontDisplay, fontSize: 22, color: "#F5F7FA", letterSpacing: "-0.02em", marginBottom: 6 }}>
+          <div style={{ fontFamily: DS.fontDisplay, fontSize: 22, color: "#1E3A5F", letterSpacing: "-0.02em", marginBottom: 6 }}>
             Vardana.
           </div>
-          <div style={{ fontSize: 14, color: "#556882", marginBottom: 4 }}>
+          <div style={{ fontSize: 14, color: "#7A96B0", marginBottom: 4 }}>
             {isMarcusDemo ? "Chronic condition management across CHF, hypertension, diabetes, and beyond." : "CHF post-discharge care."}
           </div>
-          <div style={{ fontSize: 14, color: "#556882", marginBottom: 24 }}>
+          <div style={{ fontSize: 14, color: "#7A96B0", marginBottom: 24 }}>
             Request a pilot at{" "}
-            <a href="https://vardana.ai" style={{ color: "#F59E0B", textDecoration: "none" }}>vardana.ai</a>
+            <a href="https://vardana.ai" style={{ color: "#3DBFA0", textDecoration: "none" }}>vardana.ai</a>
           </div>
 
           <button
             onClick={() => { if (onExitDemo) { onExitDemo(); } else { setUiState("done"); handleComplete(); } }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "#F59E0B"; e.currentTarget.style.color = "#F59E0B"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "#253550"; e.currentTarget.style.color = "#556882"; }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "#3DBFA0"; e.currentTarget.style.color = "#3DBFA0"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "#D1D9E0"; e.currentTarget.style.color = "#7A96B0"; }}
             style={{
-              background: "none", border: "1px solid #253550",
+              background: "none", border: "1px solid #D1D9E0",
               borderRadius: 10, padding: "10px 24px",
-              fontSize: 13, color: "#556882", cursor: "pointer",
+              fontSize: 13, color: "#7A96B0", cursor: "pointer",
               fontFamily: "'DM Sans', system-ui, sans-serif",
               transition: "all 0.2s ease",
             }}
@@ -1929,7 +1932,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   // CALL SCREEN (dialing / connected / active / alert / done)
   // ─────────────────────────────────────────────
   return (
-    <div style={{ position: "fixed", inset: 0, background: c.navy, zIndex: 300, display: "flex", flexDirection: "column", fontFamily: c.font }}>
+    <div style={{ position: "fixed", inset: 0, background: "#F6F7F9", zIndex: 300, display: "flex", flexDirection: "column", fontFamily: c.font }}>
 
       {/* Top bar */}
       <div style={{ padding: isMobileView ? "10px 12px" : "14px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.08)", gap: 8, flexWrap: isMobileView ? "wrap" : "nowrap" }}>
