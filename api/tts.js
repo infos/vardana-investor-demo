@@ -95,12 +95,15 @@ export default async function handler(req, res) {
     let audioBuf;
     let ttsProvider = 'none';
 
+    let lastError = '';
+
     // Primary voice synthesis provider
     if (TTS_API_KEY) {
       try {
         audioBuf = await primaryTTS(text, speaker || 'AI');
         ttsProvider = 'primary';
       } catch (e) {
+        lastError = e.message;
         console.error('[TTS] Primary failed, trying fallback:', e.message);
       }
     }
@@ -111,6 +114,7 @@ export default async function handler(req, res) {
         audioBuf = await cartesiaTTS(text, speaker || 'AI');
         ttsProvider = 'cartesia';
       } catch (e) {
+        lastError = e.message;
         console.error('[TTS] Fallback also failed:', e.message);
       }
     }
@@ -119,7 +123,7 @@ export default async function handler(req, res) {
       const hasKeys = !!(TTS_API_KEY || CARTESIA_KEY);
       return res.status(503).json({
         error: hasKeys
-          ? 'TTS providers returned errors (possibly rate-limited). Try again in a moment.'
+          ? `TTS provider error: ${lastError || 'unknown'}`
           : 'All TTS providers unavailable. Set TTS_API_KEY or CARTESIA_API_KEY.',
       });
     }
