@@ -4,12 +4,22 @@ import AboutSlide from './AboutSlide';
 import ScenarioSlide from './ScenarioSlide';
 
 export default function RecordedDemoPage({ navigate }) {
-  const conditionParam = new URLSearchParams(window.location.search).get('condition') || '';
-  const defaultPatient = conditionParam.toLowerCase().startsWith('hyp') ? 'marcus' : 'sarah';
+  const searchParams = new URLSearchParams(window.location.search);
+  const patientParam = searchParams.get('patient');
+  const conditionParam = searchParams.get('condition') || '';
+  // patient param takes priority, then condition, then default sarah
+  const defaultPatient = patientParam === 'marcus' ? 'marcus'
+    : patientParam === 'sarah' ? 'sarah'
+    : conditionParam.toLowerCase().startsWith('hyp') ? 'marcus'
+    : 'sarah';
   const [step, setStep] = useState('about');
   const [selectedPatient, setSelectedPatient] = useState(defaultPatient);
 
-  const patientParam = selectedPatient === 'marcus' ? '&patient=marcus' : '';
+  const isMarcus = selectedPatient === 'marcus';
+  const coordinatorHref = isMarcus
+    ? '/coordinator?demo=scripted&patient=marcus'
+    : '/coordinator?demo=scripted';
+  const patientHref = isMarcus ? '/patient?patient=marcus' : '/patient';
 
   return (
     <DemoShell>
@@ -17,13 +27,16 @@ export default function RecordedDemoPage({ navigate }) {
       {step === 'about' ? (
         <AboutSlide
           onBack={() => navigate('/demo')}
-          onSkip={() => navigate(`/coordinator?demo=scripted${patientParam}`)}
+          onSkip={() => navigate(coordinatorHref)}
           onNext={() => setStep('scenario')}
         />
       ) : (
         <ScenarioSlide
           onBack={() => setStep('about')}
-          onEnter={(patient) => navigate(`/coordinator?demo=scripted${patient === 'marcus' ? '&patient=marcus' : ''}`)}
+          onEnter={(patient) => navigate(patient === 'marcus'
+            ? '/coordinator?demo=scripted&patient=marcus'
+            : '/coordinator?demo=scripted'
+          )}
           onPatientSelect={(patient) => setSelectedPatient(patient)}
           enterLabel="Enter Demo &#8594;"
           defaultPatient={defaultPatient}
