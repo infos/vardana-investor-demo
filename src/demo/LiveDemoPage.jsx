@@ -44,6 +44,7 @@ export default function LiveDemoPage({ navigate }) {
       ) : (
         <ScenarioSlide
           onBack={() => setStep('about')}
+          onEnter={(patient) => navigate(`/coordinator?demo=live${patient === 'marcus' ? '&patient=marcus' : ''}`)}
           onPatientSelect={(patient) => setSelectedPatient(patient)}
           defaultPatient={defaultPatient}
           ctaSlot={ctaSlot}

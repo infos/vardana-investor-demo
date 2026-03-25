@@ -1,4 +1,47 @@
 // TTS API — Voice synthesis with primary + fallback providers
+
+// ── Healthcare text normalizer for TTS pronunciation ──
+function normalizeForTTS(text) {
+  let t = text;
+
+  // Emergency numbers: "911" → "nine one one"
+  t = t.replace(/\b911\b/g, 'nine one one');
+
+  // Blood pressure: "158/98" → "158 over 98"
+  t = t.replace(/(\d{2,3})\/(\d{2,3})/g, '$1 over $2');
+
+  // Lab values with units: "186 mg/dL" → "186 milligrams per deciliter"
+  t = t.replace(/\bmg\/dL\b/gi, 'milligrams per deciliter');
+  t = t.replace(/\bmmHg\b/gi, 'millimeters of mercury');
+  t = t.replace(/\bBPM\b/g, 'beats per minute');
+
+  // Medical abbreviations
+  t = t.replace(/\bHFrEF\b/g, 'H F ref');
+  t = t.replace(/\bNYHA\b/g, 'N Y H A');
+  t = t.replace(/\bCHF\b/g, 'congestive heart failure');
+  t = t.replace(/\bHTN\b/g, 'hypertension');
+  t = t.replace(/\bT2DM\b/g, 'type 2 diabetes');
+  t = t.replace(/\bBP\b/g, 'blood pressure');
+  t = t.replace(/\bHR\b/g, 'heart rate');
+  t = t.replace(/\bSpO2\b/g, 'oxygen saturation');
+  t = t.replace(/\bACE\b/g, 'ace');
+  t = t.replace(/\bARB\b/g, 'A R B');
+  t = t.replace(/\bEF\b/g, 'ejection fraction');
+
+  // Medication pronunciation hints (plain-text aliases)
+  t = t.replace(/\bLisinopril\b/gi, 'ly-SIN-oh-pril');
+  t = t.replace(/\bMetoprolol\b/gi, 'meh-TOE-pro-lol');
+  t = t.replace(/\bFurosemide\b/gi, 'fyoor-OH-seh-mide');
+  t = t.replace(/\bAmlodipine\b/gi, 'am-LOD-ih-peen');
+  t = t.replace(/\bMetformin\b/gi, 'met-FOR-min');
+  t = t.replace(/\bAtorvastatin\b/gi, 'ah-TOR-vah-stah-tin');
+  t = t.replace(/\bLosartan\b/gi, 'low-SAR-tan');
+  t = t.replace(/\bHydralazine\b/gi, 'hy-DRAL-ah-zeen');
+  t = t.replace(/\bCarvedilol\b/gi, 'car-VED-ih-lol');
+  t = t.replace(/\bSpironolactone\b/gi, 'speer-oh-no-LAK-tone');
+
+  return t;
+}
 const TTS_API_KEY = (process.env.TTS_API_KEY || process.env.ELEVENLABS_API_KEY || '').trim();
 const CARTESIA_KEY = (process.env.CARTESIA_API_KEY || '').trim();
 
@@ -91,6 +134,9 @@ export default async function handler(req, res) {
   const { text, speaker } = req.body || {};
   if (!text) return res.status(400).json({ error: 'text required' });
 
+  // Normalize medical terms and numbers for better TTS pronunciation
+  const normalizedText = normalizeForTTS(text);
+
   try {
     let audioBuf;
     let ttsProvider = 'none';
@@ -98,7 +144,7 @@ export default async function handler(req, res) {
     let primaryError = '';
     let fallbackError = '';
 
-    // Primary voice synthesis provider
+    // Primary voice synthesis provider (ElevenLabs handles pronunciation well, use original text)
     if (TTS_API_KEY) {
       try {
         audioBuf = await primaryTTS(text, speaker || 'AI');
@@ -109,10 +155,10 @@ export default async function handler(req, res) {
       }
     }
 
-    // Fallback: Cartesia Sonic
+    // Fallback: Cartesia Sonic (use normalized text for better pronunciation)
     if (!audioBuf && CARTESIA_KEY) {
       try {
-        audioBuf = await cartesiaTTS(text, speaker || 'AI');
+        audioBuf = await cartesiaTTS(normalizedText, speaker || 'AI');
         ttsProvider = 'cartesia';
       } catch (e) {
         fallbackError = e.message;
