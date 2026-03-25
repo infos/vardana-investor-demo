@@ -1727,85 +1727,203 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   // ─────────────────────────────────────────────
   // CLOSING SLIDE — smooth fade + call summary end screen
   // ─────────────────────────────────────────────
-  if (uiState === "closing") return (
-    <div style={{
-      position: "fixed", inset: 0, background: "#0C1420", zIndex: 300,
-      display: "flex", flexDirection: "column",
-      alignItems: "center", justifyContent: "center",
-      padding: "32px 24px", textAlign: "center",
-      fontFamily: c.font, animation: "fadeIn 0.8s ease",
-    }}>
-      {/* Vardana logo + wordmark */}
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
-            <rect width="32" height="32" rx="8" fill="#D97706" />
-            <path d="M16 7C11 7 7 11 7 16s4 9 9 9 9-4 9-9-4-9-9-9zm0 14.5c-1.5 0-3-0.8-3.8-2.2l1.3-0.8c0.5 0.9 1.4 1.5 2.5 1.5s2-0.6 2.5-1.5l1.3 0.8c-0.8 1.4-2.3 2.2-3.8 2.2zm4.5-5h-9v-1.5h9v1.5z" fill="white"/>
-          </svg>
-          <span style={{ fontFamily: DS.fontDisplay, fontSize: 22, fontWeight: 400, color: "#F5F7FA", letterSpacing: "-0.02em" }}>Vardana</span>
-        </div>
-      </div>
+  if (uiState === "closing") {
+    const closingTranscript = isMarcusDemo ? MARCUS_VOICE_TRANSCRIPT : VOICE_TRANSCRIPT;
+    const closingDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const summaryRows = isMarcusDemo ? [
+      { label: "Risk score", value: "53 \u2192 73", color: "#EF4444" },
+      { label: "Alert fired", value: "P2 -- Urgent", color: "#EF4444" },
+      { label: "Coordinator notified", value: "David Park", color: "#34D399" },
+      { label: "FHIR flag posted", value: "Epic sandbox", color: "#34D399" },
+    ] : [
+      { label: "Risk score", value: "68 \u2192 84", color: "#EF4444" },
+      { label: "Alert fired", value: "P1 -- Urgent", color: "#EF4444" },
+      { label: "Coordinator notified", value: "Rachel Kim", color: "#34D399" },
+      { label: "FHIR flag posted", value: "Epic sandbox", color: "#34D399" },
+    ];
+    const keyFindings = isMarcusDemo ? [
+      "BP 158/98 -- 4-day rising trend",
+      "Lisinopril missed x3 days",
+      "Headache confirmed by patient",
+    ] : [
+      "Weight +2.3 lbs in 48 hours",
+      "Ankle swelling + fatigue reported",
+      "Orthopnea -- extra pillow needed",
+    ];
+    const summaryHeader = isMarcusDemo ? "BP Crisis Risk Detected" : "Decompensation Risk Detected";
+    const patientLabel = isMarcusDemo ? "Marcus" : "Sarah";
+    const patientInitial = patientLabel.charAt(0);
 
-      {/* Call summary card */}
+    return (
       <div style={{
-        background: "#131E2E", border: "1px solid #253550",
-        borderRadius: 16, padding: "20px 28px",
-        maxWidth: 400, width: "100%", marginBottom: 32,
+        position: "fixed", inset: 0, background: "#0C1420", zIndex: 300,
+        display: "flex", flexDirection: "column",
+        alignItems: "center",
+        padding: "32px 24px",
+        fontFamily: c.font, animation: "fadeIn 0.8s ease",
+        overflowY: "auto",
       }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#3A4F6B", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>
-          Call Summary
-        </div>
-        {(isMarcusDemo ? [
-          { label: "Risk score", value: "53 \u2192 73", color: "#EF4444" },
-          { label: "Alert fired", value: "P2: BP Crisis Risk", color: "#EF4444" },
-          { label: "Coordinator notified", value: "David Park", color: "#34D399" },
-          { label: "FHIR flag posted", value: "Epic sandbox", color: "#34D399" },
-        ] : [
-          { label: "Risk score", value: "68 \u2192 84", color: "#EF4444" },
-          { label: "Alert fired", value: "P1: Urgent", color: "#EF4444" },
-          { label: "Coordinator notified", value: "Rachel Kim", color: "#34D399" },
-          { label: "FHIR flag posted", value: "Epic sandbox", color: "#34D399" },
-        ]).map((row, i) => (
-          <div key={i} style={{
-            display: "flex", justifyContent: "space-between",
-            alignItems: "center", padding: "8px 0",
-            borderBottom: i < 3 ? "1px solid #1C2B40" : "none",
-          }}>
-            <span style={{ fontSize: 13, color: "#556882" }}>{row.label}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: row.color }}>{row.value}</span>
+        {/* Vardana logo + wordmark */}
+        <div style={{ marginBottom: 24, textAlign: "center" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
+              <rect width="32" height="32" rx="8" fill="#D97706" />
+              <path d="M16 7C11 7 7 11 7 16s4 9 9 9 9-4 9-9-4-9-9-9zm0 14.5c-1.5 0-3-0.8-3.8-2.2l1.3-0.8c0.5 0.9 1.4 1.5 2.5 1.5s2-0.6 2.5-1.5l1.3 0.8c-0.8 1.4-2.3 2.2-3.8 2.2zm4.5-5h-9v-1.5h9v1.5z" fill="white"/>
+            </svg>
+            <span style={{ fontFamily: DS.fontDisplay, fontSize: 22, fontWeight: 400, color: "#F5F7FA", letterSpacing: "-0.02em" }}>Vardana</span>
           </div>
-        ))}
-      </div>
+        </div>
 
-      {/* Tagline */}
-      <div style={{ fontFamily: DS.fontDisplay, fontSize: 22, color: "#F5F7FA", letterSpacing: "-0.02em", marginBottom: 6 }}>
-        Vardana.
-      </div>
-      <div style={{ fontSize: 14, color: "#556882", marginBottom: 4 }}>
-        {isMarcusDemo ? "Chronic condition management across CHF, hypertension, diabetes, and beyond." : "CHF post-discharge care."}
-      </div>
-      <div style={{ fontSize: 14, color: "#556882", marginBottom: 32 }}>
-        Request a pilot at{" "}
-        <a href="https://vardana.ai" style={{ color: "#F59E0B", textDecoration: "none" }}>vardana.ai</a>
-      </div>
+        {/* Two-panel layout: summary + transcript */}
+        <div style={{
+          display: "flex",
+          flexDirection: isMobileView ? "column" : "row",
+          gap: 20,
+          maxWidth: 900,
+          width: "100%",
+          flex: 1,
+          minHeight: 0,
+          marginBottom: 24,
+        }}>
+          {/* LEFT — Call Summary card */}
+          <div style={{
+            background: "#131E2E", border: "1px solid #253550",
+            borderRadius: 16, padding: "20px 28px",
+            flex: isMobileView ? "none" : "0 0 340px",
+            width: isMobileView ? "100%" : "auto",
+            alignSelf: "flex-start",
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#3A4F6B", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
+              Call Summary
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#F5F7FA", marginBottom: 16, fontFamily: DS.fontDisplay, letterSpacing: "-0.01em" }}>
+              {summaryHeader}
+            </div>
 
-      {/* Return button */}
-      <button
-        onClick={() => { if (onExitDemo) { onExitDemo(); } else { setUiState("done"); handleComplete(); } }}
-        onMouseEnter={e => { e.currentTarget.style.borderColor = "#F59E0B"; e.currentTarget.style.color = "#F59E0B"; }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = "#253550"; e.currentTarget.style.color = "#556882"; }}
-        style={{
-          background: "none", border: "1px solid #253550",
-          borderRadius: 10, padding: "10px 24px",
-          fontSize: 13, color: "#556882", cursor: "pointer",
-          fontFamily: "'DM Sans', system-ui, sans-serif",
-          transition: "all 0.2s ease",
-        }}
-      >
-        Close Demo
-      </button>
-    </div>
-  );
+            {summaryRows.map((row, i) => (
+              <div key={i} style={{
+                display: "flex", justifyContent: "space-between",
+                alignItems: "center", padding: "8px 0",
+                borderBottom: i < summaryRows.length - 1 ? "1px solid #1C2B40" : "none",
+              }}>
+                <span style={{ fontSize: 13, color: "#556882" }}>{row.label}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: row.color }}>{row.value}</span>
+              </div>
+            ))}
+
+            {/* Key findings */}
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #1C2B40" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#3A4F6B", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>
+                Key Findings
+              </div>
+              {keyFindings.map((finding, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 3, flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.5 }}>{finding}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* RIGHT — Transcript card */}
+          <div style={{
+            background: "#131E2E", border: "1px solid #253550",
+            borderRadius: 16, padding: "20px 24px",
+            flex: 1,
+            display: "flex", flexDirection: "column",
+            minHeight: 0,
+            maxHeight: isMobileView ? 400 : "none",
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#3A4F6B", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
+              Call Transcript
+            </div>
+            <div style={{ fontSize: 12, color: "#556882", marginBottom: 16 }}>
+              Call completed {closingDate} -- Duration: ~90 seconds
+            </div>
+
+            {/* Scrollable transcript */}
+            <div style={{
+              flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12,
+              paddingRight: 4,
+            }}>
+              {closingTranscript.map((line, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <div style={{
+                    width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+                    background: "rgba(255,255,255,0.06)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 11, color: line.speaker === "AI" ? "#38BDF8" : "#A78BFA",
+                    marginTop: 3,
+                    border: "1px solid transparent",
+                  }}>
+                    {line.speaker === "AI" ? "V" : patientInitial}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontSize: 10, fontWeight: 700,
+                      color: line.speaker === "AI" ? "#334155" : "#334155",
+                      marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em",
+                    }}>
+                      {line.speaker === "AI" ? "Vardana AI" : patientLabel}
+                    </div>
+                    <div style={{
+                      fontSize: 13, color: "rgba(255,255,255,0.72)", lineHeight: 1.6,
+                      background: "rgba(255,255,255,0.03)",
+                      padding: "9px 13px", borderRadius: 10,
+                      border: "1px solid rgba(255,255,255,0.05)",
+                    }}>
+                      {line.text}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* View full transcript link */}
+            {/* TODO: link to persisted transcript once pilot logging is live */}
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #1C2B40" }}>
+              <a href="#" onClick={e => e.preventDefault()} style={{ fontSize: 12, color: "#3A4F6B", textDecoration: "none" }}>
+                View full transcript
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Tagline + CTA */}
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontFamily: DS.fontDisplay, fontSize: 22, color: "#F5F7FA", letterSpacing: "-0.02em", marginBottom: 6 }}>
+            Vardana.
+          </div>
+          <div style={{ fontSize: 14, color: "#556882", marginBottom: 4 }}>
+            {isMarcusDemo ? "Chronic condition management across CHF, hypertension, diabetes, and beyond." : "CHF post-discharge care."}
+          </div>
+          <div style={{ fontSize: 14, color: "#556882", marginBottom: 24 }}>
+            Request a pilot at{" "}
+            <a href="https://vardana.ai" style={{ color: "#F59E0B", textDecoration: "none" }}>vardana.ai</a>
+          </div>
+
+          <button
+            onClick={() => { if (onExitDemo) { onExitDemo(); } else { setUiState("done"); handleComplete(); } }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "#F59E0B"; e.currentTarget.style.color = "#F59E0B"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "#253550"; e.currentTarget.style.color = "#556882"; }}
+            style={{
+              background: "none", border: "1px solid #253550",
+              borderRadius: 10, padding: "10px 24px",
+              fontSize: 13, color: "#556882", cursor: "pointer",
+              fontFamily: "'DM Sans', system-ui, sans-serif",
+              transition: "all 0.2s ease",
+            }}
+          >
+            Close Demo
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ─────────────────────────────────────────────
   // CALL SCREEN (dialing / connected / active / alert / done)
