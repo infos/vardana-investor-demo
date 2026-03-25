@@ -1610,7 +1610,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   const formatTime = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   const waveHeights = [0.3, 0.6, 1.0, 0.7, 0.4, 0.8, 1.0, 0.5, 0.3, 0.7, 0.9, 0.4];
   const isActive    = ["active", "alert"].includes(uiState);
-  const riskColor   = riskScore >= 80 ? c.red : riskScore >= 60 ? c.orange : c.green;
+  const riskColor   = riskScore >= 80 ? c.red : riskScore >= 60 ? c.orange : isMarcusDemo ? "#D97706" : c.green;
   const waveOn      = isActive && activeSpeaker !== null && !muted;
 
   // ─────────────────────────────────────────────
@@ -1709,18 +1709,18 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   // LOADING SCREEN
   // ─────────────────────────────────────────────
   if (uiState === "loading") return (
-    <div style={{ position: "fixed", inset: 0, background: c.navy, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: c.font }}>
+    <div style={{ position: "fixed", inset: 0, background: "#F6F7F9", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: c.font }}>
       <div style={{ width: 360, textAlign: "center" }}>
         <div style={{ fontSize: 28, marginBottom: 20 }}>🎙</div>
-        <div style={{ fontSize: 16, fontWeight: 800, color: "white", marginBottom: 8 }}>Generating audio</div>
-        <div style={{ fontSize: 13, color: "#64748B", marginBottom: 28 }}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: "#1E3A5F", marginBottom: 8 }}>Generating audio</div>
+        <div style={{ fontSize: 13, color: "#7A96B0", marginBottom: 28 }}>
           Rendering {ACTIVE_TRANSCRIPT.length} lines via ElevenLabs...
         </div>
         {/* Progress bar */}
-        <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 8, height: 8, overflow: "hidden", marginBottom: 12 }}>
-          <div style={{ height: "100%", borderRadius: 8, background: "linear-gradient(90deg, #F59E0B, #38BDF8)", width: `${loadProgress}%`, transition: "width 0.4s ease" }} />
+        <div style={{ background: "#E8EDF3", borderRadius: 8, height: 8, overflow: "hidden", marginBottom: 12 }}>
+          <div style={{ height: "100%", borderRadius: 8, background: "linear-gradient(90deg, #3DBFA0, #2A9E84)", width: `${loadProgress}%`, transition: "width 0.4s ease" }} />
         </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#94A3B8" }}>{loadProgress}% · Line {Math.ceil(loadProgress / (100 / ACTIVE_TRANSCRIPT.length))} of {ACTIVE_TRANSCRIPT.length}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#7A96B0" }}>{loadProgress}% · Line {Math.ceil(loadProgress / (100 / ACTIVE_TRANSCRIPT.length))} of {ACTIVE_TRANSCRIPT.length}</div>
       </div>
     </div>
   );
@@ -1946,10 +1946,10 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     <div style={{ position: "fixed", inset: 0, background: "#F6F7F9", zIndex: 300, display: "flex", flexDirection: "column", fontFamily: c.font }}>
 
       {/* Top bar */}
-      <div style={{ padding: isMobileView ? "10px 12px" : "14px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.08)", gap: 8, flexWrap: isMobileView ? "wrap" : "nowrap" }}>
+      <div style={{ padding: isMobileView ? "10px 12px" : "14px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#1E3A5F", borderBottom: "1px solid rgba(255,255,255,0.08)", gap: 8, flexWrap: isMobileView ? "wrap" : "nowrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: isMobileView ? 6 : 10, minWidth: 0, flex: isMobileView ? "1 1 auto" : "none" }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: uiState === "done" ? "#475569" : "#22C55E", boxShadow: isActive ? "0 0 0 4px rgba(34,197,94,0.2)" : "none", transition: "all 0.3s", flexShrink: 0 }} />
-          <span style={{ fontSize: isMobileView ? 12 : 14, fontWeight: 700, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: uiState === "done" ? "#7FA4C4" : "#22C55E", boxShadow: isActive ? "0 0 0 4px rgba(34,197,94,0.2)" : "none", transition: "all 0.3s", flexShrink: 0 }} />
+          <span style={{ fontSize: isMobileView ? 12 : 14, fontWeight: 700, color: "#F5F7FA", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {uiState === "dialing"   ? (isMobileView ? "Connecting..." : `Connecting to ${patient.name}...`) :
              uiState === "connected" ? "Connected" :
              uiState === "done"      ? "Call Completed" :
@@ -1962,18 +1962,18 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: isMobileView ? 6 : 10, flexShrink: 0 }}>
           {isActive && !isMobileView && (
-            <button onClick={toggleMute} style={{ background: muted ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.08)", border: `1px solid ${muted ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.12)"}`, color: muted ? "#FCA5A5" : "#CBD5E1", borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontFamily: c.font, fontSize: 12, fontWeight: 700 }}>
+            <button onClick={toggleMute} style={{ background: muted ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.1)", border: `1px solid ${muted ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.15)"}`, color: muted ? "#FCA5A5" : "#F5F7FA", borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontFamily: c.font, fontSize: 12, fontWeight: 700 }}>
               {muted ? "🔇 Muted" : "🔊 Audio On"}
             </button>
           )}
-          {isActive && <span style={{ fontSize: isMobileView ? 11 : 13, color: "#64748B", fontVariantNumeric: "tabular-nums" }}>{formatTime(elapsed)}</span>}
+          {isActive && <span style={{ fontSize: isMobileView ? 11 : 13, color: "#7FA4C4", fontVariantNumeric: "tabular-nums" }}>{formatTime(elapsed)}</span>}
           {isActive && isMobileView && (
-            <button onClick={toggleMute} style={{ background: muted ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.08)", border: `1px solid ${muted ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.12)"}`, color: muted ? "#FCA5A5" : "#CBD5E1", borderRadius: 8, padding: "5px 8px", cursor: "pointer", fontFamily: c.font, fontSize: 11, fontWeight: 700 }}>
+            <button onClick={toggleMute} style={{ background: muted ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.1)", border: `1px solid ${muted ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.15)"}`, color: muted ? "#FCA5A5" : "#F5F7FA", borderRadius: 8, padding: "5px 8px", cursor: "pointer", fontFamily: c.font, fontSize: 11, fontWeight: 700 }}>
               {muted ? "🔇" : "🔊"}
             </button>
           )}
           {isActive && (
-            <button onClick={endCall} style={{ background: "rgba(220,38,38,0.2)", border: "1px solid rgba(220,38,38,0.4)", color: "#FCA5A5", borderRadius: 8, padding: isMobileView ? "5px 10px" : "5px 12px", cursor: "pointer", fontFamily: c.font, fontSize: 12, fontWeight: 700 }}>End{!isMobileView && " Call"}</button>
+            <button onClick={endCall} style={{ background: "#C0392B", border: "none", color: "white", borderRadius: 6, padding: isMobileView ? "6px 10px" : "6px 14px", cursor: "pointer", fontFamily: c.font, fontSize: 12, fontWeight: 700 }}>End{!isMobileView && " Call"}</button>
           )}
           {uiState === "done" && (
             <button onClick={handleComplete} disabled={isSummarizing} style={{ background: c.accent, border: "none", color: "white", borderRadius: 8, padding: isMobileView ? "6px 10px" : "7px 14px", cursor: "pointer", fontFamily: c.font, fontSize: isMobileView ? 11 : 13, fontWeight: 700, opacity: isSummarizing ? 0.7 : 1 }}>
@@ -1985,20 +1985,20 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
       {/* Mobile: compact status bar with risk score + speaker avatars + panel toggle */}
       {isMobileView && isActive && (
-        <div style={{ padding: "8px 12px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ padding: "8px 12px", borderBottom: "1px solid #E8EDF3", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* AI avatar small */}
-            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #1B3A6B, #2563EB)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.9)", fontFamily: DS.fontDisplay, border: `2px solid ${activeSpeaker === "AI" ? "rgba(56,189,248,0.7)" : "rgba(255,255,255,0.08)"}`, transition: "all 0.3s" }}>V</div>
+            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#3DBFA0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "white", fontFamily: DS.fontDisplay, border: `2px solid ${activeSpeaker === "AI" ? "#3DBFA0" : "#D1D9E0"}`, transition: "all 0.3s" }}>V</div>
             {/* Waveform mini */}
             <div style={{ display: "flex", alignItems: "center", gap: 1.5, height: 20, opacity: waveOn ? 1 : 0.15, transition: "opacity 0.4s" }}>
               {Array.from({ length: 10 }, (_, i) => {
                 const h = waveOn ? waveHeights[(i + waveFrame) % 12] : 0.12;
                 const isPatientSpeaking = activeSpeaker && activeSpeaker !== "AI";
-                return <div key={i} style={{ width: 2, height: `${Math.max(2, h * 18)}px`, borderRadius: 1, background: isPatientSpeaking ? "#A78BFA" : "#38BDF8", transition: "height 0.11s ease" }} />;
+                return <div key={i} style={{ width: 2, height: `${Math.max(2, h * 18)}px`, borderRadius: 1, background: isPatientSpeaking ? "#1E3A5F" : "#3DBFA0", transition: "height 0.11s ease" }} />;
               })}
             </div>
             {/* Patient avatar small */}
-            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #3730A3, #7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.9)", fontFamily: DS.fontDisplay, border: `2px solid ${activeSpeaker && activeSpeaker !== "AI" ? "rgba(167,139,250,0.7)" : "rgba(255,255,255,0.08)"}`, transition: "all 0.3s" }}>{patient.name.charAt(0)}</div>
+            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#1E3A5F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "white", fontFamily: DS.fontDisplay, border: `2px solid ${activeSpeaker && activeSpeaker !== "AI" ? "#1E3A5F" : "#D1D9E0"}`, transition: "all 0.3s" }}>{patient.name.charAt(0)}</div>
           </div>
           {/* Risk score compact + Alert indicator */}
           <div style={{ display: "flex", alignItems: "center", gap: 6, transform: alertZoom ? "scale(1.3)" : "scale(1)", transformOrigin: "center center", transition: "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)", background: alertZoom ? "rgba(220,38,38,0.1)" : "transparent", borderRadius: 8, padding: alertZoom ? "4px 8px" : 0 }}>
@@ -2015,75 +2015,64 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
         {/* ── Left: speakers + gauge ── (hidden on mobile) */}
         {!isMobileView && (
-        <div style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", padding: "28px 18px", borderRight: "1px solid rgba(255,255,255,0.08)", gap: 18 }}>
+        <div style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", padding: "28px 18px", borderRight: "1px solid #E8EDF3", gap: 18, background: "#FFFFFF" }}>
 
           {/* AI avatar */}
           <div style={{ position: "relative" }}>
-            {activeSpeaker === "AI" && <div style={{ position: "absolute", inset: -10, borderRadius: "50%", border: "2px solid rgba(56,189,248,0.5)", animation: "ping 1s ease-out infinite" }} />}
-            <div style={{ width: 70, height: 70, borderRadius: "50%", background: "linear-gradient(135deg, #1B3A6B, #2563EB)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "rgba(255,255,255,0.9)", fontFamily: DS.fontDisplay, border: `3px solid ${activeSpeaker === "AI" ? "rgba(56,189,248,0.7)" : "rgba(255,255,255,0.08)"}`, boxShadow: activeSpeaker === "AI" ? "0 0 24px rgba(56,189,248,0.35)" : "none", transition: "all 0.35s" }}>V</div>
+            {activeSpeaker === "AI" && <div style={{ position: "absolute", inset: -10, borderRadius: "50%", border: "2px solid rgba(61,191,160,0.5)", animation: "ping 1s ease-out infinite" }} />}
+            <div style={{ width: 70, height: 70, borderRadius: "50%", background: "#3DBFA0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "white", fontFamily: DS.fontDisplay, border: `3px solid ${activeSpeaker === "AI" ? "#3DBFA0" : "#D1D9E0"}`, boxShadow: activeSpeaker === "AI" ? "0 0 24px rgba(61,191,160,0.35)" : "none", transition: "all 0.35s" }}>V</div>
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: activeSpeaker === "AI" ? "#38BDF8" : "#475569", letterSpacing: "0.04em", transition: "color 0.3s" }}>VARDANA AI</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: activeSpeaker === "AI" ? "#3DBFA0" : "#7A96B0", letterSpacing: "0.04em", transition: "color 0.3s" }}>VARDANA AI</div>
 
           {/* Shared waveform */}
           <div style={{ display: "flex", alignItems: "center", gap: 2.5, height: 32, opacity: waveOn ? 1 : 0.15, transition: "opacity 0.4s" }}>
             {Array.from({ length: 22 }, (_, i) => {
               const h = waveOn ? waveHeights[(i + waveFrame) % 12] : 0.12;
               const isPatientSpeaking = activeSpeaker && activeSpeaker !== "AI";
-              return <div key={i} style={{ width: 2.5, height: `${Math.max(3, h * 28)}px`, borderRadius: 2, background: isPatientSpeaking ? "#A78BFA" : "#38BDF8", transition: "height 0.11s ease, background 0.3s" }} />;
+              return <div key={i} style={{ width: 2.5, height: `${Math.max(3, h * 28)}px`, borderRadius: 2, background: isPatientSpeaking ? "#1E3A5F" : "#3DBFA0", transition: "height 0.11s ease, background 0.3s" }} />;
             })}
           </div>
 
           {/* Patient avatar */}
           {(() => { const isPS = activeSpeaker && activeSpeaker !== "AI"; return (<>
           <div style={{ position: "relative" }}>
-            {isPS && <div style={{ position: "absolute", inset: -10, borderRadius: "50%", border: "2px solid rgba(167,139,250,0.5)", animation: "ping 1s ease-out infinite" }} />}
-            <div style={{ width: 70, height: 70, borderRadius: "50%", background: "linear-gradient(135deg, #3730A3, #7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "rgba(255,255,255,0.9)", fontFamily: DS.fontDisplay, border: `3px solid ${isPS ? "rgba(167,139,250,0.7)" : "rgba(255,255,255,0.08)"}`, boxShadow: isPS ? "0 0 24px rgba(124,58,237,0.4)" : "none", transition: "all 0.35s" }}>{patient.name.charAt(0)}</div>
+            {isPS && <div style={{ position: "absolute", inset: -10, borderRadius: "50%", border: "2px solid rgba(30,58,95,0.5)", animation: "ping 1s ease-out infinite" }} />}
+            <div style={{ width: 70, height: 70, borderRadius: "50%", background: "#1E3A5F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "white", fontFamily: DS.fontDisplay, border: `3px solid ${isPS ? "#1E3A5F" : "#D1D9E0"}`, boxShadow: isPS ? "0 0 24px rgba(30,58,95,0.3)" : "none", transition: "all 0.35s" }}>{patient.name.charAt(0)}</div>
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: isPS ? "#A78BFA" : "#475569", letterSpacing: "0.04em", transition: "color 0.3s" }}>{patient.name.toUpperCase()} · {patient.age}{isEpic ? (patient.epicData?.patient?.gender === 'male' ? 'M' : 'F') : (patient.gender || '')}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: isPS ? "#1E3A5F" : "#7A96B0", letterSpacing: "0.04em", transition: "color 0.3s" }}>{patient.name.toUpperCase()} · {patient.age}{isEpic ? (patient.epicData?.patient?.gender === 'male' ? 'M' : 'F') : (patient.gender || '')}</div>
           </>); })()}
 
           {/* Risk gauge + Alert — zoom container */}
           <div style={{ width: "100%", transform: alertZoom ? "scale(1.45)" : "scale(1)", transformOrigin: "center center", transition: "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)", zIndex: alertZoom ? 10 : 1, position: "relative" }}>
             {alertZoom && <div style={{ position: "absolute", inset: -12, borderRadius: 16, background: "rgba(220,38,38,0.08)", border: "2px solid rgba(220,38,38,0.3)", animation: "fhirPulse 1.5s ease infinite", pointerEvents: "none" }} />}
             {/* Risk gauge */}
-            <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: "14px 16px", width: "100%", textAlign: "center", marginTop: 4 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>{isMarcusDemo ? "BP Crisis Risk" : "Decompensation Risk"}</div>
+            <div style={{ background: "#EEF1F5", borderRadius: 12, padding: "14px 16px", width: "100%", textAlign: "center", marginTop: 4 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>{isMarcusDemo ? "BP Crisis Risk" : "Decompensation Risk"}</div>
               <div style={{ fontSize: 42, fontWeight: 900, color: riskColor, fontVariantNumeric: "tabular-nums", lineHeight: 1, transition: "all 0.9s ease" }}>{riskScore}</div>
-              <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>/ 100</div>
-              {riskScore > (isMarcusDemo ? 53 : 68) && <div style={{ fontSize: 10, fontWeight: 700, color: riskColor, marginTop: 6 }}>&#8593; Updated live during call</div>}
+              <div style={{ fontSize: 10, color: "#7A96B0", marginTop: 2 }}>/ 100</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#7A96B0", marginTop: 6 }}>↑ Updated live during call</div>
             </div>
 
             {/* Alert */}
             {alertGenerated && (
-              <div style={{ background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.35)", borderRadius: 10, padding: "10px 12px", width: "100%", marginTop: 8, animation: "fadeIn 0.4s ease" }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: "#F87171", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={11} color="#F87171" /> {isMarcusDemo ? "P2 ALERT GENERATED" : "P1 ALERT GENERATED"}</div>
-                <div style={{ fontSize: 10, color: "#FCA5A5", lineHeight: 1.4 }}>{isMarcusDemo ? "BP Crisis Risk \u00b7 Coordinator: David Park" : "FHIR Flag posted \u00b7 Coordinator notified"}</div>
+              <div style={{ background: "#FEF2F2", border: "1px solid #FEE2E2", borderRadius: 10, padding: "10px 12px", width: "100%", marginTop: 8, animation: "fadeIn 0.4s ease" }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: "#C0392B", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={11} color="#C0392B" /> {isMarcusDemo ? "P2 ALERT GENERATED" : "P1 ALERT GENERATED"}</div>
+                <div style={{ fontSize: 10, color: "#A93226", lineHeight: 1.4 }}>{isMarcusDemo ? "BP Crisis Risk · Coordinator: David Park" : "FHIR Flag posted · Coordinator notified"}</div>
               </div>
             )}
           </div>
 
-          {/* Controls */}
-          <div style={{ display: "flex", gap: 10, marginTop: "auto" }}>
-            {[
-              { iconEl: muted ? "M" : "♪", active: muted, fn: toggleMute },
-              { iconEl: "❚❚", active: false, fn: null },
-              { iconEl: <Icon name="clipboard" size={14} color="currentColor" />, active: false, fn: null },
-              { iconEl: "●", active: isActive, fn: isActive ? endCall : null, isEnd: true },
-            ].map((btn, i) => (
-              <div key={i} onClick={btn.fn || undefined} style={{ width: 38, height: 38, borderRadius: "50%", background: btn.active ? (i === 0 ? "rgba(220,38,38,0.25)" : btn.isEnd ? "rgba(220,38,38,0.3)" : "rgba(220,38,38,0.15)") : "rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: btn.isEnd ? 10 : 14, cursor: btn.fn ? "pointer" : "default", border: btn.active && i === 0 ? "1px solid rgba(220,38,38,0.4)" : "1px solid transparent", color: btn.isEnd ? "#EF4444" : "rgba(255,255,255,0.5)" }}>{btn.iconEl}</div>
-            ))}
-          </div>
         </div>
         )}
 
         {/* ── Center: transcript ── */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: isMobileView ? 300 : "auto" }}>
           {!isMobileView && (
-          <div style={{ padding: "13px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>Live Transcript</div>
+          <div style={{ padding: "13px 20px", borderBottom: "1px solid #E8EDF3", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em" }}>Live Transcript</div>
             {activeSpeaker && (
-              <div style={{ fontSize: 11, fontWeight: 700, color: activeSpeaker === "AI" ? "#38BDF8" : "#A78BFA", display: "flex", alignItems: "center", gap: 5 }}>
-                <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor", display: "inline-block", animation: "pulse 1s infinite" }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: activeSpeaker === "AI" ? "#3DBFA0" : "#7A96B0", display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ width: 5, height: 5, borderRadius: "50%", background: activeSpeaker === "AI" ? "#3DBFA0" : "#7A96B0", display: "inline-block", animation: "pulse 1s infinite" }} />
                 {activeSpeaker === "AI" ? "AI Speaking" : "Patient Speaking"}
               </div>
             )}
@@ -2091,17 +2080,17 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
           )}
           <div ref={transcriptRef} style={{ flex: 1, overflowY: "auto", padding: isMobileView ? "12px 12px" : "16px 20px", display: "flex", flexDirection: "column", gap: isMobileView ? 10 : 12 }}>
             {uiState === "dialing" && (
-              <div style={{ textAlign: "center", padding: "52px 0", color: "#475569" }}>
-                <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}><Icon name="phone" size={36} color="#94A3B8" /></div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#94A3B8" }}>Initiating AI concierge call...</div>
+              <div style={{ textAlign: "center", padding: "52px 0", color: "#7A96B0" }}>
+                <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}><Icon name="phone" size={36} color="#7A96B0" /></div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#4A6380" }}>Initiating AI concierge call...</div>
                 <div style={{ fontSize: 12, marginTop: 6 }}>Ringing {patient.name}{isEpic && patient.epicData?.patient?.phone ? ` · ${patient.epicData.patient.phone}` : !isEpic ? ' · (206) 555-0142' : ''}</div>
               </div>
             )}
             {uiState === "connected" && transcript.length === 0 && (
-              <div style={{ textAlign: "center", padding: "52px 0", color: "#475569" }}>
-                <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}><Icon name="check" size={36} color="#22C55E" /></div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#22C55E" }}>Connected</div>
-                <div style={{ fontSize: 12, color: "#64748B", marginTop: 6 }}>AI concierge beginning structured check-in...</div>
+              <div style={{ textAlign: "center", padding: "52px 0", color: "#7A96B0" }}>
+                <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}><Icon name="check" size={36} color="#3DBFA0" /></div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#3DBFA0" }}>Connected</div>
+                <div style={{ fontSize: 12, color: "#7A96B0", marginTop: 6 }}>AI concierge beginning structured check-in...</div>
               </div>
             )}
             {transcript.map((line, i) => {
@@ -2111,14 +2100,14 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
               const patientInitial = demoMode === "live" ? "Y" : patient.name.charAt(0);
               return (
                 <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", animation: "slideUp 0.25s ease" }}>
-                  <div style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: speaking ? (line.speaker === "AI" ? "rgba(56,189,248,0.2)" : "rgba(167,139,250,0.2)") : "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, marginTop: 3, border: speaking ? `1px solid ${line.speaker === "AI" ? "rgba(56,189,248,0.5)" : "rgba(167,139,250,0.5)"}` : "1px solid transparent", transition: "all 0.3s" }}>
+                  <div style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: line.speaker === "AI" ? "#3DBFA0" : "#1E3A5F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "white", marginTop: 3, border: speaking ? `1px solid ${line.speaker === "AI" ? "#3DBFA0" : "#1E3A5F"}` : "1px solid transparent", transition: "all 0.3s" }}>
                     {line.speaker === "AI" ? "V" : patientInitial}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: line.speaker === "AI" ? (speaking ? "#38BDF8" : "#334155") : (speaking ? "#A78BFA" : "#334155"), marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em", transition: "color 0.3s" }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: "#7A96B0", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                       {line.speaker === "AI" ? "Vardana AI" : patientLabel}
                     </div>
-                    <div style={{ fontSize: 13, color: speaking ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.72)", lineHeight: 1.6, background: speaking ? (line.speaker === "AI" ? "rgba(56,189,248,0.08)" : "rgba(167,139,250,0.08)") : "rgba(255,255,255,0.03)", padding: "9px 13px", borderRadius: 10, border: `1px solid ${speaking ? (line.speaker === "AI" ? "rgba(56,189,248,0.25)" : "rgba(167,139,250,0.25)") : "rgba(255,255,255,0.05)"}`, transition: "all 0.35s" }}>
+                    <div style={{ fontSize: 13, color: "#1E3A5F", lineHeight: 1.6, background: line.speaker === "AI" ? "#EEF6F3" : "#EEF1F5", padding: "9px 13px", borderRadius: 10, border: speaking && line.speaker === "AI" ? "1px solid #3DBFA0" : line.speaker === "AI" ? "0.5px solid #C2E8DE" : "0.5px solid #D1D9E0", transition: "all 0.35s" }}>
                       {line.text}
                     </div>
                   </div>
@@ -2128,10 +2117,10 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
             {/* Thinking dots for live mode */}
             {isThinking && demoMode === "live" && (
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start", animation: "slideUp 0.25s ease" }}>
-                <div style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: "rgba(56,189,248,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#38BDF8", marginTop: 3, border: "1px solid rgba(56,189,248,0.5)" }}>V</div>
+                <div style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: "#3DBFA0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "white", marginTop: 3, border: "1px solid #3DBFA0" }}>V</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "#38BDF8", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em" }}>Vardana AI</div>
-                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", padding: "9px 13px", borderRadius: 10, background: "rgba(56,189,248,0.05)", border: "1px solid rgba(56,189,248,0.15)" }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: "#7A96B0", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.06em" }}>Vardana AI</div>
+                  <div style={{ fontSize: 13, color: "#7A96B0", padding: "9px 13px", borderRadius: 10, background: "#EEF6F3", border: "0.5px solid #C2E8DE" }}>
                     <span style={{ animation: "pulse 1s infinite" }}>Thinking</span>
                     <span style={{ animation: "pulse 1s infinite 0.2s" }}>.</span>
                     <span style={{ animation: "pulse 1s infinite 0.4s" }}>.</span>
@@ -2143,9 +2132,9 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
             {/* Listening indicator for live mode */}
             {isListening && demoMode === "live" && (
               <div style={{ textAlign: "center", padding: "8px 0", animation: "fadeIn 0.3s ease" }}>
-                <span style={{ fontSize: 12, color: "#A78BFA", fontWeight: 700 }}>● Listening...</span>
+                <span style={{ fontSize: 12, color: "#1E3A5F", fontWeight: 700 }}>● Listening...</span>
                 {interimText && (
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontStyle: "italic", marginTop: 4, padding: "0 16px" }}>
+                  <div style={{ fontSize: 12, color: "#7A96B0", fontStyle: "italic", marginTop: 4, padding: "0 16px" }}>
                     "{interimText}"
                   </div>
                 )}
@@ -2153,23 +2142,23 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
             )}
             {uiState === "done" && (
               <div style={{ textAlign: "center", padding: "24px 0" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#22C55E", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><Icon name="check" size={14} color="#22C55E" /> Call completed · {formatTime(elapsed)}</div>
-                <div style={{ fontSize: 12, color: "#64748B", marginTop: 5 }}>Transcript saved · Clinical summary generated · Alert dispatched</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#3DBFA0", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><Icon name="check" size={14} color="#3DBFA0" /> Call completed · {formatTime(elapsed)}</div>
+                <div style={{ fontSize: 12, color: "#7A96B0", marginTop: 5 }}>Transcript saved · Clinical summary generated · Alert dispatched</div>
               </div>
             )}
           </div>
           {/* Text input fallback for live mode */}
           {demoMode === "live" && isActive && (
-            <div style={{ padding: "8px 16px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 8 }}>
+            <div style={{ padding: "8px 16px", borderTop: "1px solid #E8EDF3", display: "flex", gap: 8 }}>
               <input
                 value={textInput}
                 onChange={e => setTextInput(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && submitTextInput()}
                 placeholder={isListening ? "Or type your response..." : "Type your response..."}
-                style={{ flex: 1, padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "white", fontSize: 12, fontFamily: c.font, outline: "none" }}
+                style={{ flex: 1, padding: "8px 12px", borderRadius: 8, background: "#EEF1F5", border: "1px solid #D1D9E0", color: "#1E3A5F", fontSize: 12, fontFamily: c.font, outline: "none" }}
               />
               <button onClick={submitTextInput} disabled={!textInput.trim()}
-                style={{ padding: "8px 14px", borderRadius: 8, background: textInput.trim() ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.05)", border: "1px solid rgba(167,139,250,0.3)", color: textInput.trim() ? "#A78BFA" : "#475569", fontSize: 12, fontWeight: 700, cursor: textInput.trim() ? "pointer" : "default", fontFamily: c.font }}>
+                style={{ padding: "8px 14px", borderRadius: 8, background: textInput.trim() ? "#3DBFA0" : "#EEF1F5", border: textInput.trim() ? "none" : "1px solid #D1D9E0", color: textInput.trim() ? "white" : "#7A96B0", fontSize: 12, fontWeight: 700, cursor: textInput.trim() ? "pointer" : "default", fontFamily: c.font }}>
                 Send
               </button>
             </div>
@@ -2182,15 +2171,15 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         (() => {
           const chartData = PATIENT_CLINICAL_DATA[patient?.id];
           const statusColor = (s) => s === "good" ? "#34D399" : s === "borderline" ? "#F59E0B" : "#F87171";
-          const sectionHead = { fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 };
+          const sectionHead = { fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 };
           return (
-        <div style={{ width: 300, flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ width: 300, flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderLeft: "1px solid #E8EDF3", background: "#FFFFFF" }}>
           <div ref={rightPanelRef} style={{ flex: 1, overflowY: "auto" }}>
 
             {/* Patient Chart */}
             {chartData && (
-              <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#CBD5E1", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}>
+              <div style={{ padding: "12px 14px", borderBottom: "1px solid #E8EDF3" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}>
                   <span style={{ fontSize: 13 }}>&#128203;</span> Patient Chart
                 </div>
 
@@ -2198,13 +2187,13 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                 <div style={{ marginBottom: 10 }}>
                   {chartData.dob && (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 4 }}>
-                      <span style={{ color: "#475569" }}>DOB</span>
-                      <span style={{ color: "#94A3B8", fontWeight: 600 }}>{chartData.dob}</span>
+                      <span style={{ color: "#7A96B0" }}>DOB</span>
+                      <span style={{ color: "#4A6380", fontWeight: 600 }}>{chartData.dob}</span>
                     </div>
                   )}
                   {chartData.allergy && (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10 }}>
-                      <span style={{ color: "#475569" }}>Allergy</span>
+                      <span style={{ color: "#7A96B0" }}>Allergy</span>
                       <span style={{ color: chartData.allergy === "None known" ? "#34D399" : "#F59E0B", fontWeight: 600, fontSize: 10 }}>{chartData.allergy}</span>
                     </div>
                   )}
@@ -2215,7 +2204,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                   <div style={sectionHead}>Conditions</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {chartData.conditions.map((cond, i) => (
-                      <span key={i} style={{ fontSize: 9, fontWeight: 600, color: "#94A3B8", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, padding: "2px 6px" }}>{cond}</span>
+                      <span key={i} style={{ fontSize: 9, fontWeight: 600, color: "#4A6380", background: "#EEF1F5", border: "1px solid #E8EDF3", borderRadius: 4, padding: "2px 6px" }}>{cond}</span>
                     ))}
                   </div>
                 </div>
@@ -2226,8 +2215,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                   <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                     {chartData.medications.map((med, i) => (
                       <div key={i} style={{ fontSize: 10, display: "flex", justifyContent: "space-between", gap: 4 }}>
-                        <span style={{ color: "#CBD5E1", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{med.name}</span>
-                        <span style={{ color: "#64748B", fontWeight: 600, flexShrink: 0 }}>{med.dose}</span>
+                        <span style={{ color: "#1E3A5F", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{med.name}</span>
+                        <span style={{ color: "#7A96B0", fontWeight: 600, flexShrink: 0 }}>{med.dose}</span>
                       </div>
                     ))}
                   </div>
@@ -2238,8 +2227,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                   <div style={sectionHead}>Current Vitals</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                     {/* Weight */}
-                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 6, padding: "6px 8px" }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginBottom: 2 }}>Weight</div>
+                    <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "6px 8px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>Weight</div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.weight.status) }}>
                         {chartData.vitals.weight.current}
                         <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>{chartData.vitals.weight.unit}</span>
@@ -2251,24 +2240,24 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                       )}
                     </div>
                     {/* BP */}
-                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 6, padding: "6px 8px" }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginBottom: 2 }}>Blood Pressure</div>
+                    <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "6px 8px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>Blood Pressure</div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.bp.status) }}>
                         {chartData.vitals.bp.sys}/{chartData.vitals.bp.dia}
                       </div>
-                      <div style={{ fontSize: 8, color: "#475569", marginTop: 1 }}>{chartData.vitals.bp.note}</div>
+                      <div style={{ fontSize: 8, color: "#7A96B0", marginTop: 1 }}>{chartData.vitals.bp.note}</div>
                     </div>
                     {/* HR */}
-                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 6, padding: "6px 8px" }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginBottom: 2 }}>Heart Rate</div>
+                    <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "6px 8px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>Heart Rate</div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.hr.status) }}>
                         {chartData.vitals.hr.value}
                         <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>bpm</span>
                       </div>
                     </div>
                     {/* SpO2 */}
-                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 6, padding: "6px 8px" }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginBottom: 2 }}>SpO2</div>
+                    <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "6px 8px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>SpO2</div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.spo2.status) }}>
                         {chartData.vitals.spo2.value}
                         <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>%</span>
@@ -2285,9 +2274,9 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                       {chartData.labs.map((lab, i) => (
                         <div key={i} style={{ display: "flex", alignItems: "center", fontSize: 10, gap: 6 }}>
                           <span style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor(lab.status), flexShrink: 0 }} />
-                          <span style={{ color: "#94A3B8", fontWeight: 600, minWidth: 55 }}>{lab.name}</span>
-                          <span style={{ color: "#CBD5E1", fontWeight: 500, flex: 1 }}>{lab.value}</span>
-                          <span style={{ color: "#334155", fontSize: 9 }}>{lab.date}</span>
+                          <span style={{ color: "#4A6380", fontWeight: 600, minWidth: 55 }}>{lab.name}</span>
+                          <span style={{ color: "#1E3A5F", fontWeight: 500, flex: 1 }}>{lab.value}</span>
+                          <span style={{ color: "#7A96B0", fontSize: 9 }}>{lab.date}</span>
                         </div>
                       ))}
                     </div>
@@ -2298,21 +2287,21 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
             {/* FHIR Activity — newest first */}
             <div ref={fhirSectionRef} style={{ padding: "13px 16px 4px", borderBottom: "none" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>FHIR Activity</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em" }}>FHIR Activity</div>
             </div>
             <div style={{ padding: "6px 12px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
               {fhirLog.length === 0 ? (
-                <div style={{ fontSize: 12, color: "#334155", textAlign: "center", marginTop: 12, marginBottom: 12, lineHeight: 1.6 }}>Waiting for AI to<br />begin querying...</div>
+                <div style={{ fontSize: 12, color: "#7A96B0", textAlign: "center", marginTop: 12, marginBottom: 12, lineHeight: 1.6 }}>Waiting for AI to<br />begin querying...</div>
               ) : [...fhirLog].reverse().map((q, i) => {
-                const methodColor = q.method === "POST" ? "#F59E0B" : q.color === c.red ? c.red : "#34D399";
-                const methodBg = q.method === "POST" ? "rgba(245,158,11,0.18)" : q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(5,150,105,0.18)";
+                const methodColor = q.method === "POST" ? "#D97706" : q.color === c.red ? c.red : "#059669";
+                const methodBg = q.method === "POST" ? "#FFFBEB" : q.color === c.red ? "#FEF2F2" : "#ECFDF5";
                 return (
-                <div key={fhirLog.length - 1 - i} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 7, padding: "7px 9px", border: `1px solid ${q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.05)"}`, animation: i === 0 ? "slideUp 0.25s ease, fhirPulse 0.6s ease" : "slideUp 0.25s ease" }}>
+                <div key={fhirLog.length - 1 - i} style={{ background: "#F6F7F9", borderRadius: 7, padding: "7px 9px", border: `1px solid ${q.color === c.red ? "#FEE2E2" : "#E8EDF3"}`, animation: i === 0 ? "slideUp 0.25s ease, fhirPulse 0.6s ease" : "slideUp 0.25s ease" }}>
                   <div style={{ display: "flex", gap: 5, alignItems: "center", marginBottom: 3 }}>
                     <span style={{ fontSize: 8, fontWeight: 800, background: methodBg, color: methodColor, padding: "1px 4px", borderRadius: 3 }}>{q.method}</span>
-                    <span style={{ fontSize: 8, color: "#475569", fontFamily: DS.fontMono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{q.path.length > 34 ? q.path.slice(0, 34) + "…" : q.path}</span>
+                    <span style={{ fontSize: 8, color: "#4A6380", fontFamily: DS.fontMono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{q.path.length > 34 ? q.path.slice(0, 34) + "…" : q.path}</span>
                   </div>
-                  <div style={{ fontSize: 10, color: "#94A3B8" }}>→ {q.result}</div>
+                  <div style={{ fontSize: 10, color: "#7A96B0" }}>→ {q.result}</div>
                 </div>
                 );
               })}
@@ -2320,8 +2309,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
             {/* AI Assessment */}
             {(demoMode === "live" ? Object.keys(aiAssessment).length > 0 : transcript.length >= (isMarcusDemo ? 3 : 6)) && (
-              <div style={{ padding: "12px 14px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>AI Assessment</div>
+              <div style={{ padding: "12px 14px", borderTop: "1px solid #E8EDF3" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>AI Assessment</div>
                 {(demoMode === "live" ? (isEpic
                   ? Object.entries(aiAssessment).map(([key, value]) => ({
                       label: key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()),
@@ -2331,7 +2320,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                   : isMarcusDemo ? [
                   { label: "BP 158/98", value: "4-day rise", flag: true },
                   { label: "Glucose", value: "186 mg/dL", flag: false, orange: true },
-                  { label: "Lisinopril", value: aiAssessment.lisinopril || "Pending", flag: (aiAssessment.lisinopril || "").includes("Missed") },
+                  { label: "Lisinopril", value: aiAssessment.lisinopril || "Missed, few days", flag: true },
                   { label: "Headache", value: aiAssessment.headache || "Pending", flag: aiAssessment.headache === "Confirmed" },
                 ] : [
                   { label: "Weight gain", value: aiAssessment.weightGain || "Pending", flag: aiAssessment.weightGain && aiAssessment.weightGain !== "Pending" },
@@ -2341,7 +2330,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                 ]) : isMarcusDemo ? [
                   { label: "BP 158/98", value: "4-day rise", flag: true },
                   { label: "Glucose", value: "186 mg/dL", flag: false, orange: true },
-                  { label: "Lisinopril", value: transcript.length >= 5 ? "Missed for a few days" : "Pending", flag: transcript.length >= 5 },
+                  { label: "Lisinopril", value: transcript.length >= 5 ? "Missed, few days" : "Missed, few days", flag: true },
                   { label: "Headache", value: transcript.length >= 3 ? "Confirmed" : "Pending", flag: transcript.length >= 3 },
                 ] : [
                   { label: "Weight gain", value: "+2.3 lbs/48hr", flag: true },
@@ -2350,8 +2339,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                   { label: "Adherence",   value: "Meds taken", flag: false },
                 ]).map((item, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 5 }}>
-                    <span style={{ color: "#475569" }}>{item.label}</span>
-                    <span style={{ fontWeight: 700, color: item.flag ? "#F87171" : (item.orange ? "#D97706" : (item.value === "Pending" ? "#64748B" : "#34D399")) }}>{item.value}</span>
+                    <span style={{ color: "#4A6380" }}>{item.label}</span>
+                    <span style={{ fontWeight: 700, color: item.flag ? "#C0392B" : (item.orange ? "#D97706" : (item.value === "Pending" ? "#7A96B0" : "#059669")) }}>{item.value}</span>
                   </div>
                 ))}
               </div>
