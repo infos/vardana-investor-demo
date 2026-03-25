@@ -11,9 +11,9 @@ const TTS_VOICES = {
 
 // Cartesia fallback voices
 const CARTESIA_VOICES = {
-  AI: 'f786b574-daa5-4673-aa0c-cbe3e8534c02',
-  Sarah: '6ccbfb76-1fc6-48f7-b71d-91ac6298247b',
-  Marcus: '421b3369-f63f-4b03-8980-37a44df1d4e8',
+  AI: '1242fb95-7ddd-44ac-8a05-9e8a22a6137d',
+  Sarah: 'e07c00bc-4134-4eae-9ea4-1a55fb45746b',
+  Marcus: 'a5136bf9-224c-4d76-b823-52bd5efcffcc',
 };
 
 async function primaryTTS(text, speaker) {
