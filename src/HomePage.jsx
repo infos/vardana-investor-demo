@@ -109,7 +109,7 @@ function HeroWidget() {
       }}>
         <div>
           <div style={{ color: C.s50, fontWeight: 700, fontSize: 13, marginBottom: 2 }}>Sarah Chen · 67F</div>
-          <div style={{ color: C.s400, fontSize: 11 }}>CHF HFrEF · Day 15 of 90 · Stabilize→Optimize</div>
+          <div style={{ color: C.s400, fontSize: 11 }}>Heart Failure · Day 15 of 90 · Stabilize→Optimize</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{
@@ -233,7 +233,7 @@ export default function HomePage() {
             letterSpacing: '0.08em', marginBottom: 28,
           }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.a400 }} />
-            CHF POST-DISCHARGE · PRE-SEED
+            CHRONIC CARE · PRE-SEED
           </div>
           <h1 style={{
             fontFamily: F.display,
@@ -244,16 +244,16 @@ export default function HomePage() {
             marginBottom: 24,
             color: C.s50,
           }}>
-            AI that catches CHF<br />
-            decompensation<br />
-            <span style={{ color: C.a400 }}>3–5 days early.</span>
+            AI care concierge for<br />
+            chronic conditions.<br />
+            <span style={{ color: C.a400 }}>Catches risks early.</span>
           </h1>
           <p style={{
             fontSize: 17, lineHeight: 1.65, color: C.s400,
             marginBottom: 40, maxWidth: 460,
           }}>
-            CHF patients face their highest risk in the 90 days after leaving the hospital.
-            Vardana checks in with them daily by phone, catches warning signs early,
+            Patients with heart failure, hypertension, and diabetes face their highest risk
+            between visits. Vardana checks in daily by phone, catches warning signs early,
             and keeps their care team in the loop.
           </p>
           <a href="mailto:hello@vardana.ai?subject=Demo Request: Vardana Health" style={{
@@ -273,8 +273,8 @@ export default function HomePage() {
             borderTop: `1px solid ${C.s800}`,
           }}>
             {[
-              { value: '~25%', label: '30-day CHF readmission rate' },
-              { value: '$14K', label: 'avg readmission cost' },
+              { value: '~20%', label: '30-day chronic care readmission rate' },
+              { value: '$15K', label: 'avg readmission cost' },
               { value: '90d',  label: 'structured recovery journey' },
             ].map(s => (
               <div key={s.label}>
@@ -346,7 +346,7 @@ export default function HomePage() {
                 name: 'Optimize',
                 color: C.a400,
                 borderColor: C.a500,
-                description: 'As the patient settles in, Vardana tracks how they\'re responding to their medications and activity, and keeps goals in line with what the cardiologist has planned.',
+                description: 'As the patient settles in, Vardana tracks how they\'re responding to their medications and activity, and keeps goals in line with what their care team has planned.',
               },
               {
                 phase: 'Phase 3 · Days 61–90',
@@ -441,7 +441,7 @@ export default function HomePage() {
               {
                 metric: 'Per-patient cost avoidance',
                 description: 'Calculated from readmission delta',
-                source: 'Benchmark: ~$14K avg CHF readmit (AHRQ)',
+                source: 'Benchmark: ~$15K avg readmit (AHRQ)',
               },
               {
                 metric: 'Engagement at 90 days',
@@ -451,7 +451,7 @@ export default function HomePage() {
               {
                 metric: 'Days to first detection',
                 description: 'vs symptom-triggered ER presentation',
-                source: 'CHF remote monitoring literature',
+                source: 'Remote monitoring literature',
               },
             ].map(m => (
               <div key={m.metric} style={{
@@ -534,7 +534,7 @@ export default function HomePage() {
             letterSpacing: '-0.02em', color: C.s50,
             marginBottom: 20, lineHeight: 1.15,
           }}>
-            See what Vardana does<br />for your CHF patients.
+            See what Vardana does<br />for your patients.
           </h2>
           <p style={{ fontSize: 16, color: C.s500, marginBottom: 44, lineHeight: 1.65 }}>
             We're working with self-insured employers and health systems this year.
