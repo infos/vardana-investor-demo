@@ -136,7 +136,7 @@ function ScenarioCard({ scenario, selected, onSelect, onStart, isMobile }) {
         </div>
       </div>
 
-      {/* Start demo label — visible on hover */}
+      {/* Start demo label — always visible */}
       <div style={{
         marginTop: 12,
         textAlign: 'center',
@@ -144,7 +144,7 @@ function ScenarioCard({ scenario, selected, onSelect, onStart, isMobile }) {
         fontWeight: 700,
         color: DT.accent,
         fontFamily: DT.font.body,
-        opacity: hovered ? 1 : 0,
+        opacity: hovered ? 1 : 0.7,
         transition: DT.transition,
       }}>
         Start demo &rarr;
