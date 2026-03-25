@@ -136,19 +136,26 @@ function ScenarioCard({ scenario, selected, onSelect, onStart, isMobile }) {
         </div>
       </div>
 
-      {/* Start demo label — always visible */}
-      <div style={{
-        marginTop: 12,
-        textAlign: 'center',
-        fontSize: 13,
-        fontWeight: 700,
-        color: DT.accent,
-        fontFamily: DT.font.body,
-        opacity: hovered ? 1 : 0.7,
-        transition: DT.transition,
-      }}>
+      {/* Start demo button */}
+      <button
+        style={{
+          marginTop: 12,
+          width: '100%',
+          textAlign: 'center',
+          fontSize: 13,
+          fontWeight: 700,
+          color: 'white',
+          background: hovered ? '#2A9E84' : '#3DBFA0',
+          fontFamily: DT.font.body,
+          padding: '10px 20px',
+          borderRadius: 8,
+          border: 'none',
+          cursor: 'pointer',
+          transition: DT.transition,
+        }}
+      >
         Start demo &rarr;
-      </div>
+      </button>
     </div>
   );
 }

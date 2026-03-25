@@ -876,11 +876,13 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   const fetchAudioOnce = async (text, speaker) => {
     let res;
     try {
+      console.log("[TTS] Fetching:", { speaker, text: text.substring(0, 60), endpoint: "/api/tts" });
       res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, speaker }),
       });
+      console.log("[TTS] Response:", { status: res.status, ok: res.ok, provider: res.headers.get("X-TTS-Provider") });
     } catch (e) {
       throw new Error(`Network error — ${e.message}`);
     }
