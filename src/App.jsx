@@ -1030,6 +1030,22 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       return;
     }
     setUiState("loading");
+    // If preload is in progress (autoStartScripted), wait for it instead of double-fetching
+    if (autoStartScripted) {
+      try {
+        await new Promise((resolve, reject) => {
+          const check = setInterval(() => {
+            if (cancelRef.current) { clearInterval(check); reject(new Error("Cancelled")); }
+            if (preloadedUrlsRef.current) { clearInterval(check); resolve(); }
+          }, 250);
+        });
+        setLoadProgress(100);
+        launchCall(() => playTTSSequence(preloadedUrlsRef.current));
+      } catch (err) {
+        if (!cancelRef.current) { setApiError(err.message || "Audio fetch failed."); setUiState("setup"); }
+      }
+      return;
+    }
     try {
       // Fetch audio sequentially to avoid TTS provider rate limits
       const urls = new Array(ACTIVE_TRANSCRIPT.length);
@@ -1709,13 +1725,15 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         <div style={{ fontSize: 28, marginBottom: 20 }}>🎙</div>
         <div style={{ fontSize: 16, fontWeight: 800, color: "#1E3A5F", marginBottom: 8 }}>Generating audio</div>
         <div style={{ fontSize: 13, color: "#7A96B0", marginBottom: 28 }}>
-          Rendering {ACTIVE_TRANSCRIPT.length} lines via ElevenLabs...
+          Rendering {ACTIVE_TRANSCRIPT.length} lines...
         </div>
-        {/* Progress bar */}
+        {/* Progress bar — use preloadProgress when preload is active, otherwise loadProgress */}
+        {(() => { const pct = Math.max(loadProgress, preloadProgress); const line = Math.ceil(pct / (100 / ACTIVE_TRANSCRIPT.length)); return (<>
         <div style={{ background: "#E8EDF3", borderRadius: 8, height: 8, overflow: "hidden", marginBottom: 12 }}>
-          <div style={{ height: "100%", borderRadius: 8, background: "linear-gradient(90deg, #3DBFA0, #2A9E84)", width: `${loadProgress}%`, transition: "width 0.4s ease" }} />
+          <div style={{ height: "100%", borderRadius: 8, background: "linear-gradient(90deg, #3DBFA0, #2A9E84)", width: `${pct}%`, transition: "width 0.4s ease" }} />
         </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#7A96B0" }}>{loadProgress}% · Line {Math.ceil(loadProgress / (100 / ACTIVE_TRANSCRIPT.length))} of {ACTIVE_TRANSCRIPT.length}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#7A96B0" }}>{pct}% · Line {line} of {ACTIVE_TRANSCRIPT.length}</div>
+        </>); })()}
       </div>
     </div>
   );
