@@ -279,7 +279,7 @@ const MARCUS_CLINICAL_DATA = {
       { name: "Microalbumin/Cr", value: "42 mg/g", date: "Feb 25", status: "elevated" },
     ],
     recentCheckins: [
-      { date: "Today, 7:30 AM", summary: "AI concierge detected 4-day BP worsening trend. BP 158/98. Patient reports headache. Missed Lisinopril x3 days. Escalated to care coordinator." },
+      { date: "Today, 7:30 AM", summary: "AI concierge detected 4-day BP worsening trend. BP 158/98. Patient reports headache. Missed Lisinopril for a few days. Escalated to care coordinator." },
       { date: "Yesterday, 7:30 AM", summary: "Routine check-in. BP 154/96, trending up. Patient confirmed taking Amlodipine but ran out of Lisinopril." },
     ],
     allergy: "Penicillin (rash)",
@@ -672,6 +672,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   const [mobilePanel, setMobilePanel] = useState("transcript"); // transcript | chart (mobile only)
   // ── state ──
   const [uiState, setUiState] = useState(autoStartScripted ? "loading" : "setup"); // setup|loading|dialing|connected|active|alert|done|closing
+  const [showTranscript, setShowTranscript] = useState(false);
   const [alertZoom, setAlertZoom] = useState(false);
   const [apiError, setApiError] = useState("");
   const [audioUnlocked, setAudioUnlocked] = useState(!autoStartScripted);
@@ -1731,26 +1732,32 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     const closingTranscript = isMarcusDemo ? MARCUS_VOICE_TRANSCRIPT : VOICE_TRANSCRIPT;
     const closingDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     const summaryRows = isMarcusDemo ? [
-      { label: "Risk score", value: "53 \u2192 73", color: "#EF4444" },
-      { label: "Alert fired", value: "P2 -- Urgent", color: "#EF4444" },
-      { label: "Coordinator notified", value: "David Park", color: "#34D399" },
-      { label: "FHIR flag posted", value: "Epic sandbox", color: "#34D399" },
+      { label: "Risk score", value: "53 \u2192 73", color: "#C0392B" },
+      { label: "Alert fired", value: "P2: Urgent", color: "#C0392B" },
+      { label: "Coordinator notified", value: "David Park", color: "#059669" },
+      { label: "FHIR flag posted", value: "Epic sandbox", color: "#059669" },
     ] : [
-      { label: "Risk score", value: "68 \u2192 84", color: "#EF4444" },
-      { label: "Alert fired", value: "P1 -- Urgent", color: "#EF4444" },
-      { label: "Coordinator notified", value: "Rachel Kim", color: "#34D399" },
-      { label: "FHIR flag posted", value: "Epic sandbox", color: "#34D399" },
+      { label: "Risk score", value: "68 \u2192 84", color: "#C0392B" },
+      { label: "Alert fired", value: "P1: Urgent", color: "#C0392B" },
+      { label: "Coordinator notified", value: "Rachel Kim", color: "#059669" },
+      { label: "FHIR flag posted", value: "Epic sandbox", color: "#059669" },
     ];
-    const keyFindings = isMarcusDemo ? [
-      "BP 158/98 -- 4-day rising trend",
-      "Lisinopril missed x3 days",
-      "Headache confirmed by patient",
+    const signalPills = isMarcusDemo ? [
+      { text: "BP 158/98", color: "#C0392B", bg: "#FEF2F2" },
+      { text: "Lisinopril missed", color: "#D97706", bg: "#FFFBEB" },
+      { text: "Headache confirmed", color: "#D97706", bg: "#FFFBEB" },
     ] : [
-      "Weight +2.3 lbs in 48 hours",
-      "Ankle swelling + fatigue reported",
-      "Orthopnea -- extra pillow needed",
+      { text: "Weight +2.3 lbs", color: "#C0392B", bg: "#FEF2F2" },
+      { text: "BP reversed", color: "#D97706", bg: "#FFFBEB" },
+      { text: "Edema confirmed", color: "#C0392B", bg: "#FEF2F2" },
     ];
-    const summaryHeader = isMarcusDemo ? "BP Crisis Risk Detected" : "Decompensation Risk Detected";
+    const summaryHeader = isMarcusDemo ? "BP crisis risk detected" : "Early decompensation pattern detected";
+    const summaryNarrative = isMarcusDemo
+      ? "Marcus reported a headache and confirmed missing Lisinopril for a few days. Combined with a 4-day BP rise to 158/98, a P2 alert was generated and dispatched to Nurse David Park for same-day medication reconciliation and BP recheck."
+      : "Sarah reported ankle swelling and fatigue. Weight up 2.3 lbs over 48 hours combined with BP reversal triggered a P1 alert to Nurse Rachel Kim for same-day cardiology follow-up.";
+    const rightNarrative = isMarcusDemo
+      ? "Marcus's call flagged a developing BP crisis. He confirmed missing Lisinopril for a few days and reported a morning headache alongside a 4-day blood pressure rise to 158/98. A P2 alert was dispatched to Nurse David Park for same-day medication reconciliation and BP recheck."
+      : "Sarah's call confirmed early decompensation signs. She reported ankle swelling and fatigue alongside a 2.3 lb weight gain over 48 hours and BP reversal from her best reading. A P1 alert was dispatched to Nurse Rachel Kim for same-day cardiology follow-up.";
     const patientLabel = isMarcusDemo ? "Marcus" : "Sarah";
     const patientInitial = patientLabel.charAt(0);
 
@@ -1774,125 +1781,129 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
           </div>
         </div>
 
-        {/* Two-panel layout: summary + transcript */}
+        {/* Two-panel layout: summary (3fr) + detail (2fr) */}
         <div style={{
           display: "flex",
           flexDirection: isMobileView ? "column" : "row",
           gap: 20,
           maxWidth: 900,
           width: "100%",
-          flex: 1,
-          minHeight: 0,
           marginBottom: 24,
         }}>
-          {/* LEFT — Call Summary card */}
+          {/* LEFT — Call Summary card (primary) */}
           <div style={{
             background: "#FFFFFF", border: "1px solid #D1D9E0",
-            borderRadius: 16, padding: "20px 28px",
-            flex: isMobileView ? "none" : "0 0 340px",
+            borderRadius: 16, padding: "24px 28px",
+            flex: isMobileView ? "none" : 3,
             width: isMobileView ? "100%" : "auto",
-            alignSelf: "flex-start",
             boxShadow: "0 2px 6px rgba(30,58,95,0.07)",
           }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
               Call Summary
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#1E3A5F", marginBottom: 16, fontFamily: DS.fontDisplay, letterSpacing: "-0.01em" }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#1E3A5F", marginBottom: 12, fontFamily: DS.fontDisplay, letterSpacing: "-0.01em" }}>
               {summaryHeader}
             </div>
+            <p style={{ fontSize: 14, color: "#4A6380", lineHeight: 1.65, margin: "0 0 16px" }}>
+              {summaryNarrative}
+            </p>
 
+            {/* Signal pills */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
+              {signalPills.map((pill, i) => (
+                <span key={i} style={{
+                  fontSize: 12, fontWeight: 700, color: pill.color,
+                  background: pill.bg, border: `1px solid ${pill.color}25`,
+                  borderRadius: 6, padding: "4px 10px",
+                }}>
+                  {pill.text}
+                </span>
+              ))}
+            </div>
+
+            {/* Summary rows */}
             {summaryRows.map((row, i) => (
               <div key={i} style={{
                 display: "flex", justifyContent: "space-between",
                 alignItems: "center", padding: "8px 0",
+                borderTop: i === 0 ? "1px solid #E8EDF3" : "none",
                 borderBottom: i < summaryRows.length - 1 ? "1px solid #E8EDF3" : "none",
               }}>
                 <span style={{ fontSize: 13, color: "#7A96B0" }}>{row.label}</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: row.color }}>{row.value}</span>
               </div>
             ))}
-
-            {/* Key findings */}
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #E8EDF3" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>
-                Key Findings
-              </div>
-              {keyFindings.map((finding, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 3, flexShrink: 0 }}>
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  <span style={{ fontSize: 13, color: "#4A6380", lineHeight: 1.5 }}>{finding}</span>
-                </div>
-              ))}
-            </div>
           </div>
 
-          {/* RIGHT — Transcript card */}
+          {/* RIGHT — Narrative + collapsible transcript (subordinate) */}
           <div style={{
             background: "#FFFFFF", border: "1px solid #D1D9E0",
             borderRadius: 16, padding: "20px 24px",
-            flex: 1,
-            display: "flex", flexDirection: "column",
-            minHeight: 0,
-            maxHeight: isMobileView ? 400 : "none",
+            flex: isMobileView ? "none" : 2,
+            width: isMobileView ? "100%" : "auto",
             boxShadow: "0 2px 6px rgba(30,58,95,0.07)",
+            alignSelf: "flex-start",
           }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
-              Call Transcript
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
+              Call Detail
             </div>
-            <div style={{ fontSize: 12, color: "#7A96B0", marginBottom: 16 }}>
-              Call completed {closingDate} -- Duration: ~90 seconds
-            </div>
-
-            {/* Scrollable transcript */}
-            <div style={{
-              flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12,
-              paddingRight: 4,
-            }}>
-              {closingTranscript.map((line, i) => (
-                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <div style={{
-                    width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                    background: line.speaker === "AI" ? "#E8F5F1" : "#EDE9FE",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 11, fontWeight: 700,
-                    color: line.speaker === "AI" ? "#1A7A61" : "#7C3AED",
-                    marginTop: 3,
-                    border: "1px solid transparent",
-                  }}>
-                    {line.speaker === "AI" ? "V" : patientInitial}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      fontSize: 10, fontWeight: 700,
-                      color: "#7A96B0",
-                      marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em",
-                    }}>
-                      {line.speaker === "AI" ? "Vardana AI" : patientLabel}
-                    </div>
-                    <div style={{
-                      fontSize: 13, color: "#4A6380", lineHeight: 1.6,
-                      background: line.speaker === "AI" ? "#F6F7F9" : "#FAFBFC",
-                      padding: "9px 13px", borderRadius: 10,
-                      border: "1px solid #E8EDF3",
-                    }}>
-                      {line.text}
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <p style={{ fontSize: 13, color: "#4A6380", lineHeight: 1.65, margin: "0 0 14px" }}>
+              {rightNarrative}
+            </p>
+            <div style={{ fontSize: 12, color: "#7A96B0", marginBottom: 12 }}>
+              Call completed {closingDate} &middot; ~90 seconds
             </div>
 
-            {/* View full transcript link */}
-            {/* TODO: link to persisted transcript once pilot logging is live */}
-            <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #E8EDF3" }}>
-              <a href="#" onClick={e => e.preventDefault()} style={{ fontSize: 12, color: "#A8BAC8", textDecoration: "none" }}>
-                View full transcript
+            {/* Transcript toggle */}
+            <div style={{ borderTop: "1px solid #E8EDF3", paddingTop: 10 }}>
+              {/* TODO: link to persisted transcript once pilot logging is live */}
+              <a
+                href="#"
+                onClick={e => { e.preventDefault(); setShowTranscript(prev => !prev); }}
+                style={{ fontSize: 12, color: "#3DBFA0", textDecoration: "none", fontWeight: 600 }}
+              >
+                {showTranscript ? "Hide transcript" : "View call transcript \u2192"}
               </a>
             </div>
+
+            {/* Collapsible transcript */}
+            {showTranscript && (
+              <div style={{
+                marginTop: 14, display: "flex", flexDirection: "column", gap: 12,
+                maxHeight: 400, overflowY: "auto", paddingRight: 4,
+              }}>
+                {closingTranscript.map((line, i) => (
+                  <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{
+                      width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+                      background: line.speaker === "AI" ? "#E8F5F1" : "#EDE9FE",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 11, fontWeight: 700,
+                      color: line.speaker === "AI" ? "#1A7A61" : "#7C3AED",
+                      marginTop: 3,
+                    }}>
+                      {line.speaker === "AI" ? "V" : patientInitial}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        fontSize: 10, fontWeight: 700, color: "#7A96B0",
+                        marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em",
+                      }}>
+                        {line.speaker === "AI" ? "Vardana AI" : patientLabel}
+                      </div>
+                      <div style={{
+                        fontSize: 13, color: "#4A6380", lineHeight: 1.6,
+                        background: line.speaker === "AI" ? "#F6F7F9" : "#FAFBFC",
+                        padding: "9px 13px", borderRadius: 10,
+                        border: "1px solid #E8EDF3",
+                      }}>
+                        {line.text}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -2330,7 +2341,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                 ]) : isMarcusDemo ? [
                   { label: "BP 158/98", value: "4-day rise", flag: true },
                   { label: "Glucose", value: "186 mg/dL", flag: false, orange: true },
-                  { label: "Lisinopril", value: transcript.length >= 5 ? "Missed x3 days" : "Pending", flag: transcript.length >= 5 },
+                  { label: "Lisinopril", value: transcript.length >= 5 ? "Missed for a few days" : "Pending", flag: transcript.length >= 5 },
                   { label: "Headache", value: transcript.length >= 3 ? "Confirmed" : "Pending", flag: transcript.length >= 3 },
                 ] : [
                   { label: "Weight gain", value: "+2.3 lbs/48hr", flag: true },
