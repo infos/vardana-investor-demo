@@ -2340,7 +2340,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                   : isMarcusDemo ? [
                   { label: "BP 158/98", value: "4-day rise", flag: true },
                   { label: "Glucose", value: "186 mg/dL", flag: false, orange: true },
-                  { label: "Lisinopril", value: aiAssessment.lisinopril || "Missed, few days", flag: true },
+                  { label: "Lisinopril", value: aiAssessment.lisinopril || "Checking", flag: aiAssessment.lisinopril === "Missed, few days" },
                   { label: "Headache", value: aiAssessment.headache || "Pending", flag: aiAssessment.headache === "Confirmed" },
                 ] : [
                   { label: "Weight gain", value: aiAssessment.weightGain || "Pending", flag: aiAssessment.weightGain && aiAssessment.weightGain !== "Pending" },
@@ -2350,7 +2350,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                 ]) : isMarcusDemo ? [
                   { label: "BP 158/98", value: "4-day rise", flag: true },
                   { label: "Glucose", value: "186 mg/dL", flag: false, orange: true },
-                  { label: "Lisinopril", value: transcript.length >= 5 ? "Missed, few days" : "Missed, few days", flag: true },
+                  { label: "Lisinopril", value: transcript.length >= 5 ? "Missed, few days" : "Checking", flag: transcript.length >= 5 },
                   { label: "Headache", value: transcript.length >= 3 ? "Confirmed" : "Pending", flag: transcript.length >= 3 },
                 ] : [
                   { label: "Weight gain", value: "+2.3 lbs/48hr", flag: true },
