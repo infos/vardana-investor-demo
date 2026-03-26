@@ -5,3 +5,4 @@ dist
 epic-private-key.pem
 .env*.local
 test-results/
+.claude/worktrees/

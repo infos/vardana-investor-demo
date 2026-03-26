@@ -2,8 +2,13 @@
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit",
-        "command": "PATH=\"/opt/homebrew/bin:$PATH\" npm run build 2>&1"
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PATH=\"/opt/homebrew/bin:$PATH\" npm run build 2>&1"
+          }
+        ]
       }
     ]
   }
