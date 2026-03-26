@@ -191,14 +191,15 @@ const PATIENT_CLINICAL_DATA = {
 };
 
 const VOICE_TRANSCRIPT = [
-  { t: 1200, speaker: "AI", text: "Good morning, Sarah. This is the Vardana Care Concierge calling for your check-in. I am checking in because I noticed your weight went up a couple of pounds over the last two days. How are you feeling this morning?" },
-  { t: 6200, speaker: "Sarah", text: "Hi. Now that you mention it, I do feel more tired than usual and my ankles look a little puffy. The rest is the same." },
-  { t: 11000, speaker: "AI", text: "Thank you for telling me that, Sarah. That's really important. Let me pull up your recent readings. Your weight has increased 2.3 pounds in 48 hours, and your blood pressure is a little higher than your best last week." },
-  { t: 17500, speaker: "AI", text: "Combined with the ankle swelling and fatigue, I wanna make sure your care team is aware today." },
-  { t: 21000, speaker: "Sarah", text: "Is that serious? Should I be worried?" },
-  { t: 23500, speaker: "AI", text: "We're being careful, not alarmed. I'm letting Rachel Kim know right now so she can follow up with you and your cardiologist today. Are you having any trouble breathing?" },
-  { t: 29000, speaker: "Sarah", text: "Yes. Especially when lying flat a little. I had to use an extra pillow last night." },
-  { t: 32500, speaker: "AI", text: "That's helpful. I've sent a priority alert to your coordinator with everything we discussed. Rachel will call you today. In the meantime, please stay on your medications and keep sodium low." },
+  { t: 1200, speaker: "AI", text: "Good morning, Sarah. This is the Vardana Care Concierge calling for your daily check-in. You are on Day 15 of your 90-day recovery program. How are you feeling this morning?" },
+  { t: 6200, speaker: "Sarah", text: "Hi. I feel okay, about the same as yesterday I think." },
+  { t: 11000, speaker: "AI", text: "I'm glad to hear that. I did want to flag something. Your weight has gone up a couple of pounds over the last two days. That can sometimes be a sign of fluid retention. Are you noticing any ankle swelling or feeling more short of breath than usual?" },
+  { t: 17500, speaker: "Sarah", text: "Now that you mention it, my ankles have been a little puffy. And I have been more tired than usual the last couple of days." },
+  { t: 21000, speaker: "AI", text: "Thank you for telling me that. Let me pull up your recent readings. Your weight is up 2.3 pounds in 48 hours, and your blood pressure has climbed to 136 over 86, which is higher than your best last week. Combined with the ankle swelling and fatigue, I want to make sure your care team knows about this today." },
+  { t: 28000, speaker: "Sarah", text: "Is that serious? Should I be worried?" },
+  { t: 30000, speaker: "AI", text: "We're being careful, not alarmed. I'm letting Rachel Kim know right now so she can follow up with you and your doctor today. Are you having any trouble breathing, especially when lying flat?" },
+  { t: 35000, speaker: "Sarah", text: "A little, yes. I had to use an extra pillow last night." },
+  { t: 37500, speaker: "AI", text: "That's helpful to know. I've sent a priority alert to your coordinator with everything we discussed. Rachel will call you today. In the meantime, please stay on your medications and keep your sodium low." },
 ];
 
 const FHIR_QUERIES = [
@@ -940,19 +941,19 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       }, 1200);
     }
   } : (idx) => {
-    // Sarah script: 0=AI greeting+weight, 1=Sarah symptoms, 2=AI readings, 3=AI care team,
-    //               4=Sarah worried, 5=AI escalate+breathing?, 6=Sarah breathing, 7=AI alert+guidance
-    if (idx === 2) {
-      // AI pulls up readings — fire clinical FHIR queries
+    // Sarah script: 0=AI greeting, 1=Sarah okay, 2=AI flags weight, 3=Sarah confirms swelling,
+    //               4=AI readings+care team, 5=Sarah worried, 6=AI escalate+breathing?, 7=Sarah breathing, 8=AI alert+guidance
+    if (idx === 0) {
+      // AI greeting — fire FHIR queries
       [0, 520, 1060, 1620, 2200].forEach((d, i) =>
         addTimer(() => { if (!cancelRef.current) setFhirLog(p => [...p, ACTIVE_FHIR[i]]); }, d)
       );
     }
-    if (idx === 1) setRiskScore(72);   // Sarah reports symptoms → baseline risk visible
-    if (idx === 2) setRiskScore(75);   // AI analyzes readings → score bumps
-    if (idx === 3) setRiskScore(78);   // AI: care team aware → score climbs
-    if (idx === 6) setRiskScore(82);   // breathing trouble → high risk
-    if (idx === 7) {
+    if (idx === 2) setRiskScore(72);   // AI flags weight → baseline risk visible
+    if (idx === 3) setRiskScore(75);   // Sarah confirms swelling → score bumps
+    if (idx === 4) setRiskScore(78);   // AI: readings + care team aware → score climbs
+    if (idx === 7) setRiskScore(82);   // breathing trouble → high risk
+    if (idx === 8) {
       setRiskScore(84);               // AI triggers alert → critical
       addTimer(() => {
         if (cancelRef.current) return;
@@ -962,7 +963,6 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
           setFhirLog(p => [...p, ACTIVE_FHIR[6]]);
           setAlertGenerated(true);
           setUiState("alert");
-          // Zoom into alert section for 4 seconds
           setAlertZoom(true);
           addTimer(() => { if (!cancelRef.current) setAlertZoom(false); }, 4000);
         }, 900);
@@ -1000,6 +1000,13 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     let cancelled = false;
     (async () => {
       try {
+        // Warm up TTS provider — primes API connection and loads voice model
+        try {
+          console.log("[TTS] Warming up provider...");
+          await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: ".", speaker: "AI" }) });
+          console.log("[TTS] Warm-up complete");
+        } catch {} // Ignore warm-up failures
+        if (cancelled || cancelRef.current) return;
         const urls = new Array(ACTIVE_TRANSCRIPT.length);
         for (let i = 0; i < ACTIVE_TRANSCRIPT.length; i++) {
           if (cancelled || cancelRef.current) return;
