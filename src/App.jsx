@@ -823,6 +823,67 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     prevFhirLen.current = fhirLog.length;
   }, [fhirLog.length, isMobileView]);
 
+  // ── Streaming audio playback via MediaSource API (Chrome/Firefox) ──
+  // Appends chunks as they arrive and calls audio.play() on the first chunk.
+  // Not used on Safari/iOS — those fall back to the decodeAudioData path.
+  const playStreamingResponse = (response) => {
+    return new Promise((resolve, reject) => {
+      const ms = new MediaSource();
+      const objUrl = URL.createObjectURL(ms);
+      blobUrls.current.push(objUrl);
+
+      const audio = new Audio();
+      audio.src = objUrl;
+      audioRef.current = audio;
+
+      let done = false;
+      const finish = () => { if (!done) { done = true; resolve(); } };
+      audio.onended = finish;
+      audio.onerror = () => reject(new Error('MediaSource audio error'));
+      setTimeout(finish, 30000);
+
+      ms.addEventListener('sourceopen', async () => {
+        let sb;
+        try {
+          sb = ms.addSourceBuffer('audio/mpeg');
+        } catch (e) { reject(e); return; }
+
+        const reader = response.body.getReader();
+        let playStarted = false;
+
+        const waitUpdate = () =>
+          new Promise(r => sb.addEventListener('updateend', r, { once: true }));
+
+        const pump = async () => {
+          try {
+            while (true) {
+              const { value, done: streamDone } = await reader.read();
+              if (value && value.byteLength > 0) {
+                if (sb.updating) await waitUpdate();
+                sb.appendBuffer(value);
+                if (!playStarted) {
+                  playStarted = true;
+                  if (sb.updating) await waitUpdate();
+                  audio.volume = mutedRef.current ? 0 : 1;
+                  audio.play().catch(() => {});
+                }
+              }
+              if (streamDone) {
+                if (sb.updating) await waitUpdate();
+                try { ms.endOfStream(); } catch {}
+                break;
+              }
+            }
+          } catch (e) {
+            reject(e);
+          }
+        };
+
+        pump();
+      }, { once: true });
+    });
+  };
+
   // ── Fetch audio via server-side TTS proxy ──
   const fetchAudioOnce = async (text, speaker) => {
     let res;
@@ -1151,16 +1212,40 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     }
   };
 
-  // Returns true if Cartesia TTS succeeded, false if it failed
+  // Returns true if TTS succeeded, false if it failed
   // No browser TTS fallback mid-call — voice switching is jarring
   const speakAI = async (text, allowBrowserFallback = false) => {
     // Kill any active speech recognition before AI speaks — prevents 2 voices overlapping
     if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
     setIsListening(false);
     setActiveSpeaker("AI");
+
+    // Use MediaSource streaming on supported browsers — audio starts on first chunk (~200-400ms).
+    // Safari/iOS don't support MediaSource for audio/mpeg, so they fall back to the blob path.
+    const canStream = typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported('audio/mpeg');
+
     try {
-      const url = await fetchAudio(text, "AI");
-      await playAudioUrl(url);
+      if (canStream) {
+        let res;
+        try {
+          res = await fetch("/api/elevenlabs-tts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text, speaker: "AI" }),
+          });
+        } catch (e) {
+          throw new Error(`Network error — ${e.message}`);
+        }
+        if (!res.ok) {
+          let detail = "";
+          try { const j = await res.json(); detail = j?.error || ""; } catch {}
+          throw new Error(`HTTP ${res.status}${detail ? ": " + detail : ""}`);
+        }
+        await playStreamingResponse(res);
+      } else {
+        const url = await fetchAudio(text, "AI");
+        await playAudioUrl(url);
+      }
       // Echo guard: pause after AI audio ends before mic opens,
       // prevents the mic from picking up the tail end of AI's own speech
       await new Promise(r => setTimeout(r, 800));
