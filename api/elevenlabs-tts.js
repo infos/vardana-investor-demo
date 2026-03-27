@@ -77,7 +77,7 @@ async function fetchCartesia(text, speaker) {
       },
       language: 'en',
       generation_config: {
-        speed: speaker === 'AI' ? 0.85 : 1.0,
+        speed: speaker === 'AI' ? 0.85 : (speaker === 'Marcus' ? 0.88 : 0.78),
         emotion: 'calm',
       },
     }),
