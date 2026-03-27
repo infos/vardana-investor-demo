@@ -42,7 +42,7 @@ async function fetchElevenLabs(text, speaker) {
         similarity_boost: 0.75,
         style: speaker === 'AI' ? 0.05 : 0.10,
         use_speaker_boost: true,
-        speed: speaker === 'AI' ? 0.95 : (speaker === 'Marcus' ? 0.88 : 0.85),
+        speed: speaker === 'AI' ? 0.95 : (speaker === 'Marcus' ? 0.88 : 0.78),
       },
     }),
   });
@@ -77,7 +77,7 @@ async function fetchCartesia(text, speaker) {
       },
       language: 'en',
       generation_config: {
-        speed: speaker === 'AI' ? 0.85 : 1.0,
+        speed: speaker === 'AI' ? 0.85 : (speaker === 'Marcus' ? 0.88 : 0.78),
         emotion: 'calm',
       },
     }),
