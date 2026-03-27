@@ -1,10 +1,8 @@
 // Demo analytics dashboard API — GET /api/analytics?secret=<value>
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'GET only' });
 
@@ -18,11 +16,7 @@ export default async function handler(req, res) {
   const kvToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
   if (!kvUrl || !kvToken) {
-    return res.status(200).json({
-      visits: [],
-      count: 0,
-      error: 'KV not configured. Check Vercel Function Logs for [DEMO_VISIT] entries.',
-    });
+    return res.status(200).json({ visits: [], count: 0, error: 'KV not configured.' });
   }
 
   try {
@@ -30,7 +24,7 @@ export default async function handler(req, res) {
       headers: { Authorization: `Bearer ${kvToken}` },
     });
     const scanData = await scanRes.json();
-    const keys = scanData.result[1];
+    const keys = scanData.result[1] || [];
 
     const visits = (
       await Promise.all(
@@ -40,7 +34,21 @@ export default async function handler(req, res) {
               headers: { Authorization: `Bearer ${kvToken}` },
             });
             const data = await r.json();
-            return data.result ? JSON.parse(data.result) : null;
+
+            // data.result is a triple-encoded string — unwrap fully
+            let raw = data.result;
+            while (typeof raw === 'string') {
+              try { raw = JSON.parse(raw); } catch { break; }
+            }
+            // raw is now { value: "json string", ex: number } — extract value
+            if (raw && typeof raw === 'object' && raw.value) {
+              raw = raw.value;
+            }
+            // raw.value may still be a string — parse it
+            while (typeof raw === 'string') {
+              try { raw = JSON.parse(raw); } catch { break; }
+            }
+            return raw && typeof raw === 'object' ? raw : null;
           } catch {
             return null;
           }
@@ -55,4 +63,4 @@ export default async function handler(req, res) {
     console.error('[ANALYTICS_ERROR]', e.message);
     return res.status(200).json({ visits: [], count: 0, error: e.message });
   }
-}
+};

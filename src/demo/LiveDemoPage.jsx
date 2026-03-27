@@ -26,7 +26,7 @@ export default function LiveDemoPage({ navigate }) {
       <PrimaryButton onClick={() => navigate(`/coordinator?demo=live${patientParam}`)} color={DT.amber.default} textColor={DT.bg.page}>
         Open Coordinator View &rarr;
       </PrimaryButton>
-      <PrimaryButton onClick={() => navigate('/patient')} color={DT.jade.default} textColor="white">
+      <PrimaryButton onClick={() => navigate(`/patient${selectedPatient === 'marcus' ? '?patient=marcus' : ''}`)} color={DT.jade.default} textColor="white">
         Open Patient Portal &rarr;
       </PrimaryButton>
     </div>
@@ -44,6 +44,7 @@ export default function LiveDemoPage({ navigate }) {
       ) : (
         <ScenarioSlide
           onBack={() => setStep('about')}
+          onEnter={(patient) => navigate(`/coordinator?demo=live${patient === 'marcus' ? '&patient=marcus' : ''}`)}
           onPatientSelect={(patient) => setSelectedPatient(patient)}
           defaultPatient={defaultPatient}
           ctaSlot={ctaSlot}

@@ -35,7 +35,7 @@ const SCENARIOS = {
     condition: 'HTN + T2DM \u00b7 Missed medication',
     warnings: [
       { color: DT.jade.hover, text: 'BP 158/98, 4-day worsening trend (was 129/80)' },
-      { color: DT.jade.hover, text: 'Missed Lisinopril refill x3 days' },
+      { color: DT.jade.hover, text: 'Missed Lisinopril refill for a few days' },
       { color: DT.crimson, text: 'Patient reports morning headache' },
     ],
     riskLabel: 'BP Crisis Risk',
@@ -45,15 +45,18 @@ const SCENARIOS = {
   },
 };
 
-function ScenarioCard({ scenario, selected, onSelect, isMobile }) {
+function ScenarioCard({ scenario, selected, onSelect, onStart, isMobile }) {
   const s = SCENARIOS[scenario];
-  const borderColor = selected ? s.accentColor : DT.border.default;
+  const [hovered, setHovered] = useState(false);
+  const borderColor = hovered ? DT.accent : selected ? s.accentColor : DT.border.default;
 
   return (
     <div
-      onClick={onSelect}
+      onClick={() => { onSelect(); onStart(scenario); }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
-        background: DT.bg.card,
+        background: hovered ? DT.bg.well : DT.bg.card,
         border: `2px solid ${borderColor}`,
         borderRadius: DT.radius.lg,
         padding: '16px 20px',
@@ -62,6 +65,7 @@ function ScenarioCard({ scenario, selected, onSelect, isMobile }) {
         flex: 1,
         minWidth: isMobile ? 'auto' : 240,
         boxShadow: selected ? `0 0 0 1px ${s.accentColor}30` : 'none',
+        position: 'relative',
       }}
     >
       {/* Header badge */}
@@ -131,6 +135,27 @@ function ScenarioCard({ scenario, selected, onSelect, isMobile }) {
           {s.riskArc}
         </div>
       </div>
+
+      {/* Start demo button */}
+      <button
+        style={{
+          marginTop: 12,
+          width: '100%',
+          textAlign: 'center',
+          fontSize: 13,
+          fontWeight: 700,
+          color: 'white',
+          background: hovered ? '#2A9E84' : '#3DBFA0',
+          fontFamily: DT.font.body,
+          padding: '10px 20px',
+          borderRadius: 8,
+          border: 'none',
+          cursor: 'pointer',
+          transition: DT.transition,
+        }}
+      >
+        Start demo &rarr;
+      </button>
     </div>
   );
 }
@@ -188,8 +213,8 @@ export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Dem
         gap: 12,
         marginBottom: 20,
       }}>
-        <ScenarioCard scenario="sarah" selected={selected === 'sarah'} onSelect={() => handleSelect('sarah')} isMobile={isMobile} />
-        <ScenarioCard scenario="marcus" selected={selected === 'marcus'} onSelect={() => handleSelect('marcus')} isMobile={isMobile} />
+        <ScenarioCard scenario="sarah" selected={selected === 'sarah'} onSelect={() => handleSelect('sarah')} onStart={(p) => onEnter && onEnter(p)} isMobile={isMobile} />
+        <ScenarioCard scenario="marcus" selected={selected === 'marcus'} onSelect={() => handleSelect('marcus')} onStart={(p) => onEnter && onEnter(p)} isMobile={isMobile} />
       </div>
 
       {/* What you'll see */}
@@ -230,10 +255,7 @@ export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Dem
           {ctaSlot ? (
             ctaSlot
           ) : (
-            <>
-              <GhostButton onClick={onBack}>&larr; Back</GhostButton>
-              <PrimaryButton onClick={handleEnter}>{enterLabel}</PrimaryButton>
-            </>
+            <GhostButton onClick={onBack}>&larr; Back</GhostButton>
           )}
         </div>
       </div>

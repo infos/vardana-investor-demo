@@ -2,19 +2,24 @@
 import { useState, useEffect } from 'react';
 // ─── Design tokens (from vardana-design-system.jsx) ──────────────────────────
 const C = {
-  // Slate
-  s950: '#0C1420',
-  s900: '#131E2E',
-  s800: '#1C2B40',
-  s700: '#253550',
-  s600: '#3A4F6B',
-  s500: '#556882',
-  s400: '#7A90A8',
-  s300: '#A8BAC8',
+  // Slate — light theme
+  s950: '#1E3A5F',   // nav bg, primary text
+  s900: '#F6F7F9',   // section bg (light)
+  s800: '#E8EDF3',   // card bg / hover
+  s700: '#D1D9E0',   // borders
+  s600: '#7A96B0',   // muted text
+  s500: '#4A6380',   // secondary text
+  s400: '#7A96B0',   // tertiary text
+  s300: '#A8BAC8',   // faint text
   s200: '#D1DCE6',
-  s100: '#EBF0F5',
-  s50:  '#F5F7FA',
-  // Amber (signal / action)
+  s100: '#EEF1F5',   // well bg
+  s50:  '#1E3A5F',   // primary text (dark on light)
+  // Teal brand accent (replaces amber as primary CTA)
+  teal: '#3DBFA0',
+  tealDark: '#2A9E84',
+  tealLight: '#E8F5F1',
+  tealText: '#1A7A61',
+  // Amber (signal / action — P2 warnings)
   a400: '#F59E0B',
   a500: '#D97706',
   a600: '#B45309',
@@ -23,10 +28,16 @@ const C = {
   j400: '#34D399',
   j500: '#059669',
   j600: '#047857',
-  // Crimson (danger)
-  cr500: '#EF4444',
-  cr600: '#DC2626',
+  // Crimson (danger — P1)
+  cr500: '#C0392B',
+  cr600: '#A93226',
   cr100: '#FEE2E2',
+  // Page
+  pageBg: '#F6F7F9',
+  cardBg: '#FFFFFF',
+  navBg: '#1E3A5F',
+  navText: '#F5F7FA',
+  navMuted: '#7FA4C4',
 };
 const F = {
   display: "'DM Serif Display', 'Georgia', serif",
@@ -64,22 +75,22 @@ function HeroWidget() {
   ];
   return (
     <div style={{
-      background: C.s900,
+      background: '#131E2E',
       borderRadius: 16,
       padding: 20,
       fontFamily: F.mono,
       fontSize: 12,
-      color: C.s400,
+      color: '#7A90A8',
       width: '100%',
       maxWidth: 460,
-      boxShadow: '0 25px 60px rgba(12,20,32,0.6)',
-      border: `1px solid ${C.s700}`,
+      boxShadow: '0 25px 60px rgba(12,20,32,0.25)',
+      border: '1px solid #253550',
     }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.j500 }} />
-          <span style={{ color: C.s100, fontWeight: 700, fontSize: 11, letterSpacing: '0.08em' }}>
+          <span style={{ color: '#EBF0F5', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em' }}>
             VARDANA — CARE COORDINATOR
           </span>
         </div>
@@ -108,8 +119,8 @@ function HeroWidget() {
         alignItems: 'center',
       }}>
         <div>
-          <div style={{ color: C.s50, fontWeight: 700, fontSize: 13, marginBottom: 2 }}>Sarah Chen · 67F</div>
-          <div style={{ color: C.s400, fontSize: 11 }}>Heart Failure · Day 15 of 90 · Stabilize→Optimize</div>
+          <div style={{ color: '#F5F7FA', fontWeight: 700, fontSize: 13, marginBottom: 2 }}>Sarah Chen · 67F</div>
+          <div style={{ color: '#7A90A8', fontSize: 11 }}>Heart Failure · Day 15 of 90 · Stabilize→Optimize</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{
@@ -118,12 +129,12 @@ function HeroWidget() {
           }}>
             {riskScore}
           </div>
-          <div style={{ fontSize: 9, color: C.s500, letterSpacing: '0.06em', marginTop: 2 }}>DECOMP RISK</div>
+          <div style={{ fontSize: 9, color: '#556882', letterSpacing: '0.06em', marginTop: 2 }}>DECOMP RISK</div>
         </div>
       </div>
       {/* Evidence chain */}
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 10, letterSpacing: '0.08em', color: C.s600, marginBottom: 8 }}>EVIDENCE CHAIN</div>
+        <div style={{ fontSize: 10, letterSpacing: '0.08em', color: '#3A4F6B', marginBottom: 8 }}>EVIDENCE CHAIN</div>
         {signals.map((s, i) => (
           <div key={i} style={{
             display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5,
@@ -131,10 +142,10 @@ function HeroWidget() {
           }}>
             <div style={{
               width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-              background: s.active ? s.color : C.s700,
+              background: s.active ? s.color : '#253550',
               transition: 'background 0.4s',
             }} />
-            <span style={{ color: s.active ? C.s100 : C.s600, transition: 'color 0.4s' }}>{s.label}</span>
+            <span style={{ color: s.active ? '#EBF0F5' : '#3A4F6B', transition: 'color 0.4s' }}>{s.label}</span>
           </div>
         ))}
       </div>
@@ -154,11 +165,11 @@ function HeroWidget() {
           'POST /Flag (decompensation-risk · severity=high)',
         ].map((line, i) => (
           <div key={i} style={{
-            fontSize: 10, color: C.s500, marginBottom: 3,
+            fontSize: 10, color: '#556882', marginBottom: 3,
             opacity: phase > i / 2 ? 1 : 0.25, transition: 'opacity 0.6s',
           }}>
             <span style={{ color: C.j400 }}>{line.split(' ')[0]}</span>{' '}
-            <span style={{ color: C.s600 }}>{line.split(' ').slice(1).join(' ')}</span>
+            <span style={{ color: '#3A4F6B' }}>{line.split(' ').slice(1).join(' ')}</span>
           </div>
         ))}
       </div>
@@ -178,28 +189,28 @@ function Nav() {
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
       padding: '0 32px', height: 60,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      background: scrolled ? `${C.s950}f2` : 'transparent',
+      background: scrolled ? `${C.navBg}f2` : C.navBg,
       backdropFilter: scrolled ? 'blur(12px)' : 'none',
-      borderBottom: scrolled ? `1px solid ${C.s800}` : 'none',
+      borderBottom: scrolled ? `1px solid rgba(255,255,255,0.1)` : 'none',
       transition: 'background 0.3s, border 0.3s',
       fontFamily: F.sans,
     }}>
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        <span style={{ fontFamily: F.display, fontSize: 20, fontWeight: 400, color: C.s50, letterSpacing: '-0.01em' }}>
-          Vardana<span style={{ color: C.a400 }}> Health</span>
+        <span style={{ fontFamily: F.display, fontSize: 20, fontWeight: 400, color: C.navText, letterSpacing: '-0.01em' }}>
+          Vardana<span style={{ color: C.teal }}> Health</span>
         </span>
       </div>
       {/* Links */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 32, fontSize: 14, color: C.s400 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 32, fontSize: 14, color: C.navMuted }}>
         <a href="#approach" style={{ color: 'inherit', textDecoration: 'none' }}>Approach</a>
         <a href="#pilot" style={{ color: 'inherit', textDecoration: 'none' }}>Pilot</a>
         <a href="mailto:hello@vardana.ai" style={{ color: 'inherit', textDecoration: 'none' }}>Contact</a>
       </div>
       {/* CTA */}
       <a href="mailto:hello@vardana.ai?subject=Demo Request: Vardana Health" style={{
-        background: C.a500,
-        color: C.s950,
+        background: C.teal,
+        color: '#FFFFFF',
         padding: '8px 20px',
         borderRadius: 8,
         fontSize: 13,
@@ -216,7 +227,7 @@ function Nav() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function HomePage() {
   return (
-    <div style={{ fontFamily: F.sans, background: C.s950, color: C.s50, minHeight: '100vh' }}>
+    <div style={{ fontFamily: F.sans, background: C.pageBg, color: C.s50, minHeight: '100vh' }}>
       <Nav />
       {/* ── HERO ── */}
       <section style={{
@@ -227,12 +238,12 @@ export default function HomePage() {
           {/* Label pill */}
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: `${C.a400}14`, border: `1px solid ${C.a400}30`,
+            background: C.tealLight, border: `1px solid ${C.teal}30`,
             borderRadius: 100, padding: '4px 14px',
-            fontSize: 11, color: C.a400, fontWeight: 600,
+            fontSize: 11, color: C.tealText, fontWeight: 600,
             letterSpacing: '0.08em', marginBottom: 28,
           }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.a400 }} />
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.teal }} />
             CHRONIC CARE · PRE-SEED
           </div>
           <h1 style={{
@@ -246,7 +257,7 @@ export default function HomePage() {
           }}>
             AI care concierge for<br />
             chronic conditions.<br />
-            <span style={{ color: C.a400 }}>Catches risks early.</span>
+            <span style={{ color: C.teal }}>Catches risks early.</span>
           </h1>
           <p style={{
             fontSize: 17, lineHeight: 1.65, color: C.s400,
@@ -258,19 +269,19 @@ export default function HomePage() {
           </p>
           <a href="mailto:hello@vardana.ai?subject=Demo Request: Vardana Health" style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: C.a500,
-            color: C.s950,
+            background: C.teal,
+            color: '#FFFFFF',
             padding: '14px 32px',
             borderRadius: 10, fontSize: 15, fontWeight: 700,
             textDecoration: 'none', letterSpacing: '-0.01em',
-            boxShadow: `0 0 32px ${C.a500}40`,
+            boxShadow: `0 0 32px ${C.teal}40`,
           }}>
             Request a Demo →
           </a>
           {/* Market context stats */}
           <div style={{
             display: 'flex', gap: 36, marginTop: 48, paddingTop: 40,
-            borderTop: `1px solid ${C.s800}`,
+            borderTop: `1px solid ${C.s700}`,
           }}>
             {[
               { value: '~20%', label: '30-day chronic care readmission rate' },
@@ -294,9 +305,9 @@ export default function HomePage() {
       {/* ── NVIDIA TRUST STRIP ── */}
       <section style={{
         padding: '24px 32px',
-        borderTop: `1px solid ${C.s800}`,
-        borderBottom: `1px solid ${C.s800}`,
-        background: C.s900,
+        borderTop: `1px solid ${C.s700}`,
+        borderBottom: `1px solid ${C.s700}`,
+        background: C.cardBg,
       }}>
         <div style={{
           maxWidth: 1100, margin: '0 auto',
@@ -309,11 +320,11 @@ export default function HomePage() {
         </div>
       </section>
       {/* ── APPROACH ── */}
-      <section id="approach" style={{ padding: '100px 32px', background: C.s900 }}>
+      <section id="approach" style={{ padding: '100px 32px', background: C.cardBg }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 64 }}>
             <div style={{
-              fontSize: 11, letterSpacing: '0.12em', color: C.a400,
+              fontSize: 11, letterSpacing: '0.12em', color: C.tealText,
               fontWeight: 700, marginBottom: 12,
             }}>
               APPROACH
@@ -351,13 +362,13 @@ export default function HomePage() {
               {
                 phase: 'Phase 3 · Days 61–90',
                 name: 'Maintain',
-                color: C.s300,
-                borderColor: C.s400,
+                color: '#7A96B0',
+                borderColor: '#A8BAC8',
                 description: 'By the end, patients know their warning signs and what to do about them. Vardana helps hand care off smoothly to their primary doctor.',
               },
             ].map(p => (
               <div key={p.name} style={{
-                background: C.s800,
+                background: C.pageBg,
                 border: `1px solid ${C.s700}`,
                 borderTop: `3px solid ${p.borderColor}`,
                 borderRadius: 14,
@@ -384,7 +395,7 @@ export default function HomePage() {
           {/* Differentiator bar */}
           <div style={{
             marginTop: 32,
-            background: C.s800,
+            background: C.tealLight,
             border: `1px solid ${C.j600}30`,
             borderRadius: 12,
             padding: '22px 28px',
@@ -402,7 +413,7 @@ export default function HomePage() {
               </svg>
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.s100, marginBottom: 3 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.s50, marginBottom: 3 }}>
                 FHIR-native. Reasoning during the call.
               </div>
               <p style={{ fontSize: 13, color: C.s500, margin: 0, lineHeight: 1.6 }}>
@@ -413,10 +424,10 @@ export default function HomePage() {
         </div>
       </section>
       {/* ── PILOT DESIGN ── */}
-      <section id="pilot" style={{ padding: '100px 32px', background: C.s950 }}>
+      <section id="pilot" style={{ padding: '100px 32px', background: C.pageBg }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 56 }}>
-            <div style={{ fontSize: 11, letterSpacing: '0.12em', color: C.a400, fontWeight: 700, marginBottom: 12 }}>
+            <div style={{ fontSize: 11, letterSpacing: '0.12em', color: C.tealText, fontWeight: 700, marginBottom: 12 }}>
               PILOT DESIGN
             </div>
             <h2 style={{
@@ -455,13 +466,13 @@ export default function HomePage() {
               },
             ].map(m => (
               <div key={m.metric} style={{
-                background: C.s900,
-                border: `1px solid ${C.s800}`,
+                background: C.cardBg,
+                border: `1px solid ${C.s700}`,
                 borderRadius: 14,
                 padding: 22,
               }}>
                 <div style={{
-                  fontSize: 14, fontWeight: 700, color: C.s100,
+                  fontSize: 14, fontWeight: 700, color: C.s50,
                   marginBottom: 10, lineHeight: 1.4,
                 }}>
                   {m.metric}
@@ -484,8 +495,8 @@ export default function HomePage() {
           {/* FHIR strip */}
           <div style={{
             marginTop: 32,
-            background: C.s900,
-            border: `1px solid ${C.s800}`,
+            background: C.cardBg,
+            border: `1px solid ${C.s700}`,
             borderRadius: 12,
             padding: '22px 28px',
             display: 'flex', alignItems: 'center',
@@ -500,7 +511,7 @@ export default function HomePage() {
                 { name: 'Epic',    badge: 'Sandbox · Pilot scope', color: C.a400 },
               ].map(e => (
                 <div key={e.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: C.s300, fontFamily: F.sans }}>{e.name}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: C.s50, fontFamily: F.sans }}>{e.name}</span>
                   <span style={{
                     fontSize: 10, letterSpacing: '0.05em', color: e.color, fontWeight: 700,
                     background: `${e.color}12`, border: `1px solid ${e.color}28`,
@@ -518,12 +529,12 @@ export default function HomePage() {
       {/* ── BOTTOM CTA ── */}
       <section style={{
         padding: '120px 32px', textAlign: 'center',
-        background: C.s900,
-        borderTop: `1px solid ${C.s800}`,
+        background: C.cardBg,
+        borderTop: `1px solid ${C.s700}`,
       }}>
         <div style={{ maxWidth: 560, margin: '0 auto' }}>
           <div style={{
-            fontSize: 11, letterSpacing: '0.12em', color: C.a400,
+            fontSize: 11, letterSpacing: '0.12em', color: C.tealText,
             fontWeight: 700, marginBottom: 20,
           }}>
             REQUEST A PILOT
@@ -542,10 +553,10 @@ export default function HomePage() {
           </p>
           <a href="mailto:hello@vardana.ai?subject=Demo Request: Vardana Health" style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: C.a500, color: C.s950,
+            background: C.teal, color: '#FFFFFF',
             padding: '15px 36px', borderRadius: 10,
             fontSize: 15, fontWeight: 700, textDecoration: 'none',
-            boxShadow: `0 0 40px ${C.a500}35`,
+            boxShadow: `0 0 40px ${C.teal}35`,
           }}>
             Request a Demo →
           </a>
@@ -554,7 +565,7 @@ export default function HomePage() {
       {/* ── FOOTER ── */}
       <footer style={{
         padding: '28px 32px',
-        borderTop: `1px solid ${C.s800}`,
+        borderTop: `1px solid ${C.s700}`,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         maxWidth: 1200, margin: '0 auto', flexWrap: 'wrap', gap: 16,
       }}>

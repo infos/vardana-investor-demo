@@ -1,7 +1,7 @@
 // Demo visit tracking — POST /api/track
 // Logs visits to console and optionally to Upstash Redis
 
-const EXCLUDED_IPS = [];
+const EXCLUDED_IPS = ['174.164.72.50'];
 // Add your own IPs here to exclude from tracking — find yours at https://whatismyip.com
 
 export default async function handler(req, res) {
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
           Authorization: `Bearer ${kvToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ value: JSON.stringify(event), ex: 7776000 }),
+          body: JSON.stringify({ value: event, ex: 7776000 }),
       });
     } catch (e) {
       console.error('[DEMO_VISIT_KV_ERROR]', e.message);

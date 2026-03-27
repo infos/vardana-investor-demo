@@ -271,7 +271,7 @@ METADATA FIELDS:
 - riskScore: Start at ${riskResult.riskScore} (pre-computed). Adjust +5–+15 as symptoms are confirmed.
 - generateAlert: ${requiresEscal ? `TRUE — risk is ${riskResult.riskLevel.toUpperCase()}. Set true when you say "care team" out loud.` : 'Set true only when multi-signal decompensation is confirmed or new serious symptoms emerge.'}
 - assessment: Track confirmed findings. Update from "Pending" to the confirmed value.
-- phase: greeting | weight_review | symptoms | medications | guidance | escalation | done` + buildPacingInstruction(turn, maxTurns);
+- phase: greeting | weight_review | symptoms | medications | guidance | escalation | done. Only set "done" on your FINAL closing message, never while asking a question.` + buildPacingInstruction(turn, maxTurns);
 }
 
 function buildMarcusPrompt(ctx, turn, maxTurns, riskResult) {
@@ -291,9 +291,9 @@ function buildMarcusPrompt(ctx, turn, maxTurns, riskResult) {
 2. BP REVIEW -- State today's BP (158/98) and note the 4-day worsening trend compared to the Day 14 best (129/80).
 3. SYMPTOM CHECK -- Ask how he is feeling. If he reports any symptom, see SYMPTOM RULE below before proceeding.
 4. MEDICATION ADHERENCE -- Ask specifically whether he has been taking his blood pressure medications this week. Lisinopril is the critical one.
-5. SAFETY SCREEN -- Ask about chest pain, shortness of breath, and vision changes.
-6. ESCALATION -- If headache confirmed AND BP trend worsening AND Lisinopril missed: alert David Park immediately. P2 priority.
-7. CLOSE -- If no emergency symptoms: instruct patient to take it easy, avoid salty foods, stay hydrated, and await David Park's call.
+5. SAFETY SCREEN -- Ask about chest pain, shortness of breath, and vision changes. Wait for the patient to answer EACH question before proceeding. Do NOT set phase to "done" while asking safety questions.
+6. ESCALATION -- After the patient confirms no emergency symptoms: alert David Park immediately (P2 priority). Tell the patient you are notifying their coordinator now.
+7. CLOSE -- Instruct patient to take it easy, avoid salty foods, stay hydrated, and await David Park's call. Only set phase to "done" on this final closing message.
 
 ## SYMPTOM RULE -- CRITICAL
 When a patient reports ANY symptom, you MUST:
@@ -331,7 +331,7 @@ METADATA FIELDS:
 - riskScore: Start at ${riskResult?.riskScore ?? 53}. Increase to 68 if headache confirmed. Increase to 73 if missed medications confirmed.
 - generateAlert: Set true when headache + BP trend + missed meds are all confirmed. This is a P2 alert.
 - assessment: Track confirmed findings. Keys: headache (Pending or Confirmed), lisinopril (Pending or Missed x3 days).
-- phase: greeting | symptoms | medications | guidance | escalation | done` + buildPacingInstruction(turn, maxTurns);
+- phase: greeting | symptoms | medications | guidance | escalation | done. CRITICAL: Only set phase to "done" on your FINAL closing message (step 7). Never set "done" while asking a question or waiting for patient input.` + buildPacingInstruction(turn, maxTurns);
 }
 
 function buildSystemPrompt(ctx, turn, maxTurns, riskResult, vitals, symptoms) {
@@ -387,7 +387,7 @@ METADATA FIELDS:
 - riskScore: Start at ${riskResult?.riskScore ?? 50}. Adjust as symptoms confirmed.
 - generateAlert: ${requiresEscal ? 'TRUE — risk is elevated. Set true when you say "care team" out loud.' : 'Set true when multi-signal decompensation confirmed.'}
 - assessment: Confirmed findings as key-value pairs.
-- phase: greeting | symptoms | medications | general_wellness | guidance | escalation | done` + buildPacingInstruction(turn, maxTurns);
+- phase: greeting | symptoms | medications | general_wellness | guidance | escalation | done. Only set "done" on your FINAL closing message, never while asking a question.` + buildPacingInstruction(turn, maxTurns);
 }
 
 // =============================================================================
@@ -500,7 +500,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST')   return res.status(405).json({ error: 'POST only' });
   if (!API_KEY)                return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
 
-  const { messages, patientContext, evalMode, turn, maxTurns, chatMode } = req.body || {};
+  const { messages, patientContext, evalMode, turn, maxTurns, chatMode, patient: patientParam, stream: streamRequested } = req.body || {};
   if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'messages array required' });
 
   // ── Demo response cache: pre-seeded responses for Sarah Chen to eliminate latency ──
@@ -636,6 +636,8 @@ export default async function handler(req, res) {
     }
 
     // ── 7. Call Claude ──────────────────────────────────────────────────────
+    const useStreaming = streamRequested && !evalMode;
+
     const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -648,6 +650,7 @@ export default async function handler(req, res) {
         max_tokens: chatMode ? 150 : 350,
         system: systemPrompt,
         messages,
+        ...(useStreaming && { stream: true }),
       }),
     });
 
@@ -656,32 +659,86 @@ export default async function handler(req, res) {
       return res.status(apiRes.status).json({ error: `Anthropic API ${apiRes.status}: ${err}` });
     }
 
+    // Helper: build metadata from full text + risk result
+    const buildMetadata = (fullText) => {
+      const metaMatch = fullText.match(/<metadata>\s*([\s\S]*?)(?:<\/metadata>|$)/);
+      const reply = fullText.replace(/<metadata>[\s\S]*$/, '').trim();
+      let metadata = {
+        fhirQueries: [],
+        riskScore: riskResult.riskScore,
+        generateAlert: riskResult.riskLevel === 'high' || riskResult.riskLevel === 'critical',
+        assessment: isMarcusContext
+          ? { headache: 'Pending', lisinopril: 'Pending' }
+          : patientContext ? {} : { weightGain: 'Pending', orthopnea: 'Pending', ankleEdema: 'Pending', adherence: 'Pending' },
+        phase: 'greeting',
+      };
+      if (metaMatch) {
+        try { metadata = { ...metadata, ...JSON.parse(metaMatch[1]) }; } catch {}
+      }
+      metadata.fhirQueries = [...preFetchQueries, ...(metadata.fhirQueries || [])];
+      if (metadata.riskScore < riskResult.riskScore) metadata.riskScore = riskResult.riskScore;
+      if (riskResult.riskLevel === 'high' || riskResult.riskLevel === 'critical') {
+        metadata.generateAlert = true;
+      }
+      return { reply, metadata };
+    };
+
+    // ── 7b. Streaming path ────────────────────────────────────────────────
+    if (useStreaming) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('X-Accel-Buffering', 'no');
+      res.status(200);
+
+      let fullText = '';
+      let inMetadata = false;
+      const reader = apiRes.body.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = '';
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          sseBuffer += decoder.decode(value, { stream: true });
+
+          const lines = sseBuffer.split('\n');
+          sseBuffer = lines.pop();
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
+            let event;
+            try { event = JSON.parse(line.slice(6)); } catch { continue; }
+            if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+              const text = event.delta.text;
+              fullText += text;
+              // Stop forwarding once <metadata> tag starts
+              if (!inMetadata) {
+                if (fullText.includes('<metadata>')) {
+                  inMetadata = true;
+                  const before = text.split('<metadata>')[0];
+                  if (before) res.write(`data: ${JSON.stringify({ type: 'text', content: before })}\n\n`);
+                } else {
+                  res.write(`data: ${JSON.stringify({ type: 'text', content: text })}\n\n`);
+                }
+              }
+            }
+          }
+        }
+      } catch (streamErr) {
+        res.write(`data: ${JSON.stringify({ type: 'error', error: streamErr.message })}\n\n`);
+        return res.end();
+      }
+
+      const { reply, metadata } = buildMetadata(fullText);
+      res.write(`data: ${JSON.stringify({ type: 'done', reply, ...metadata })}\n\n`);
+      return res.end();
+    }
+
+    // ── 7c. Non-streaming path (chat mode, eval mode, legacy) ─────────────
     const data     = await apiRes.json();
     const fullText = data.content?.[0]?.text || '';
-    const metaMatch = fullText.match(/<metadata>\s*([\s\S]*?)(?:<\/metadata>|$)/);
-    const reply     = fullText.replace(/<metadata>[\s\S]*$/, '').trim();
-
-    // ── 7. Merge metadata ───────────────────────────────────────────────────
-    let metadata = {
-      fhirQueries:  [],
-      riskScore:    riskResult.riskScore,
-      generateAlert: riskResult.riskLevel === 'high' || riskResult.riskLevel === 'critical',
-      assessment:   isMarcusContext
-        ? { headache: 'Pending', lisinopril: 'Pending' }
-        : patientContext ? {} : { weightGain: 'Pending', orthopnea: 'Pending', ankleEdema: 'Pending', adherence: 'Pending' },
-      phase:        'greeting',
-    };
-    if (metaMatch) {
-      try { metadata = { ...metadata, ...JSON.parse(metaMatch[1]) }; } catch {}
-    }
-
-    // Pre-fetch queries go first (they represent server-side FHIR calls before LLM)
-    metadata.fhirQueries = [...preFetchQueries, ...(metadata.fhirQueries || [])];
-    // Never let the LLM lower the algorithmic risk score or suppress a warranted alert
-    if (metadata.riskScore < riskResult.riskScore) metadata.riskScore = riskResult.riskScore;
-    if (riskResult.riskLevel === 'high' || riskResult.riskLevel === 'critical') {
-      metadata.generateAlert = true;
-    }
+    const { reply, metadata } = buildMetadata(fullText);
 
     const response = { reply, ...metadata };
 

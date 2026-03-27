@@ -36,6 +36,7 @@ const ROSTER = [
   { id: 2, name: "Robert Williams", age: 74, gender: "M", dob: { month: 3, day: 22, year: 1951 }, day: 52, phase: "Optimize", risk: 34, riskLevel: "low", alert: false, trend: "stable", scheduledOutreach: "Today 2:00 PM · Voice", doctor: "Dr. Sarah Patel" },
   { id: 3, name: "Maria Gonzalez", age: 61, gender: "F", dob: { month: 11, day: 5, year: 1964 }, day: 8, phase: "Stabilize", risk: 45, riskLevel: "moderate", alert: false, trend: "improving", scheduledOutreach: "Tomorrow 10:00 AM · SMS", doctor: "Dr. Michael Torres" },
   { id: 4, name: "James Thompson", age: 79, gender: "M", dob: { month: 9, day: 18, year: 1946 }, day: 83, phase: "Maintain", risk: 22, riskLevel: "low", alert: false, trend: "stable", scheduledOutreach: null, doctor: "Dr. Lisa Chen" },
+  { id: 5, name: "Marcus Williams", age: 58, gender: "M", dob: { month: 6, day: 10, year: 1967 }, day: 22, phase: "Stabilize → Optimize", risk: 53, riskLevel: "moderate", alert: true, alertType: "BP worsening trend", alertTime: "12 min ago", trend: "worsening", scheduledOutreach: null, doctor: "Dr. Angela Torres" },
 ];
 
 // ── Patient Clinical Data (Robert, Maria, James) ──
@@ -157,17 +158,48 @@ const PATIENT_CLINICAL_DATA = {
     allergy: "None known",
     coordinator: "Rachel Kim, RN",
   },
+  5: {
+    dob: "June 10, 1967",
+    conditions: ["Essential Hypertension (I10)", "Type 2 Diabetes with Hyperglycemia (E11.65)"],
+    medications: [
+      { name: "Lisinopril", dose: "20mg", timing: "Once daily (morning)" },
+      { name: "Amlodipine", dose: "5mg", timing: "Once daily (morning)" },
+      { name: "Metformin", dose: "1000mg", timing: "Twice daily (with meals)" },
+      { name: "Atorvastatin", dose: "40mg", timing: "Once daily (evening)" },
+      { name: "Aspirin", dose: "81mg", timing: "Once daily" },
+    ],
+    vitals: {
+      weight: { current: 212.0, previous: 211.5, unit: "lbs", trend: "stable", status: "good" },
+      bp: { sys: 158, dia: 98, status: "warning", note: "4-day worsening trend from 129/80" },
+      hr: { value: 78, status: "good", note: "Normal sinus rhythm" },
+      spo2: { value: 97, status: "good" },
+      glucose: { value: 186, unit: "mg/dL", status: "elevated" },
+    },
+    labs: [
+      { name: "HbA1c", value: "7.8%", date: "Mar 1", status: "elevated" },
+      { name: "Creatinine", value: "1.1 mg/dL", date: "Mar 1", status: "good" },
+      { name: "eGFR", value: "78 mL/min", date: "Mar 1", status: "good" },
+      { name: "Potassium", value: "4.3 mEq/L", date: "Mar 1", status: "good" },
+    ],
+    recentCheckins: [
+      { date: "Today, 8:15 AM", summary: "AI concierge detected 4-day BP worsening trend (158/98 from best of 129/80). Fasting glucose 186 mg/dL. Suspected missed Lisinopril." },
+      { date: "Yesterday, 8:00 AM", summary: "Routine check-in. BP 152/94. Patient reported feeling fine. Medications confirmed taken." },
+    ],
+    allergy: "None known",
+    coordinator: "David Park, RN",
+  },
 };
 
 const VOICE_TRANSCRIPT = [
-  { t: 1200, speaker: "AI", text: "Good morning, Sarah. This is the Vardana Care Concierge calling for your check-in. I am checking in because I noticed your weight went up a couple of pounds over the last two days. How are you feeling this morning?" },
-  { t: 6200, speaker: "Sarah", text: "Hi. Now that you mention it, I do feel more tired than usual and my ankles look a little puffy. The rest is the same." },
-  { t: 11000, speaker: "AI", text: "Thank you for telling me that, Sarah. That's really important. Let me pull up your recent readings. Your weight has increased 2.3 pounds in 48 hours, and your blood pressure is a little higher than your best last week." },
-  { t: 17500, speaker: "AI", text: "Combined with the ankle swelling and fatigue, I wanna make sure your care team is aware today." },
-  { t: 21000, speaker: "Sarah", text: "Is that serious? Should I be worried?" },
-  { t: 23500, speaker: "AI", text: "We're being careful, not alarmed. I'm letting Rachel Kim know right now so she can follow up with you and your cardiologist today. Are you having any trouble breathing?" },
-  { t: 29000, speaker: "Sarah", text: "Yes. Especially when lying flat a little. I had to use an extra pillow last night." },
-  { t: 32500, speaker: "AI", text: "That's helpful. I've sent a priority alert to your coordinator with everything we discussed. Rachel will call you today. In the meantime, please stay on your medications and keep sodium low." },
+  { t: 1200, speaker: "AI", text: "Good morning, Sarah. This is the Vardana Care Concierge calling for your daily check-in. You are on Day 15 of your 90-day recovery program. How are you feeling this morning?" },
+  { t: 6200, speaker: "Sarah", text: "Hi. I feel okay, about the same as yesterday I think." },
+  { t: 11000, speaker: "AI", text: "I'm glad to hear that. I did want to flag something. Your weight has gone up a couple of pounds over the last two days. That can sometimes be a sign of fluid retention. Are you noticing any ankle swelling or feeling more short of breath than usual?" },
+  { t: 17500, speaker: "Sarah", text: "Now that you mention it, my ankles have been a little puffy. And I have been more tired than usual the last couple of days." },
+  { t: 21000, speaker: "AI", text: "Thank you for telling me that. Let me pull up your recent readings. Your weight is up 2.3 pounds in 48 hours, and your blood pressure has climbed to 136 over 86, which is higher than your best last week. Combined with the ankle swelling and fatigue, I want to make sure your care team knows about this today." },
+  { t: 28000, speaker: "Sarah", text: "Is that serious? Should I be worried?" },
+  { t: 30000, speaker: "AI", text: "We're being careful, not alarmed. I'm letting Rachel Kim know right now so she can follow up with you and your doctor today. Are you having any trouble breathing, especially when lying flat?" },
+  { t: 35000, speaker: "Sarah", text: "A little, yes. I had to use an extra pillow last night." },
+  { t: 37500, speaker: "AI", text: "That's helpful to know. I've sent a priority alert to your coordinator with everything we discussed. Rachel will call you today. In the meantime, please stay on your medications and keep your sodium low." },
 ];
 
 const FHIR_QUERIES = [
@@ -248,7 +280,7 @@ const MARCUS_CLINICAL_DATA = {
       { name: "Microalbumin/Cr", value: "42 mg/g", date: "Feb 25", status: "elevated" },
     ],
     recentCheckins: [
-      { date: "Today, 7:30 AM", summary: "AI concierge detected 4-day BP worsening trend. BP 158/98. Patient reports headache. Missed Lisinopril x3 days. Escalated to care coordinator." },
+      { date: "Today, 7:30 AM", summary: "AI concierge detected 4-day BP worsening trend. BP 158/98. Patient reports headache. Missed Lisinopril for a few days. Escalated to care coordinator." },
       { date: "Yesterday, 7:30 AM", summary: "Routine check-in. BP 154/96, trending up. Patient confirmed taking Amlodipine but ran out of Lisinopril." },
     ],
     allergy: "Penicillin (rash)",
@@ -295,9 +327,9 @@ const DS = {
   },
   color: {
     slate: {
-      950: "#0C1420", 900: "#131E2E", 800: "#1C2B40", 700: "#253550",
-      600: "#3A4F6B", 500: "#556882", 400: "#7A90A8", 300: "#A8BAC8",
-      200: "#D1DCE6", 100: "#EBF0F5", 50: "#F5F7FA",
+      950: "#1E3A5F", 900: "#1E3A5F", 800: "#1E3A5F", 700: "#2A4E7A",
+      600: "#4A6380", 500: "#7A96B0", 400: "#A8BAC8", 300: "#D1D9E0",
+      200: "#E8EDF3", 100: "#EEF1F5", 50: "#F6F7F9",
     },
     amber: {
       700: "#92400E", 600: "#B45309", 500: "#D97706", 400: "#F59E0B",
@@ -308,7 +340,7 @@ const DS = {
       100: "#D1FAE5", 50: "#ECFDF5",
     },
     crimson: {
-      700: "#991B1B", 600: "#DC2626", 500: "#EF4444", 100: "#FEE2E2", 50: "#FEF2F2",
+      700: "#8B1A1A", 600: "#A93226", 500: "#C0392B", 100: "#FEE2E2", 50: "#FEF2F2",
     },
     canvas: { warm: "#F6F4F0", cool: "#F1F4F8", white: "#FFFFFF" },
     border: { subtle: "#E4E9EF", default: "#D1D9E0", strong: "#A8BAC8" },
@@ -641,6 +673,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   const [mobilePanel, setMobilePanel] = useState("transcript"); // transcript | chart (mobile only)
   // ── state ──
   const [uiState, setUiState] = useState(autoStartScripted ? "loading" : "setup"); // setup|loading|dialing|connected|active|alert|done|closing
+  const [showTranscript, setShowTranscript] = useState(false);
   const [alertZoom, setAlertZoom] = useState(false);
   const [apiError, setApiError] = useState("");
   const [audioUnlocked, setAudioUnlocked] = useState(!autoStartScripted);
@@ -884,15 +917,34 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     });
   };
 
+  // ── Custom audio override for Marcus patient responses ──
+  // When custom recordings exist at /audio/marcus/marcus-response-N.mp3,
+  // use them instead of TTS-generated audio for patient lines.
+  const customAudioCache = useRef({});
+  const tryCustomMarcusAudio = async (lineIndex) => {
+    const url = `/audio/marcus/marcus-response-${lineIndex}.mp3`;
+    if (customAudioCache.current[url] !== undefined) return customAudioCache.current[url];
+    try {
+      const res = await fetch(url, { method: 'HEAD' });
+      customAudioCache.current[url] = res.ok ? url : null;
+      return customAudioCache.current[url];
+    } catch {
+      customAudioCache.current[url] = null;
+      return null;
+    }
+  };
+
   // ── Fetch audio via server-side TTS proxy ──
   const fetchAudioOnce = async (text, speaker) => {
     let res;
     try {
-      res = await fetch("/api/elevenlabs-tts", {
+      console.log("[TTS] Fetching:", { speaker, text: text.substring(0, 60), endpoint: "/api/tts" });
+      res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, speaker }),
       });
+      console.log("[TTS] Response:", { status: res.status, ok: res.ok, provider: res.headers.get("X-TTS-Provider") });
     } catch (e) {
       throw new Error(`Network error — ${e.message}`);
     }
@@ -906,7 +958,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     return url;
   };
 
-  // Retry wrapper — tries ElevenLabs up to 2x before giving up
+  // Retry wrapper — tries TTS up to 2x before giving up
   const fetchAudio = async (text, speaker) => {
     try {
       return await fetchAudioOnce(text, speaker);
@@ -950,19 +1002,19 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       }, 1200);
     }
   } : (idx) => {
-    // Sarah script: 0=AI greeting+weight, 1=Sarah symptoms, 2=AI readings, 3=AI care team,
-    //               4=Sarah worried, 5=AI escalate+breathing?, 6=Sarah breathing, 7=AI alert+guidance
-    if (idx === 2) {
-      // AI pulls up readings — fire clinical FHIR queries
+    // Sarah script: 0=AI greeting, 1=Sarah okay, 2=AI flags weight, 3=Sarah confirms swelling,
+    //               4=AI readings+care team, 5=Sarah worried, 6=AI escalate+breathing?, 7=Sarah breathing, 8=AI alert+guidance
+    if (idx === 0) {
+      // AI greeting — fire FHIR queries
       [0, 520, 1060, 1620, 2200].forEach((d, i) =>
         addTimer(() => { if (!cancelRef.current) setFhirLog(p => [...p, ACTIVE_FHIR[i]]); }, d)
       );
     }
-    if (idx === 1) setRiskScore(72);   // Sarah reports symptoms → baseline risk visible
-    if (idx === 2) setRiskScore(75);   // AI analyzes readings → score bumps
-    if (idx === 3) setRiskScore(78);   // AI: care team aware → score climbs
-    if (idx === 6) setRiskScore(82);   // breathing trouble → high risk
-    if (idx === 7) {
+    if (idx === 2) setRiskScore(72);   // AI flags weight → baseline risk visible
+    if (idx === 3) setRiskScore(75);   // Sarah confirms swelling → score bumps
+    if (idx === 4) setRiskScore(78);   // AI: readings + care team aware → score climbs
+    if (idx === 7) setRiskScore(82);   // breathing trouble → high risk
+    if (idx === 8) {
       setRiskScore(84);               // AI triggers alert → critical
       addTimer(() => {
         if (cancelRef.current) return;
@@ -972,7 +1024,6 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
           setFhirLog(p => [...p, ACTIVE_FHIR[6]]);
           setAlertGenerated(true);
           setUiState("alert");
-          // Zoom into alert section for 4 seconds
           setAlertZoom(true);
           addTimer(() => { if (!cancelRef.current) setAlertZoom(false); }, 4000);
         }, 900);
@@ -980,8 +1031,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     }
   };
 
-  // ── ElevenLabs playback sequence ──
-  const playElevenLabs = async (urls) => {
+  // ── TTS playback sequence ──
+  const playTTSSequence = async (urls) => {
     for (let i = 0; i < urls.length; i++) {
       if (cancelRef.current) return;
       const line = ACTIVE_TRANSCRIPT[i];
@@ -1004,22 +1055,26 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   const [preloadProgress, setPreloadProgress] = useState(0);
   const [preloadReady, setPreloadReady] = useState(false);
 
-  // Pre-fetch all audio segments on mount for scripted demo
+  // Pre-fetch all audio segments on mount for scripted demo (sequential to avoid rate limits)
   useEffect(() => {
     if (!autoStartScripted || preloadedUrlsRef.current) return;
     let cancelled = false;
     (async () => {
       try {
+        // Warm up TTS provider — primes API connection and loads voice model
+        try {
+          console.log("[TTS] Warming up provider...");
+          await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: ".", speaker: "AI" }) });
+          console.log("[TTS] Warm-up complete");
+        } catch {} // Ignore warm-up failures
+        if (cancelled || cancelRef.current) return;
         const urls = new Array(ACTIVE_TRANSCRIPT.length);
-        const batchSize = 4;
-        for (let start = 0; start < ACTIVE_TRANSCRIPT.length; start += batchSize) {
+        for (let i = 0; i < ACTIVE_TRANSCRIPT.length; i++) {
           if (cancelled || cancelRef.current) return;
-          const batch = ACTIVE_TRANSCRIPT.slice(start, start + batchSize);
-          const results = await Promise.all(
-            batch.map((line) => fetchAudio(line.text, line.speaker))
-          );
-          results.forEach((url, j) => { urls[start + j] = url; });
-          setPreloadProgress(Math.round(Math.min(start + batchSize, ACTIVE_TRANSCRIPT.length) / ACTIVE_TRANSCRIPT.length * 100));
+          urls[i] = await fetchAudio(ACTIVE_TRANSCRIPT[i].text, ACTIVE_TRANSCRIPT[i].speaker);
+          setPreloadProgress(Math.round((i + 1) / ACTIVE_TRANSCRIPT.length * 100));
+          // Small delay between requests to avoid TTS provider rate limits
+          if (i < ACTIVE_TRANSCRIPT.length - 1) await new Promise(r => setTimeout(r, 300));
         }
         if (!cancelled) {
           preloadedUrlsRef.current = urls;
@@ -1032,31 +1087,43 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     return () => { cancelled = true; };
   }, [autoStartScripted]);
 
-  // ── Start demo with ElevenLabs (server-side proxy — no key needed) ──
-  const startElevenLabs = async () => {
+  // ── Start scripted demo with TTS (server-side proxy — no key needed) ──
+  const startScriptedDemo = async () => {
     cancelRef.current = false;
     setApiError("");
     // If pre-loaded (scripted demo), use cached URLs
     if (preloadedUrlsRef.current) {
       setLoadProgress(100);
-      launchCall(() => playElevenLabs(preloadedUrlsRef.current));
+      launchCall(() => playTTSSequence(preloadedUrlsRef.current));
       return;
     }
     setUiState("loading");
-    try {
-      // Fetch audio in parallel batches of 4 for faster loading
-      const urls = new Array(ACTIVE_TRANSCRIPT.length);
-      const batchSize = 4;
-      for (let start = 0; start < ACTIVE_TRANSCRIPT.length; start += batchSize) {
-        if (cancelRef.current) return;
-        const batch = ACTIVE_TRANSCRIPT.slice(start, start + batchSize);
-        const results = await Promise.all(
-          batch.map((line) => fetchAudio(line.text, line.speaker))
-        );
-        results.forEach((url, j) => { urls[start + j] = url; });
-        setLoadProgress(Math.round(Math.min(start + batchSize, ACTIVE_TRANSCRIPT.length) / ACTIVE_TRANSCRIPT.length * 100));
+    // If preload is in progress (autoStartScripted), wait for it instead of double-fetching
+    if (autoStartScripted) {
+      try {
+        await new Promise((resolve, reject) => {
+          const check = setInterval(() => {
+            if (cancelRef.current) { clearInterval(check); reject(new Error("Cancelled")); }
+            if (preloadedUrlsRef.current) { clearInterval(check); resolve(); }
+          }, 250);
+        });
+        setLoadProgress(100);
+        launchCall(() => playTTSSequence(preloadedUrlsRef.current));
+      } catch (err) {
+        if (!cancelRef.current) { setApiError(err.message || "Audio fetch failed."); setUiState("setup"); }
       }
-      launchCall(() => playElevenLabs(urls));
+      return;
+    }
+    try {
+      // Fetch audio sequentially to avoid TTS provider rate limits
+      const urls = new Array(ACTIVE_TRANSCRIPT.length);
+      for (let i = 0; i < ACTIVE_TRANSCRIPT.length; i++) {
+        if (cancelRef.current) return;
+        urls[i] = await fetchAudio(ACTIVE_TRANSCRIPT[i].text, ACTIVE_TRANSCRIPT[i].speaker);
+        setLoadProgress(Math.round((i + 1) / ACTIVE_TRANSCRIPT.length * 100));
+        if (i < ACTIVE_TRANSCRIPT.length - 1) await new Promise(r => setTimeout(r, 300));
+      }
+      launchCall(() => playTTSSequence(urls));
     } catch (err) {
       setApiError(err.message || "Audio fetch failed.");
       setUiState("setup");
@@ -1081,7 +1148,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     if (!autoStartScripted || autoStartedRef.current) return;
     if (audioUnlocked && preloadReady) {
       autoStartedRef.current = true;
-      startElevenLabs();
+      startScriptedDemo();
     }
   }, [autoStartScripted, audioUnlocked, preloadReady]);
 
@@ -1091,7 +1158,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     // If preload is already done, start immediately; otherwise it will auto-start via effect
     if (preloadReady) {
       autoStartedRef.current = true;
-      startElevenLabs();
+      startScriptedDemo();
     }
   };
 
@@ -1178,17 +1245,57 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
   const demoCache = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('cache') === '1';
 
+  const activePatientKey = patient?.id === 5 ? 'marcus' : patient?.id === 1 ? 'sarah' : undefined;
+
   const sendToAPI = async (msgs, turn, maxTurns) => {
     const res = await fetch("/api/voice-chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: msgs, patientContext: getPatientContext(), turn, maxTurns, ...(demoCache && { demoCache: true }) }),
+      body: JSON.stringify({ messages: msgs, patientContext: getPatientContext(), turn, maxTurns, ...(activePatientKey && { patient: activePatientKey }), ...(demoCache && { demoCache: true }) }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || `API ${res.status}`);
     }
     return res.json();
+  };
+
+  // Streaming version: calls onTextChunk as text arrives, returns final metadata
+  const sendToAPIStreaming = async (msgs, turn, maxTurns, onTextChunk) => {
+    const res = await fetch("/api/voice-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: msgs, patientContext: getPatientContext(), turn, maxTurns, stream: true, ...(activePatientKey && { patient: activePatientKey }) }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `API ${res.status}`);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let result = null;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        let data;
+        try { data = JSON.parse(part.slice(6)); } catch { continue; }
+        if (data.type === 'text' && data.content) {
+          onTextChunk(data.content);
+        } else if (data.type === 'done') {
+          result = data;
+        } else if (data.type === 'error') {
+          throw new Error(data.error || 'Stream error');
+        }
+      }
+    }
+    if (!result) throw new Error('Stream ended without completion');
+    return result;
   };
 
   const processMetadata = (data) => {
@@ -1315,57 +1422,63 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       .then(url => { failsafeAudio.current = url; })
       .catch(() => {}); // silent fail — we'll try again in playFailsafeAndEnd
 
-    // AI opening line
-    const dayInfo = patient?.day ? ` Day ${patient.day}` : "";
-    const greeting = `Good morning ${firstName}. This is the Vardana care concierge calling for your${dayInfo} check-in. How are you feeling today?`;
-    setTranscript(p => [...p, { speaker: "AI", text: greeting }]);
-    history.push({ role: "assistant", content: greeting });
-    setConversationHistory([...history]);
-    await speakAI(greeting, true); // allow browser fallback for the very first line
-    if (cancelRef.current) return;
-
-    // Wait for patient to respond to greeting
-    let greetReply;
-    try {
-      greetReply = await startListening();
-    } catch {
-      setIsListening(false);
-      setActiveSpeaker(null);
-      greetReply = await new Promise(resolve => { window._liveTextResolve = resolve; });
-    }
-    if (cancelRef.current) return;
-    setActiveSpeaker(null);
-    setTranscript(p => [...p, { speaker: firstName, text: greetReply }]);
-    history.push({ role: "user", content: greetReply });
-    setConversationHistory([...history]);
-
-    // AI acknowledges greeting and transitions to check-in
-    const negativePattern = /\b(not\s+(so\s+)?(good|great|well|fine)|bad|terrible|awful|horrible|rough|sick|worse|pain|hurt|struggling|miserable|don'?t\s+feel\s+(so\s+)?(good|great|well)|headache|head\s*ache|dizzy|dizziness|nausea|nauseous|ache|aching|sore|soreness|blurry|blurred|chest|faint|lightheaded)\b/i;
-    const isNegative = negativePattern.test(greetReply);
-    let verifiedMsg;
-    if (patient?.id === 1) {
-      verifiedMsg = isNegative
-        ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. Can you tell me more about how you're feeling?`
-        : `That's great to hear, ${firstName}. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. How are you feeling today?`;
-    } else if (isMarcusDemo) {
-      // Marcus: never say "great to hear" — route symptoms to clinical acknowledgment
-      verifiedMsg = isNegative
-        ? `Thank you for telling me that, ${firstName}. I want to make sure we address that. I'm looking at your recent readings now, and your blood pressure today is 158 over 98, which is up from where it was on Day 14. Let me ask you a few more questions.`
-        : `Thank you, ${firstName}. I have your Day ${patient?.day || "22"} readings pulled up. Your blood pressure today is 158 over 98, which has been trending up over the last few days from your best of 129 over 80 on Day 14. How have you been feeling?`;
+    // Marcus: clinical opener replaces generic greeting + throwaway exchange
+    if (isMarcusDemo) {
+      const marcusGreeting = `Good morning, ${firstName}. I have your Day ${patient.day || 22} readings pulled up. Your blood pressure today is 158 over 98, which has been trending up over the last few days from your best of 129 over 80 on Day 14. How have you been feeling?`;
+      setTranscript(p => [...p, { speaker: "AI", text: marcusGreeting }]);
+      history.push({ role: "assistant", content: marcusGreeting });
+      setConversationHistory([...history]);
+      await speakAI(marcusGreeting, true);
+      if (cancelRef.current) return;
     } else {
-      verifiedMsg = isNegative
-        ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing.`
-        : `That's great to hear, ${firstName}. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing. How are you feeling overall?`;
+      // All other patients: generic greeting → patient response → clinical transition
+      const dayInfo = patient?.day ? ` Day ${patient.day}` : "";
+      const greeting = `Good morning ${firstName}. This is the Vardana care concierge calling for your${dayInfo} check-in. How are you feeling today?`;
+      setTranscript(p => [...p, { speaker: "AI", text: greeting }]);
+      history.push({ role: "assistant", content: greeting });
+      setConversationHistory([...history]);
+      await speakAI(greeting, true);
+      if (cancelRef.current) return;
+
+      // Wait for patient to respond to greeting
+      let greetReply;
+      try {
+        greetReply = await startListening();
+      } catch {
+        setIsListening(false);
+        setActiveSpeaker(null);
+        greetReply = await new Promise(resolve => { window._liveTextResolve = resolve; });
+      }
+      if (cancelRef.current) return;
+      setActiveSpeaker(null);
+      setTranscript(p => [...p, { speaker: firstName, text: greetReply }]);
+      history.push({ role: "user", content: greetReply });
+      setConversationHistory([...history]);
+
+      // AI acknowledges greeting and transitions to check-in
+      const negativePattern = /\b(not\s+(so\s+)?(good|great|well|fine)|bad|terrible|awful|horrible|rough|sick|worse|pain|hurt|struggling|miserable|don'?t\s+feel\s+(so\s+)?(good|great|well))\b/i;
+      const isNegative = negativePattern.test(greetReply);
+      let verifiedMsg;
+      if (patient?.id === 1) {
+        verifiedMsg = isNegative
+          ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. Can you tell me more about how you're feeling?`
+          : `That's great to hear, ${firstName}. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. How are you feeling today?`;
+      } else {
+        verifiedMsg = isNegative
+          ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing.`
+          : `That's great to hear, ${firstName}. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing. How are you feeling overall?`;
+      }
+      setTranscript(p => [...p, { speaker: "AI", text: verifiedMsg }]);
+      history.push({ role: "assistant", content: verifiedMsg });
+      setConversationHistory([...history]);
+      await speakAI(verifiedMsg);
+      if (cancelRef.current) return;
     }
-    setTranscript(p => [...p, { speaker: "AI", text: verifiedMsg }]);
-    history.push({ role: "assistant", content: verifiedMsg });
-    setConversationHistory([...history]);
-    await speakAI(verifiedMsg);
-    if (cancelRef.current) return;
 
     // Conversation loop — AI already spoke, so start by listening
+    const maxTurns = 20;
     let conversationEnded = false;
-    for (let turn = 0; turn < 12; turn++) {
+    for (let turn = 0; turn < maxTurns; turn++) {
       if (cancelRef.current) return;
 
       // Listen for patient
@@ -1397,25 +1510,42 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       history.push({ role: "user", content: userText });
       setConversationHistory([...history]);
 
-      // Get AI response
+      // Get AI response — stream text into transcript for instant feedback
       setIsThinking(true);
       let aiData;
+      let streamedText = '';
+      let streamIdx = null;
       try {
-        aiData = await sendToAPI(history, turn, 12);
+        aiData = await sendToAPIStreaming(history, turn, maxTurns, (chunk) => {
+          if (streamIdx === null) {
+            // First chunk — stop "thinking" indicator and add streaming transcript entry
+            setIsThinking(false);
+            setTranscript(p => { streamIdx = p.length; return [...p, { speaker: "AI", text: chunk }]; });
+            streamedText = chunk;
+          } else {
+            streamedText += chunk;
+            setTranscript(p => p.map((t, i) => i === streamIdx ? { ...t, text: streamedText } : t));
+          }
+        });
       } catch (err) {
         setIsThinking(false);
-        // Graceful exit on API error — play failsafe goodbye
         await playFailsafeAndEnd();
         return;
       }
       setIsThinking(false);
       if (cancelRef.current) return;
 
+      // Finalize transcript with cleaned reply (metadata stripped)
+      if (streamIdx !== null) {
+        setTranscript(p => p.map((t, i) => i === streamIdx ? { ...t, text: aiData.reply } : t));
+      } else {
+        setTranscript(p => [...p, { speaker: "AI", text: aiData.reply }]);
+      }
+
       // Process metadata
       processMetadata(aiData);
       history.push({ role: "assistant", content: aiData.reply });
       setConversationHistory([...history]);
-      setTranscript(p => [...p, { speaker: "AI", text: aiData.reply }]);
 
       // Speak response — no browser fallback mid-call
       const ttsOk = await speakAI(aiData.reply);
@@ -1427,8 +1557,11 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         return;
       }
 
-      // Check if done — when AI says goodbye, let patient respond before ending
-      if (aiData.phase === "done") {
+      // Check if done — when AI says goodbye, let patient respond before ending.
+      // If the AI ended with a question, it's not truly done — continue the loop
+      // so the patient can answer and get a proper closing response.
+      const endsWithQuestion = /\?\s*$/.test(aiData.reply);
+      if (aiData.phase === "done" && !endsWithQuestion) {
         conversationEnded = true;
         // Patient gets to say goodbye back
         if (!cancelRef.current) {
@@ -1453,7 +1586,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     if (!conversationEnded && !cancelRef.current) {
       let closingMsg;
       try {
-        const finalData = await sendToAPI(history, 12, 12); // remaining=0 triggers FINAL pacing
+        const finalData = await sendToAPI(history, maxTurns, maxTurns); // remaining=0 triggers FINAL pacing
         closingMsg = finalData.reply;
         processMetadata(finalData);
       } catch {
@@ -1580,7 +1713,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   const formatTime = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   const waveHeights = [0.3, 0.6, 1.0, 0.7, 0.4, 0.8, 1.0, 0.5, 0.3, 0.7, 0.9, 0.4];
   const isActive    = ["active", "alert"].includes(uiState);
-  const riskColor   = riskScore >= 80 ? c.red : riskScore >= 60 ? c.orange : c.green;
+  const riskColor   = riskScore >= 80 ? c.red : riskScore >= 60 ? c.orange : isMarcusDemo ? "#D97706" : c.green;
   const waveOn      = isActive && activeSpeaker !== null && !muted;
 
   // ─────────────────────────────────────────────
@@ -1642,7 +1775,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="users" size={22} color="#A78BFA" /></div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "white" }}>{patient.name}, {patient.age}{isEpic ? (patient.epicData?.patient?.gender === 'male' ? 'M' : 'F') : (patient.gender || '')}{isEpic ? ` — ${(patient.epicData?.conditions || []).length} active conditions` : ` — CHF · Day ${patient.day || '?'}/90`}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "white" }}>{patient.name}, {patient.age}{isEpic ? (patient.epicData?.patient?.gender === 'male' ? 'M' : 'F') : (patient.gender || '')}{isEpic ? ` — ${(patient.epicData?.conditions || []).length} active conditions` : patient.id === 5 ? ` — HTN + T2DM · Day ${patient.day || '?'}/90` : ` — CHF · Day ${patient.day || '?'}/90`}</div>
               <div style={{ fontSize: 12, color: "#64748B", marginTop: 3 }}>{isEpic ? 'Live Epic FHIR data · AI check-in with real patient context' : patient.id === 1 ? '2.3 lb weight gain. AI calls to assess. Decompensation detected → FHIR alert fires mid-call.' : `${patient.phase} phase · AI check-in with full clinical context`}</div>
             </div>
           </div>
@@ -1679,18 +1812,20 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   // LOADING SCREEN
   // ─────────────────────────────────────────────
   if (uiState === "loading") return (
-    <div style={{ position: "fixed", inset: 0, background: c.navy, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: c.font }}>
+    <div style={{ position: "fixed", inset: 0, background: "#F6F7F9", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: c.font }}>
       <div style={{ width: 360, textAlign: "center" }}>
         <div style={{ fontSize: 28, marginBottom: 20 }}>🎙</div>
-        <div style={{ fontSize: 16, fontWeight: 800, color: "white", marginBottom: 8 }}>Generating audio</div>
-        <div style={{ fontSize: 13, color: "#64748B", marginBottom: 28 }}>
-          Rendering {ACTIVE_TRANSCRIPT.length} lines via ElevenLabs...
+        <div style={{ fontSize: 16, fontWeight: 800, color: "#1E3A5F", marginBottom: 8 }}>Generating audio</div>
+        <div style={{ fontSize: 13, color: "#7A96B0", marginBottom: 28 }}>
+          Rendering {ACTIVE_TRANSCRIPT.length} lines...
         </div>
-        {/* Progress bar */}
-        <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 8, height: 8, overflow: "hidden", marginBottom: 12 }}>
-          <div style={{ height: "100%", borderRadius: 8, background: "linear-gradient(90deg, #F59E0B, #38BDF8)", width: `${loadProgress}%`, transition: "width 0.4s ease" }} />
+        {/* Progress bar — use preloadProgress when preload is active, otherwise loadProgress */}
+        {(() => { const pct = Math.max(loadProgress, preloadProgress); const line = Math.ceil(pct / (100 / ACTIVE_TRANSCRIPT.length)); return (<>
+        <div style={{ background: "#E8EDF3", borderRadius: 8, height: 8, overflow: "hidden", marginBottom: 12 }}>
+          <div style={{ height: "100%", borderRadius: 8, background: "linear-gradient(90deg, #3DBFA0, #2A9E84)", width: `${pct}%`, transition: "width 0.4s ease" }} />
         </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#94A3B8" }}>{loadProgress}% · Line {Math.ceil(loadProgress / (100 / ACTIVE_TRANSCRIPT.length))} of {ACTIVE_TRANSCRIPT.length}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#7A96B0" }}>{pct}% · Line {line} of {ACTIVE_TRANSCRIPT.length}</div>
+        </>); })()}
       </div>
     </div>
   );
@@ -1698,97 +1833,228 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   // ─────────────────────────────────────────────
   // CLOSING SLIDE — smooth fade + call summary end screen
   // ─────────────────────────────────────────────
-  if (uiState === "closing") return (
-    <div style={{
-      position: "fixed", inset: 0, background: "#0C1420", zIndex: 300,
-      display: "flex", flexDirection: "column",
-      alignItems: "center", justifyContent: "center",
-      padding: "32px 24px", textAlign: "center",
-      fontFamily: c.font, animation: "fadeIn 0.8s ease",
-    }}>
-      {/* Vardana logo + wordmark */}
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
-            <rect width="32" height="32" rx="8" fill="#D97706" />
-            <path d="M16 7C11 7 7 11 7 16s4 9 9 9 9-4 9-9-4-9-9-9zm0 14.5c-1.5 0-3-0.8-3.8-2.2l1.3-0.8c0.5 0.9 1.4 1.5 2.5 1.5s2-0.6 2.5-1.5l1.3 0.8c-0.8 1.4-2.3 2.2-3.8 2.2zm4.5-5h-9v-1.5h9v1.5z" fill="white"/>
-          </svg>
-          <span style={{ fontFamily: DS.fontDisplay, fontSize: 22, fontWeight: 400, color: "#F5F7FA", letterSpacing: "-0.02em" }}>Vardana</span>
-        </div>
-      </div>
+  if (uiState === "closing") {
+    const closingTranscript = isMarcusDemo ? MARCUS_VOICE_TRANSCRIPT : VOICE_TRANSCRIPT;
+    const closingDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const summaryRows = isMarcusDemo ? [
+      { label: "Risk score", value: "53 \u2192 73", color: "#C0392B" },
+      { label: "Alert fired", value: "P2: Urgent", color: "#C0392B" },
+      { label: "Coordinator notified", value: "David Park", color: "#059669" },
+      { label: "FHIR flag posted", value: "Epic sandbox", color: "#059669" },
+    ] : [
+      { label: "Risk score", value: "68 \u2192 84", color: "#C0392B" },
+      { label: "Alert fired", value: "P1: Urgent", color: "#C0392B" },
+      { label: "Coordinator notified", value: "Rachel Kim", color: "#059669" },
+      { label: "FHIR flag posted", value: "Epic sandbox", color: "#059669" },
+    ];
+    const signalPills = isMarcusDemo ? [
+      { text: "BP 158/98", color: "#C0392B", bg: "#FEF2F2" },
+      { text: "Lisinopril missed", color: "#D97706", bg: "#FFFBEB" },
+      { text: "Headache confirmed", color: "#D97706", bg: "#FFFBEB" },
+    ] : [
+      { text: "Weight +2.3 lbs", color: "#C0392B", bg: "#FEF2F2" },
+      { text: "BP reversed", color: "#D97706", bg: "#FFFBEB" },
+      { text: "Edema confirmed", color: "#C0392B", bg: "#FEF2F2" },
+    ];
+    const summaryHeader = isMarcusDemo ? "BP crisis risk detected" : "Early decompensation pattern detected";
+    const summaryNarrative = isMarcusDemo
+      ? "Marcus reported a headache and confirmed missing Lisinopril for a few days. Combined with a 4-day BP rise to 158/98, a P2 alert was generated and dispatched to Nurse David Park for same-day medication reconciliation and BP recheck."
+      : "Sarah reported ankle swelling and fatigue. Weight up 2.3 lbs over 48 hours combined with BP reversal triggered a P1 alert to Nurse Rachel Kim for same-day cardiology follow-up.";
+    const rightNarrative = isMarcusDemo
+      ? "Marcus's call flagged a developing BP crisis. He confirmed missing Lisinopril for a few days and reported a morning headache alongside a 4-day blood pressure rise to 158/98. A P2 alert was dispatched to Nurse David Park for same-day medication reconciliation and BP recheck."
+      : "Sarah's call confirmed early decompensation signs. She reported ankle swelling and fatigue alongside a 2.3 lb weight gain over 48 hours and BP reversal from her best reading. A P1 alert was dispatched to Nurse Rachel Kim for same-day cardiology follow-up.";
+    const patientLabel = isMarcusDemo ? "Marcus" : "Sarah";
+    const patientInitial = patientLabel.charAt(0);
 
-      {/* Call summary card */}
+    return (
       <div style={{
-        background: "#131E2E", border: "1px solid #253550",
-        borderRadius: 16, padding: "20px 28px",
-        maxWidth: 400, width: "100%", marginBottom: 32,
+        position: "fixed", inset: 0, background: "#F6F7F9", zIndex: 300,
+        display: "flex", flexDirection: "column",
+        alignItems: "center",
+        padding: "32px 24px",
+        fontFamily: c.font, animation: "fadeIn 0.8s ease",
+        overflowY: "auto",
       }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#3A4F6B", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>
-          Call Summary
-        </div>
-        {(isMarcusDemo ? [
-          { label: "Risk score", value: "53 \u2192 73", color: "#EF4444" },
-          { label: "Alert fired", value: "P2: BP Crisis Risk", color: "#EF4444" },
-          { label: "Coordinator notified", value: "David Park", color: "#34D399" },
-          { label: "FHIR flag posted", value: "Epic sandbox", color: "#34D399" },
-        ] : [
-          { label: "Risk score", value: "68 \u2192 84", color: "#EF4444" },
-          { label: "Alert fired", value: "P1: Urgent", color: "#EF4444" },
-          { label: "Coordinator notified", value: "Rachel Kim", color: "#34D399" },
-          { label: "FHIR flag posted", value: "Epic sandbox", color: "#34D399" },
-        ]).map((row, i) => (
-          <div key={i} style={{
-            display: "flex", justifyContent: "space-between",
-            alignItems: "center", padding: "8px 0",
-            borderBottom: i < 3 ? "1px solid #1C2B40" : "none",
-          }}>
-            <span style={{ fontSize: 13, color: "#556882" }}>{row.label}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: row.color }}>{row.value}</span>
+        {/* Vardana logo + wordmark */}
+        <div style={{ marginBottom: 24, textAlign: "center" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
+              <rect width="32" height="32" rx="8" fill="#3DBFA0" />
+              <path d="M16 7C11 7 7 11 7 16s4 9 9 9 9-4 9-9-4-9-9-9zm0 14.5c-1.5 0-3-0.8-3.8-2.2l1.3-0.8c0.5 0.9 1.4 1.5 2.5 1.5s2-0.6 2.5-1.5l1.3 0.8c-0.8 1.4-2.3 2.2-3.8 2.2zm4.5-5h-9v-1.5h9v1.5z" fill="white"/>
+            </svg>
+            <span style={{ fontFamily: DS.fontDisplay, fontSize: 22, fontWeight: 400, color: "#1E3A5F", letterSpacing: "-0.02em" }}>Vardana</span>
           </div>
-        ))}
-      </div>
+        </div>
 
-      {/* Tagline */}
-      <div style={{ fontFamily: DS.fontDisplay, fontSize: 22, color: "#F5F7FA", letterSpacing: "-0.02em", marginBottom: 6 }}>
-        Vardana.
-      </div>
-      <div style={{ fontSize: 14, color: "#556882", marginBottom: 4 }}>
-        {isMarcusDemo ? "Chronic condition management across CHF, hypertension, diabetes, and beyond." : "CHF post-discharge care."}
-      </div>
-      <div style={{ fontSize: 14, color: "#556882", marginBottom: 32 }}>
-        Request a pilot at{" "}
-        <a href="https://vardana.ai" style={{ color: "#F59E0B", textDecoration: "none" }}>vardana.ai</a>
-      </div>
+        {/* Two-panel layout: summary (3fr) + detail (2fr) */}
+        <div style={{
+          display: "flex",
+          flexDirection: isMobileView ? "column" : "row",
+          gap: 20,
+          maxWidth: 900,
+          width: "100%",
+          marginBottom: 24,
+        }}>
+          {/* LEFT — Call Summary card (primary) */}
+          <div style={{
+            background: "#FFFFFF", border: "1px solid #D1D9E0",
+            borderRadius: 16, padding: "24px 28px",
+            flex: isMobileView ? "none" : 3,
+            width: isMobileView ? "100%" : "auto",
+            boxShadow: "0 2px 6px rgba(30,58,95,0.07)",
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
+              Call Summary
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#1E3A5F", marginBottom: 12, fontFamily: DS.fontDisplay, letterSpacing: "-0.01em" }}>
+              {summaryHeader}
+            </div>
+            <p style={{ fontSize: 14, color: "#4A6380", lineHeight: 1.65, margin: "0 0 16px" }}>
+              {summaryNarrative}
+            </p>
 
-      {/* Return button */}
-      <button
-        onClick={() => { if (onExitDemo) { onExitDemo(); } else { setUiState("done"); handleComplete(); } }}
-        onMouseEnter={e => { e.currentTarget.style.borderColor = "#F59E0B"; e.currentTarget.style.color = "#F59E0B"; }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = "#253550"; e.currentTarget.style.color = "#556882"; }}
-        style={{
-          background: "none", border: "1px solid #253550",
-          borderRadius: 10, padding: "10px 24px",
-          fontSize: 13, color: "#556882", cursor: "pointer",
-          fontFamily: "'DM Sans', system-ui, sans-serif",
-          transition: "all 0.2s ease",
-        }}
-      >
-        Close Demo
-      </button>
-    </div>
-  );
+            {/* Signal pills */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
+              {signalPills.map((pill, i) => (
+                <span key={i} style={{
+                  fontSize: 12, fontWeight: 700, color: pill.color,
+                  background: pill.bg, border: `1px solid ${pill.color}25`,
+                  borderRadius: 6, padding: "4px 10px",
+                }}>
+                  {pill.text}
+                </span>
+              ))}
+            </div>
+
+            {/* Summary rows */}
+            {summaryRows.map((row, i) => (
+              <div key={i} style={{
+                display: "flex", justifyContent: "space-between",
+                alignItems: "center", padding: "8px 0",
+                borderTop: i === 0 ? "1px solid #E8EDF3" : "none",
+                borderBottom: i < summaryRows.length - 1 ? "1px solid #E8EDF3" : "none",
+              }}>
+                <span style={{ fontSize: 13, color: "#7A96B0" }}>{row.label}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: row.color }}>{row.value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* RIGHT — Narrative + collapsible transcript (subordinate) */}
+          <div style={{
+            background: "#FFFFFF", border: "1px solid #D1D9E0",
+            borderRadius: 16, padding: "20px 24px",
+            flex: isMobileView ? "none" : 2,
+            width: isMobileView ? "100%" : "auto",
+            boxShadow: "0 2px 6px rgba(30,58,95,0.07)",
+            alignSelf: "flex-start",
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
+              Call Detail
+            </div>
+            <p style={{ fontSize: 13, color: "#4A6380", lineHeight: 1.65, margin: "0 0 14px" }}>
+              {rightNarrative}
+            </p>
+            <div style={{ fontSize: 12, color: "#7A96B0", marginBottom: 12 }}>
+              Call completed {closingDate} &middot; ~90 seconds
+            </div>
+
+            {/* Transcript toggle */}
+            <div style={{ borderTop: "1px solid #E8EDF3", paddingTop: 10 }}>
+              {/* TODO: link to persisted transcript once pilot logging is live */}
+              <a
+                href="#"
+                onClick={e => { e.preventDefault(); setShowTranscript(prev => !prev); }}
+                style={{ fontSize: 12, color: "#3DBFA0", textDecoration: "none", fontWeight: 600 }}
+              >
+                {showTranscript ? "Hide transcript" : "View call transcript \u2192"}
+              </a>
+            </div>
+
+            {/* Collapsible transcript */}
+            {showTranscript && (
+              <div style={{
+                marginTop: 14, display: "flex", flexDirection: "column", gap: 12,
+                maxHeight: 400, overflowY: "auto", paddingRight: 4,
+              }}>
+                {closingTranscript.map((line, i) => (
+                  <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{
+                      width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+                      background: line.speaker === "AI" ? "#E8F5F1" : "#EDE9FE",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 11, fontWeight: 700,
+                      color: line.speaker === "AI" ? "#1A7A61" : "#7C3AED",
+                      marginTop: 3,
+                    }}>
+                      {line.speaker === "AI" ? "V" : patientInitial}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        fontSize: 10, fontWeight: 700, color: "#7A96B0",
+                        marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em",
+                      }}>
+                        {line.speaker === "AI" ? "Vardana AI" : patientLabel}
+                      </div>
+                      <div style={{
+                        fontSize: 13, color: "#4A6380", lineHeight: 1.6,
+                        background: line.speaker === "AI" ? "#F6F7F9" : "#FAFBFC",
+                        padding: "9px 13px", borderRadius: 10,
+                        border: "1px solid #E8EDF3",
+                      }}>
+                        {line.text}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Tagline + CTA */}
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontFamily: DS.fontDisplay, fontSize: 22, color: "#1E3A5F", letterSpacing: "-0.02em", marginBottom: 6 }}>
+            Vardana.
+          </div>
+          <div style={{ fontSize: 14, color: "#7A96B0", marginBottom: 4 }}>
+            {isMarcusDemo ? "Chronic condition management across CHF, hypertension, diabetes, and beyond." : "CHF post-discharge care."}
+          </div>
+          <div style={{ fontSize: 14, color: "#7A96B0", marginBottom: 24 }}>
+            Request a pilot at{" "}
+            <a href="https://vardana.ai" style={{ color: "#3DBFA0", textDecoration: "none" }}>vardana.ai</a>
+          </div>
+
+          <button
+            onClick={() => { if (onExitDemo) { onExitDemo(); } else { setUiState("done"); handleComplete(); } }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "#3DBFA0"; e.currentTarget.style.color = "#3DBFA0"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "#D1D9E0"; e.currentTarget.style.color = "#7A96B0"; }}
+            style={{
+              background: "none", border: "1px solid #D1D9E0",
+              borderRadius: 10, padding: "10px 24px",
+              fontSize: 13, color: "#7A96B0", cursor: "pointer",
+              fontFamily: "'DM Sans', system-ui, sans-serif",
+              transition: "all 0.2s ease",
+            }}
+          >
+            Close Demo
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ─────────────────────────────────────────────
   // CALL SCREEN (dialing / connected / active / alert / done)
   // ─────────────────────────────────────────────
   return (
-    <div style={{ position: "fixed", inset: 0, background: c.navy, zIndex: 300, display: "flex", flexDirection: "column", fontFamily: c.font }}>
+    <div style={{ position: "fixed", inset: 0, background: "#F6F7F9", zIndex: 300, display: "flex", flexDirection: "column", fontFamily: c.font }}>
 
       {/* Top bar */}
-      <div style={{ padding: isMobileView ? "10px 12px" : "14px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.08)", gap: 8, flexWrap: isMobileView ? "wrap" : "nowrap" }}>
+      <div style={{ padding: isMobileView ? "10px 12px" : "14px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#1E3A5F", borderBottom: "1px solid rgba(255,255,255,0.08)", gap: 8, flexWrap: isMobileView ? "wrap" : "nowrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: isMobileView ? 6 : 10, minWidth: 0, flex: isMobileView ? "1 1 auto" : "none" }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: uiState === "done" ? "#475569" : "#22C55E", boxShadow: isActive ? "0 0 0 4px rgba(34,197,94,0.2)" : "none", transition: "all 0.3s", flexShrink: 0 }} />
-          <span style={{ fontSize: isMobileView ? 12 : 14, fontWeight: 700, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: uiState === "done" ? "#7FA4C4" : "#22C55E", boxShadow: isActive ? "0 0 0 4px rgba(34,197,94,0.2)" : "none", transition: "all 0.3s", flexShrink: 0 }} />
+          <span style={{ fontSize: isMobileView ? 12 : 14, fontWeight: 700, color: "#F5F7FA", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {uiState === "dialing"   ? (isMobileView ? "Connecting..." : `Connecting to ${patient.name}...`) :
              uiState === "connected" ? "Connected" :
              uiState === "done"      ? "Call Completed" :
@@ -1801,18 +2067,18 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: isMobileView ? 6 : 10, flexShrink: 0 }}>
           {isActive && !isMobileView && (
-            <button onClick={toggleMute} style={{ background: muted ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.08)", border: `1px solid ${muted ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.12)"}`, color: muted ? "#FCA5A5" : "#CBD5E1", borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontFamily: c.font, fontSize: 12, fontWeight: 700 }}>
+            <button onClick={toggleMute} style={{ background: muted ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.1)", border: `1px solid ${muted ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.15)"}`, color: muted ? "#FCA5A5" : "#F5F7FA", borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontFamily: c.font, fontSize: 12, fontWeight: 700 }}>
               {muted ? "🔇 Muted" : "🔊 Audio On"}
             </button>
           )}
-          {isActive && <span style={{ fontSize: isMobileView ? 11 : 13, color: "#64748B", fontVariantNumeric: "tabular-nums" }}>{formatTime(elapsed)}</span>}
+          {isActive && <span style={{ fontSize: isMobileView ? 11 : 13, color: "#7FA4C4", fontVariantNumeric: "tabular-nums" }}>{formatTime(elapsed)}</span>}
           {isActive && isMobileView && (
-            <button onClick={toggleMute} style={{ background: muted ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.08)", border: `1px solid ${muted ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.12)"}`, color: muted ? "#FCA5A5" : "#CBD5E1", borderRadius: 8, padding: "5px 8px", cursor: "pointer", fontFamily: c.font, fontSize: 11, fontWeight: 700 }}>
+            <button onClick={toggleMute} style={{ background: muted ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.1)", border: `1px solid ${muted ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.15)"}`, color: muted ? "#FCA5A5" : "#F5F7FA", borderRadius: 8, padding: "5px 8px", cursor: "pointer", fontFamily: c.font, fontSize: 11, fontWeight: 700 }}>
               {muted ? "🔇" : "🔊"}
             </button>
           )}
           {isActive && (
-            <button onClick={endCall} style={{ background: "rgba(220,38,38,0.2)", border: "1px solid rgba(220,38,38,0.4)", color: "#FCA5A5", borderRadius: 8, padding: isMobileView ? "5px 10px" : "5px 12px", cursor: "pointer", fontFamily: c.font, fontSize: 12, fontWeight: 700 }}>End{!isMobileView && " Call"}</button>
+            <button onClick={endCall} style={{ background: "#C0392B", border: "none", color: "white", borderRadius: 6, padding: isMobileView ? "6px 10px" : "6px 14px", cursor: "pointer", fontFamily: c.font, fontSize: 12, fontWeight: 700 }}>End{!isMobileView && " Call"}</button>
           )}
           {uiState === "done" && (
             <button onClick={handleComplete} disabled={isSummarizing} style={{ background: c.accent, border: "none", color: "white", borderRadius: 8, padding: isMobileView ? "6px 10px" : "7px 14px", cursor: "pointer", fontFamily: c.font, fontSize: isMobileView ? 11 : 13, fontWeight: 700, opacity: isSummarizing ? 0.7 : 1 }}>
@@ -1824,20 +2090,20 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
       {/* Mobile: compact status bar with risk score + speaker avatars + panel toggle */}
       {isMobileView && isActive && (
-        <div style={{ padding: "8px 12px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ padding: "8px 12px", borderBottom: "1px solid #E8EDF3", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* AI avatar small */}
-            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #1B3A6B, #2563EB)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.9)", fontFamily: DS.fontDisplay, border: `2px solid ${activeSpeaker === "AI" ? "rgba(56,189,248,0.7)" : "rgba(255,255,255,0.08)"}`, transition: "all 0.3s" }}>V</div>
+            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#3DBFA0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "white", fontFamily: DS.fontDisplay, border: `2px solid ${activeSpeaker === "AI" ? "#3DBFA0" : "#D1D9E0"}`, transition: "all 0.3s" }}>V</div>
             {/* Waveform mini */}
             <div style={{ display: "flex", alignItems: "center", gap: 1.5, height: 20, opacity: waveOn ? 1 : 0.15, transition: "opacity 0.4s" }}>
               {Array.from({ length: 10 }, (_, i) => {
                 const h = waveOn ? waveHeights[(i + waveFrame) % 12] : 0.12;
                 const isPatientSpeaking = activeSpeaker && activeSpeaker !== "AI";
-                return <div key={i} style={{ width: 2, height: `${Math.max(2, h * 18)}px`, borderRadius: 1, background: isPatientSpeaking ? "#A78BFA" : "#38BDF8", transition: "height 0.11s ease" }} />;
+                return <div key={i} style={{ width: 2, height: `${Math.max(2, h * 18)}px`, borderRadius: 1, background: isPatientSpeaking ? "#1E3A5F" : "#3DBFA0", transition: "height 0.11s ease" }} />;
               })}
             </div>
             {/* Patient avatar small */}
-            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #3730A3, #7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.9)", fontFamily: DS.fontDisplay, border: `2px solid ${activeSpeaker && activeSpeaker !== "AI" ? "rgba(167,139,250,0.7)" : "rgba(255,255,255,0.08)"}`, transition: "all 0.3s" }}>{patient.name.charAt(0)}</div>
+            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#1E3A5F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "white", fontFamily: DS.fontDisplay, border: `2px solid ${activeSpeaker && activeSpeaker !== "AI" ? "#1E3A5F" : "#D1D9E0"}`, transition: "all 0.3s" }}>{patient.name.charAt(0)}</div>
           </div>
           {/* Risk score compact + Alert indicator */}
           <div style={{ display: "flex", alignItems: "center", gap: 6, transform: alertZoom ? "scale(1.3)" : "scale(1)", transformOrigin: "center center", transition: "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)", background: alertZoom ? "rgba(220,38,38,0.1)" : "transparent", borderRadius: 8, padding: alertZoom ? "4px 8px" : 0 }}>
@@ -1854,75 +2120,64 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
         {/* ── Left: speakers + gauge ── (hidden on mobile) */}
         {!isMobileView && (
-        <div style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", padding: "28px 18px", borderRight: "1px solid rgba(255,255,255,0.08)", gap: 18 }}>
+        <div style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", padding: "28px 18px", borderRight: "1px solid #E8EDF3", gap: 18, background: "#FFFFFF" }}>
 
           {/* AI avatar */}
           <div style={{ position: "relative" }}>
-            {activeSpeaker === "AI" && <div style={{ position: "absolute", inset: -10, borderRadius: "50%", border: "2px solid rgba(56,189,248,0.5)", animation: "ping 1s ease-out infinite" }} />}
-            <div style={{ width: 70, height: 70, borderRadius: "50%", background: "linear-gradient(135deg, #1B3A6B, #2563EB)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "rgba(255,255,255,0.9)", fontFamily: DS.fontDisplay, border: `3px solid ${activeSpeaker === "AI" ? "rgba(56,189,248,0.7)" : "rgba(255,255,255,0.08)"}`, boxShadow: activeSpeaker === "AI" ? "0 0 24px rgba(56,189,248,0.35)" : "none", transition: "all 0.35s" }}>V</div>
+            {activeSpeaker === "AI" && <div style={{ position: "absolute", inset: -10, borderRadius: "50%", border: "2px solid rgba(61,191,160,0.5)", animation: "ping 1s ease-out infinite" }} />}
+            <div style={{ width: 70, height: 70, borderRadius: "50%", background: "#3DBFA0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "white", fontFamily: DS.fontDisplay, border: `3px solid ${activeSpeaker === "AI" ? "#3DBFA0" : "#D1D9E0"}`, boxShadow: activeSpeaker === "AI" ? "0 0 24px rgba(61,191,160,0.35)" : "none", transition: "all 0.35s" }}>V</div>
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: activeSpeaker === "AI" ? "#38BDF8" : "#475569", letterSpacing: "0.04em", transition: "color 0.3s" }}>VARDANA AI</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: activeSpeaker === "AI" ? "#3DBFA0" : "#7A96B0", letterSpacing: "0.04em", transition: "color 0.3s" }}>VARDANA AI</div>
 
           {/* Shared waveform */}
           <div style={{ display: "flex", alignItems: "center", gap: 2.5, height: 32, opacity: waveOn ? 1 : 0.15, transition: "opacity 0.4s" }}>
             {Array.from({ length: 22 }, (_, i) => {
               const h = waveOn ? waveHeights[(i + waveFrame) % 12] : 0.12;
               const isPatientSpeaking = activeSpeaker && activeSpeaker !== "AI";
-              return <div key={i} style={{ width: 2.5, height: `${Math.max(3, h * 28)}px`, borderRadius: 2, background: isPatientSpeaking ? "#A78BFA" : "#38BDF8", transition: "height 0.11s ease, background 0.3s" }} />;
+              return <div key={i} style={{ width: 2.5, height: `${Math.max(3, h * 28)}px`, borderRadius: 2, background: isPatientSpeaking ? "#1E3A5F" : "#3DBFA0", transition: "height 0.11s ease, background 0.3s" }} />;
             })}
           </div>
 
           {/* Patient avatar */}
           {(() => { const isPS = activeSpeaker && activeSpeaker !== "AI"; return (<>
           <div style={{ position: "relative" }}>
-            {isPS && <div style={{ position: "absolute", inset: -10, borderRadius: "50%", border: "2px solid rgba(167,139,250,0.5)", animation: "ping 1s ease-out infinite" }} />}
-            <div style={{ width: 70, height: 70, borderRadius: "50%", background: "linear-gradient(135deg, #3730A3, #7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "rgba(255,255,255,0.9)", fontFamily: DS.fontDisplay, border: `3px solid ${isPS ? "rgba(167,139,250,0.7)" : "rgba(255,255,255,0.08)"}`, boxShadow: isPS ? "0 0 24px rgba(124,58,237,0.4)" : "none", transition: "all 0.35s" }}>{patient.name.charAt(0)}</div>
+            {isPS && <div style={{ position: "absolute", inset: -10, borderRadius: "50%", border: "2px solid rgba(30,58,95,0.5)", animation: "ping 1s ease-out infinite" }} />}
+            <div style={{ width: 70, height: 70, borderRadius: "50%", background: "#1E3A5F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "white", fontFamily: DS.fontDisplay, border: `3px solid ${isPS ? "#1E3A5F" : "#D1D9E0"}`, boxShadow: isPS ? "0 0 24px rgba(30,58,95,0.3)" : "none", transition: "all 0.35s" }}>{patient.name.charAt(0)}</div>
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: isPS ? "#A78BFA" : "#475569", letterSpacing: "0.04em", transition: "color 0.3s" }}>{patient.name.toUpperCase()} · {patient.age}{isEpic ? (patient.epicData?.patient?.gender === 'male' ? 'M' : 'F') : (patient.gender || '')}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: isPS ? "#1E3A5F" : "#7A96B0", letterSpacing: "0.04em", transition: "color 0.3s" }}>{patient.name.toUpperCase()} · {patient.age}{isEpic ? (patient.epicData?.patient?.gender === 'male' ? 'M' : 'F') : (patient.gender || '')}</div>
           </>); })()}
 
           {/* Risk gauge + Alert — zoom container */}
           <div style={{ width: "100%", transform: alertZoom ? "scale(1.45)" : "scale(1)", transformOrigin: "center center", transition: "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)", zIndex: alertZoom ? 10 : 1, position: "relative" }}>
             {alertZoom && <div style={{ position: "absolute", inset: -12, borderRadius: 16, background: "rgba(220,38,38,0.08)", border: "2px solid rgba(220,38,38,0.3)", animation: "fhirPulse 1.5s ease infinite", pointerEvents: "none" }} />}
             {/* Risk gauge */}
-            <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: "14px 16px", width: "100%", textAlign: "center", marginTop: 4 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>{isMarcusDemo ? "BP Crisis Risk" : "Decompensation Risk"}</div>
+            <div style={{ background: "#EEF1F5", borderRadius: 12, padding: "14px 16px", width: "100%", textAlign: "center", marginTop: 4 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>{isMarcusDemo ? "BP Crisis Risk" : "Decompensation Risk"}</div>
               <div style={{ fontSize: 42, fontWeight: 900, color: riskColor, fontVariantNumeric: "tabular-nums", lineHeight: 1, transition: "all 0.9s ease" }}>{riskScore}</div>
-              <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>/ 100</div>
-              {riskScore > (isMarcusDemo ? 53 : 68) && <div style={{ fontSize: 10, fontWeight: 700, color: riskColor, marginTop: 6 }}>&#8593; Updated live during call</div>}
+              <div style={{ fontSize: 10, color: "#7A96B0", marginTop: 2 }}>/ 100</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#7A96B0", marginTop: 6 }}>↑ Updated live during call</div>
             </div>
 
             {/* Alert */}
             {alertGenerated && (
-              <div style={{ background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.35)", borderRadius: 10, padding: "10px 12px", width: "100%", marginTop: 8, animation: "fadeIn 0.4s ease" }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: "#F87171", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={11} color="#F87171" /> {isMarcusDemo ? "P2 ALERT GENERATED" : "P1 ALERT GENERATED"}</div>
-                <div style={{ fontSize: 10, color: "#FCA5A5", lineHeight: 1.4 }}>{isMarcusDemo ? "BP Crisis Risk \u00b7 Coordinator: David Park" : "FHIR Flag posted \u00b7 Coordinator notified"}</div>
+              <div style={{ background: "#FEF2F2", border: "1px solid #FEE2E2", borderRadius: 10, padding: "10px 12px", width: "100%", marginTop: 8, animation: "fadeIn 0.4s ease" }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: "#C0392B", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={11} color="#C0392B" /> {isMarcusDemo ? "P2 ALERT GENERATED" : "P1 ALERT GENERATED"}</div>
+                <div style={{ fontSize: 10, color: "#A93226", lineHeight: 1.4 }}>{isMarcusDemo ? "BP Crisis Risk · Coordinator: David Park" : "FHIR Flag posted · Coordinator notified"}</div>
               </div>
             )}
           </div>
 
-          {/* Controls */}
-          <div style={{ display: "flex", gap: 10, marginTop: "auto" }}>
-            {[
-              { iconEl: muted ? "M" : "♪", active: muted, fn: toggleMute },
-              { iconEl: "❚❚", active: false, fn: null },
-              { iconEl: <Icon name="clipboard" size={14} color="currentColor" />, active: false, fn: null },
-              { iconEl: "●", active: isActive, fn: isActive ? endCall : null, isEnd: true },
-            ].map((btn, i) => (
-              <div key={i} onClick={btn.fn || undefined} style={{ width: 38, height: 38, borderRadius: "50%", background: btn.active ? (i === 0 ? "rgba(220,38,38,0.25)" : btn.isEnd ? "rgba(220,38,38,0.3)" : "rgba(220,38,38,0.15)") : "rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: btn.isEnd ? 10 : 14, cursor: btn.fn ? "pointer" : "default", border: btn.active && i === 0 ? "1px solid rgba(220,38,38,0.4)" : "1px solid transparent", color: btn.isEnd ? "#EF4444" : "rgba(255,255,255,0.5)" }}>{btn.iconEl}</div>
-            ))}
-          </div>
         </div>
         )}
 
         {/* ── Center: transcript ── */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: isMobileView ? 300 : "auto" }}>
           {!isMobileView && (
-          <div style={{ padding: "13px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>Live Transcript</div>
+          <div style={{ padding: "13px 20px", borderBottom: "1px solid #E8EDF3", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em" }}>Live Transcript</div>
             {activeSpeaker && (
-              <div style={{ fontSize: 11, fontWeight: 700, color: activeSpeaker === "AI" ? "#38BDF8" : "#A78BFA", display: "flex", alignItems: "center", gap: 5 }}>
-                <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor", display: "inline-block", animation: "pulse 1s infinite" }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: activeSpeaker === "AI" ? "#3DBFA0" : "#7A96B0", display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ width: 5, height: 5, borderRadius: "50%", background: activeSpeaker === "AI" ? "#3DBFA0" : "#7A96B0", display: "inline-block", animation: "pulse 1s infinite" }} />
                 {activeSpeaker === "AI" ? "AI Speaking" : "Patient Speaking"}
               </div>
             )}
@@ -1930,17 +2185,17 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
           )}
           <div ref={transcriptRef} style={{ flex: 1, overflowY: "auto", padding: isMobileView ? "12px 12px" : "16px 20px", display: "flex", flexDirection: "column", gap: isMobileView ? 10 : 12 }}>
             {uiState === "dialing" && (
-              <div style={{ textAlign: "center", padding: "52px 0", color: "#475569" }}>
-                <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}><Icon name="phone" size={36} color="#94A3B8" /></div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#94A3B8" }}>Initiating AI concierge call...</div>
+              <div style={{ textAlign: "center", padding: "52px 0", color: "#7A96B0" }}>
+                <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}><Icon name="phone" size={36} color="#7A96B0" /></div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#4A6380" }}>Initiating AI concierge call...</div>
                 <div style={{ fontSize: 12, marginTop: 6 }}>Ringing {patient.name}{isEpic && patient.epicData?.patient?.phone ? ` · ${patient.epicData.patient.phone}` : !isEpic ? ' · (206) 555-0142' : ''}</div>
               </div>
             )}
             {uiState === "connected" && transcript.length === 0 && (
-              <div style={{ textAlign: "center", padding: "52px 0", color: "#475569" }}>
-                <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}><Icon name="check" size={36} color="#22C55E" /></div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#22C55E" }}>Connected</div>
-                <div style={{ fontSize: 12, color: "#64748B", marginTop: 6 }}>AI concierge beginning structured check-in...</div>
+              <div style={{ textAlign: "center", padding: "52px 0", color: "#7A96B0" }}>
+                <div style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}><Icon name="check" size={36} color="#3DBFA0" /></div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#3DBFA0" }}>Connected</div>
+                <div style={{ fontSize: 12, color: "#7A96B0", marginTop: 6 }}>AI concierge beginning structured check-in...</div>
               </div>
             )}
             {transcript.map((line, i) => {
@@ -1950,14 +2205,14 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
               const patientInitial = demoMode === "live" ? "Y" : patient.name.charAt(0);
               return (
                 <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", animation: "slideUp 0.25s ease" }}>
-                  <div style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: speaking ? (line.speaker === "AI" ? "rgba(56,189,248,0.2)" : "rgba(167,139,250,0.2)") : "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, marginTop: 3, border: speaking ? `1px solid ${line.speaker === "AI" ? "rgba(56,189,248,0.5)" : "rgba(167,139,250,0.5)"}` : "1px solid transparent", transition: "all 0.3s" }}>
+                  <div style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: line.speaker === "AI" ? "#3DBFA0" : "#1E3A5F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "white", marginTop: 3, border: speaking ? `1px solid ${line.speaker === "AI" ? "#3DBFA0" : "#1E3A5F"}` : "1px solid transparent", transition: "all 0.3s" }}>
                     {line.speaker === "AI" ? "V" : patientInitial}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: line.speaker === "AI" ? (speaking ? "#38BDF8" : "#334155") : (speaking ? "#A78BFA" : "#334155"), marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em", transition: "color 0.3s" }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: "#7A96B0", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                       {line.speaker === "AI" ? "Vardana AI" : patientLabel}
                     </div>
-                    <div style={{ fontSize: 13, color: speaking ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.72)", lineHeight: 1.6, background: speaking ? (line.speaker === "AI" ? "rgba(56,189,248,0.08)" : "rgba(167,139,250,0.08)") : "rgba(255,255,255,0.03)", padding: "9px 13px", borderRadius: 10, border: `1px solid ${speaking ? (line.speaker === "AI" ? "rgba(56,189,248,0.25)" : "rgba(167,139,250,0.25)") : "rgba(255,255,255,0.05)"}`, transition: "all 0.35s" }}>
+                    <div style={{ fontSize: 13, color: "#1E3A5F", lineHeight: 1.6, background: line.speaker === "AI" ? "#EEF6F3" : "#EEF1F5", padding: "9px 13px", borderRadius: 10, border: speaking && line.speaker === "AI" ? "1px solid #3DBFA0" : line.speaker === "AI" ? "0.5px solid #C2E8DE" : "0.5px solid #D1D9E0", transition: "all 0.35s" }}>
                       {line.text}
                     </div>
                   </div>
@@ -1967,10 +2222,10 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
             {/* Thinking dots for live mode */}
             {isThinking && demoMode === "live" && (
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start", animation: "slideUp 0.25s ease" }}>
-                <div style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: "rgba(56,189,248,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#38BDF8", marginTop: 3, border: "1px solid rgba(56,189,248,0.5)" }}>V</div>
+                <div style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: "#3DBFA0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "white", marginTop: 3, border: "1px solid #3DBFA0" }}>V</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "#38BDF8", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em" }}>Vardana AI</div>
-                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", padding: "9px 13px", borderRadius: 10, background: "rgba(56,189,248,0.05)", border: "1px solid rgba(56,189,248,0.15)" }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: "#7A96B0", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.06em" }}>Vardana AI</div>
+                  <div style={{ fontSize: 13, color: "#7A96B0", padding: "9px 13px", borderRadius: 10, background: "#EEF6F3", border: "0.5px solid #C2E8DE" }}>
                     <span style={{ animation: "pulse 1s infinite" }}>Thinking</span>
                     <span style={{ animation: "pulse 1s infinite 0.2s" }}>.</span>
                     <span style={{ animation: "pulse 1s infinite 0.4s" }}>.</span>
@@ -1982,9 +2237,9 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
             {/* Listening indicator for live mode */}
             {isListening && demoMode === "live" && (
               <div style={{ textAlign: "center", padding: "8px 0", animation: "fadeIn 0.3s ease" }}>
-                <span style={{ fontSize: 12, color: "#A78BFA", fontWeight: 700 }}>● Listening...</span>
+                <span style={{ fontSize: 12, color: "#1E3A5F", fontWeight: 700 }}>● Listening...</span>
                 {interimText && (
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontStyle: "italic", marginTop: 4, padding: "0 16px" }}>
+                  <div style={{ fontSize: 12, color: "#7A96B0", fontStyle: "italic", marginTop: 4, padding: "0 16px" }}>
                     "{interimText}"
                   </div>
                 )}
@@ -1992,23 +2247,23 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
             )}
             {uiState === "done" && (
               <div style={{ textAlign: "center", padding: "24px 0" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#22C55E", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><Icon name="check" size={14} color="#22C55E" /> Call completed · {formatTime(elapsed)}</div>
-                <div style={{ fontSize: 12, color: "#64748B", marginTop: 5 }}>Transcript saved · Clinical summary generated · Alert dispatched</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#3DBFA0", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><Icon name="check" size={14} color="#3DBFA0" /> Call completed · {formatTime(elapsed)}</div>
+                <div style={{ fontSize: 12, color: "#7A96B0", marginTop: 5 }}>Transcript saved · Clinical summary generated · Alert dispatched</div>
               </div>
             )}
           </div>
           {/* Text input fallback for live mode */}
           {demoMode === "live" && isActive && (
-            <div style={{ padding: "8px 16px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 8 }}>
+            <div style={{ padding: "8px 16px", borderTop: "1px solid #E8EDF3", display: "flex", gap: 8 }}>
               <input
                 value={textInput}
                 onChange={e => setTextInput(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && submitTextInput()}
                 placeholder={isListening ? "Or type your response..." : "Type your response..."}
-                style={{ flex: 1, padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "white", fontSize: 12, fontFamily: c.font, outline: "none" }}
+                style={{ flex: 1, padding: "8px 12px", borderRadius: 8, background: "#EEF1F5", border: "1px solid #D1D9E0", color: "#1E3A5F", fontSize: 12, fontFamily: c.font, outline: "none" }}
               />
               <button onClick={submitTextInput} disabled={!textInput.trim()}
-                style={{ padding: "8px 14px", borderRadius: 8, background: textInput.trim() ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.05)", border: "1px solid rgba(167,139,250,0.3)", color: textInput.trim() ? "#A78BFA" : "#475569", fontSize: 12, fontWeight: 700, cursor: textInput.trim() ? "pointer" : "default", fontFamily: c.font }}>
+                style={{ padding: "8px 14px", borderRadius: 8, background: textInput.trim() ? "#3DBFA0" : "#EEF1F5", border: textInput.trim() ? "none" : "1px solid #D1D9E0", color: textInput.trim() ? "white" : "#7A96B0", fontSize: 12, fontWeight: 700, cursor: textInput.trim() ? "pointer" : "default", fontFamily: c.font }}>
                 Send
               </button>
             </div>
@@ -2021,15 +2276,15 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         (() => {
           const chartData = PATIENT_CLINICAL_DATA[patient?.id];
           const statusColor = (s) => s === "good" ? "#34D399" : s === "borderline" ? "#F59E0B" : "#F87171";
-          const sectionHead = { fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 };
+          const sectionHead = { fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 };
           return (
-        <div style={{ width: 300, flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ width: 300, flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderLeft: "1px solid #E8EDF3", background: "#FFFFFF" }}>
           <div ref={rightPanelRef} style={{ flex: 1, overflowY: "auto" }}>
 
             {/* Patient Chart */}
             {chartData && (
-              <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#CBD5E1", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}>
+              <div style={{ padding: "12px 14px", borderBottom: "1px solid #E8EDF3" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}>
                   <span style={{ fontSize: 13 }}>&#128203;</span> Patient Chart
                 </div>
 
@@ -2037,13 +2292,13 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                 <div style={{ marginBottom: 10 }}>
                   {chartData.dob && (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, marginBottom: 4 }}>
-                      <span style={{ color: "#475569" }}>DOB</span>
-                      <span style={{ color: "#94A3B8", fontWeight: 600 }}>{chartData.dob}</span>
+                      <span style={{ color: "#7A96B0" }}>DOB</span>
+                      <span style={{ color: "#4A6380", fontWeight: 600 }}>{chartData.dob}</span>
                     </div>
                   )}
                   {chartData.allergy && (
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10 }}>
-                      <span style={{ color: "#475569" }}>Allergy</span>
+                      <span style={{ color: "#7A96B0" }}>Allergy</span>
                       <span style={{ color: chartData.allergy === "None known" ? "#34D399" : "#F59E0B", fontWeight: 600, fontSize: 10 }}>{chartData.allergy}</span>
                     </div>
                   )}
@@ -2054,7 +2309,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                   <div style={sectionHead}>Conditions</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {chartData.conditions.map((cond, i) => (
-                      <span key={i} style={{ fontSize: 9, fontWeight: 600, color: "#94A3B8", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, padding: "2px 6px" }}>{cond}</span>
+                      <span key={i} style={{ fontSize: 9, fontWeight: 600, color: "#4A6380", background: "#EEF1F5", border: "1px solid #E8EDF3", borderRadius: 4, padding: "2px 6px" }}>{cond}</span>
                     ))}
                   </div>
                 </div>
@@ -2065,8 +2320,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                   <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                     {chartData.medications.map((med, i) => (
                       <div key={i} style={{ fontSize: 10, display: "flex", justifyContent: "space-between", gap: 4 }}>
-                        <span style={{ color: "#CBD5E1", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{med.name}</span>
-                        <span style={{ color: "#64748B", fontWeight: 600, flexShrink: 0 }}>{med.dose}</span>
+                        <span style={{ color: "#1E3A5F", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{med.name}</span>
+                        <span style={{ color: "#7A96B0", fontWeight: 600, flexShrink: 0 }}>{med.dose}</span>
                       </div>
                     ))}
                   </div>
@@ -2077,8 +2332,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                   <div style={sectionHead}>Current Vitals</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                     {/* Weight */}
-                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 6, padding: "6px 8px" }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginBottom: 2 }}>Weight</div>
+                    <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "6px 8px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>Weight</div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.weight.status) }}>
                         {chartData.vitals.weight.current}
                         <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>{chartData.vitals.weight.unit}</span>
@@ -2090,24 +2345,24 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                       )}
                     </div>
                     {/* BP */}
-                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 6, padding: "6px 8px" }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginBottom: 2 }}>Blood Pressure</div>
+                    <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "6px 8px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>Blood Pressure</div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.bp.status) }}>
                         {chartData.vitals.bp.sys}/{chartData.vitals.bp.dia}
                       </div>
-                      <div style={{ fontSize: 8, color: "#475569", marginTop: 1 }}>{chartData.vitals.bp.note}</div>
+                      <div style={{ fontSize: 8, color: "#7A96B0", marginTop: 1 }}>{chartData.vitals.bp.note}</div>
                     </div>
                     {/* HR */}
-                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 6, padding: "6px 8px" }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginBottom: 2 }}>Heart Rate</div>
+                    <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "6px 8px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>Heart Rate</div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.hr.status) }}>
                         {chartData.vitals.hr.value}
                         <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>bpm</span>
                       </div>
                     </div>
                     {/* SpO2 */}
-                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 6, padding: "6px 8px" }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, color: "#475569", textTransform: "uppercase", marginBottom: 2 }}>SpO2</div>
+                    <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "6px 8px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>SpO2</div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.spo2.status) }}>
                         {chartData.vitals.spo2.value}
                         <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>%</span>
@@ -2124,9 +2379,9 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                       {chartData.labs.map((lab, i) => (
                         <div key={i} style={{ display: "flex", alignItems: "center", fontSize: 10, gap: 6 }}>
                           <span style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor(lab.status), flexShrink: 0 }} />
-                          <span style={{ color: "#94A3B8", fontWeight: 600, minWidth: 55 }}>{lab.name}</span>
-                          <span style={{ color: "#CBD5E1", fontWeight: 500, flex: 1 }}>{lab.value}</span>
-                          <span style={{ color: "#334155", fontSize: 9 }}>{lab.date}</span>
+                          <span style={{ color: "#4A6380", fontWeight: 600, minWidth: 55 }}>{lab.name}</span>
+                          <span style={{ color: "#1E3A5F", fontWeight: 500, flex: 1 }}>{lab.value}</span>
+                          <span style={{ color: "#7A96B0", fontSize: 9 }}>{lab.date}</span>
                         </div>
                       ))}
                     </div>
@@ -2137,21 +2392,21 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
             {/* FHIR Activity — newest first */}
             <div ref={fhirSectionRef} style={{ padding: "13px 16px 4px", borderBottom: "none" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>FHIR Activity</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em" }}>FHIR Activity</div>
             </div>
             <div style={{ padding: "6px 12px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
               {fhirLog.length === 0 ? (
-                <div style={{ fontSize: 12, color: "#334155", textAlign: "center", marginTop: 12, marginBottom: 12, lineHeight: 1.6 }}>Waiting for AI to<br />begin querying...</div>
+                <div style={{ fontSize: 12, color: "#7A96B0", textAlign: "center", marginTop: 12, marginBottom: 12, lineHeight: 1.6 }}>Waiting for AI to<br />begin querying...</div>
               ) : [...fhirLog].reverse().map((q, i) => {
-                const methodColor = q.method === "POST" ? "#F59E0B" : q.color === c.red ? c.red : "#34D399";
-                const methodBg = q.method === "POST" ? "rgba(245,158,11,0.18)" : q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(5,150,105,0.18)";
+                const methodColor = q.method === "POST" ? "#D97706" : q.color === c.red ? c.red : "#059669";
+                const methodBg = q.method === "POST" ? "#FFFBEB" : q.color === c.red ? "#FEF2F2" : "#ECFDF5";
                 return (
-                <div key={fhirLog.length - 1 - i} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 7, padding: "7px 9px", border: `1px solid ${q.color === c.red ? "rgba(220,38,38,0.2)" : "rgba(255,255,255,0.05)"}`, animation: i === 0 ? "slideUp 0.25s ease, fhirPulse 0.6s ease" : "slideUp 0.25s ease" }}>
+                <div key={fhirLog.length - 1 - i} style={{ background: "#F6F7F9", borderRadius: 7, padding: "7px 9px", border: `1px solid ${q.color === c.red ? "#FEE2E2" : "#E8EDF3"}`, animation: i === 0 ? "slideUp 0.25s ease, fhirPulse 0.6s ease" : "slideUp 0.25s ease" }}>
                   <div style={{ display: "flex", gap: 5, alignItems: "center", marginBottom: 3 }}>
                     <span style={{ fontSize: 8, fontWeight: 800, background: methodBg, color: methodColor, padding: "1px 4px", borderRadius: 3 }}>{q.method}</span>
-                    <span style={{ fontSize: 8, color: "#475569", fontFamily: DS.fontMono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{q.path.length > 34 ? q.path.slice(0, 34) + "…" : q.path}</span>
+                    <span style={{ fontSize: 8, color: "#4A6380", fontFamily: DS.fontMono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{q.path.length > 34 ? q.path.slice(0, 34) + "…" : q.path}</span>
                   </div>
-                  <div style={{ fontSize: 10, color: "#94A3B8" }}>→ {q.result}</div>
+                  <div style={{ fontSize: 10, color: "#7A96B0" }}>→ {q.result}</div>
                 </div>
                 );
               })}
@@ -2159,8 +2414,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
             {/* AI Assessment */}
             {(demoMode === "live" ? Object.keys(aiAssessment).length > 0 : transcript.length >= (isMarcusDemo ? 3 : 6)) && (
-              <div style={{ padding: "12px 14px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>AI Assessment</div>
+              <div style={{ padding: "12px 14px", borderTop: "1px solid #E8EDF3" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>AI Assessment</div>
                 {(demoMode === "live" ? (isEpic
                   ? Object.entries(aiAssessment).map(([key, value]) => ({
                       label: key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()),
@@ -2170,7 +2425,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                   : isMarcusDemo ? [
                   { label: "BP 158/98", value: "4-day rise", flag: true },
                   { label: "Glucose", value: "186 mg/dL", flag: false, orange: true },
-                  { label: "Lisinopril", value: aiAssessment.lisinopril || "Pending", flag: (aiAssessment.lisinopril || "").includes("Missed") },
+                  { label: "Lisinopril", value: aiAssessment.lisinopril || "Checking", flag: aiAssessment.lisinopril === "Missed, few days" },
                   { label: "Headache", value: aiAssessment.headache || "Pending", flag: aiAssessment.headache === "Confirmed" },
                 ] : [
                   { label: "Weight gain", value: aiAssessment.weightGain || "Pending", flag: aiAssessment.weightGain && aiAssessment.weightGain !== "Pending" },
@@ -2180,7 +2435,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                 ]) : isMarcusDemo ? [
                   { label: "BP 158/98", value: "4-day rise", flag: true },
                   { label: "Glucose", value: "186 mg/dL", flag: false, orange: true },
-                  { label: "Lisinopril", value: transcript.length >= 5 ? "Missed x3 days" : "Pending", flag: transcript.length >= 5 },
+                  { label: "Lisinopril", value: transcript.length >= 5 ? "Missed, few days" : "Checking", flag: transcript.length >= 5 },
                   { label: "Headache", value: transcript.length >= 3 ? "Confirmed" : "Pending", flag: transcript.length >= 3 },
                 ] : [
                   { label: "Weight gain", value: "+2.3 lbs/48hr", flag: true },
@@ -2189,8 +2444,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                   { label: "Adherence",   value: "Meds taken", flag: false },
                 ]).map((item, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 5 }}>
-                    <span style={{ color: "#475569" }}>{item.label}</span>
-                    <span style={{ fontWeight: 700, color: item.flag ? "#F87171" : (item.orange ? "#D97706" : (item.value === "Pending" ? "#64748B" : "#34D399")) }}>{item.value}</span>
+                    <span style={{ color: "#4A6380" }}>{item.label}</span>
+                    <span style={{ fontWeight: 700, color: item.flag ? "#C0392B" : (item.orange ? "#D97706" : (item.value === "Pending" ? "#7A96B0" : "#059669")) }}>{item.value}</span>
                   </div>
                 ))}
               </div>
@@ -2379,7 +2634,7 @@ function SMSPathDemo({ patient, onComplete }) {
               <div style={{ background: "linear-gradient(135deg, #0F1A2A, #1B3A6B)", padding: "24px", textAlign: "center" }}>
                 <div style={{ width: 72, height: 72, borderRadius: 18, background: "linear-gradient(135deg, #2563EB, #38BDF8)", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>V</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: "white" }}>Vardana Health</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>CHF Care Concierge · Post-Discharge Recovery</div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>AI Care Concierge · Post-Discharge Recovery</div>
                 <div style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: 10 }}>
                   {"★★★★☆".split("").map((s, i) => <span key={i} style={{ color: "#FBBF24", fontSize: 18 }}>{s}</span>)}
                   <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginLeft: 4, lineHeight: 2 }}>4.8 · 2.1K ratings</span>
@@ -3530,8 +3785,8 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
   const [view, setView] = useState("roster"); // roster | patient | voiceCall | smsPath
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showOutreachModal, setShowOutreachModal] = useState(false);
-  const [showRosterBanner, setShowRosterBanner] = useState(isScriptedDemo);
-  const [showDetailBanner, setShowDetailBanner] = useState(isScriptedDemo);
+  const [showRosterBanner, setShowRosterBanner] = useState(false);
+  const [showDetailBanner, setShowDetailBanner] = useState(false);
   const [callTranscripts, setCallTranscripts] = useState({});
   const [riskOverrides, setRiskOverrides] = useState({}); // { patientId: { score, level } }
   const [epicPatients, setEpicPatients] = useState([]);
