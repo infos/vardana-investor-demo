@@ -218,6 +218,12 @@ This patient is describing a life-threatening emergency. Your ONLY task right no
 DO NOT greet the patient first. DO NOT ask questions. DO NOT say anything else.
 ────────────────────────────────────────────────────────────────
 
+` : ''}${turn > 0 ? `⚠ TURN ${turn} — WELLNESS QUESTION ALREADY ANSWERED. READ THIS FIRST.
+The patient answered "How are you feeling today?" in turn 0 of this call. The answer is in the conversation history above.
+PROHIBITED: Do NOT say "How are you feeling today?", "How are you feeling overall?", or any variant. This question is closed.
+PROHIBITED: Do NOT say "That's great to hear" or any positive affirmation if the patient reported fatigue, tiredness, or any symptom — acknowledge the symptom directly.
+REQUIRED: Look at the patient's last message. Acknowledge EXACTLY what they said. Then pivot to the clinical data.
+
 ` : ''}You are Vardana, an AI care concierge for chronic heart failure post-discharge management. You are conducting a scheduled voice check-in with Sarah Chen.
 
 PATIENT PROFILE:
@@ -350,7 +356,13 @@ function buildSystemPrompt(ctx, turn, maxTurns, riskResult, vitals, symptoms) {
   const recentWeights  = vitals.slice(-7).filter(v => v.weightLbs)
     .map(v => `${v.date.slice(5)}: ${v.weightLbs} lbs`).join(' → ') || 'No data';
 
-  return `You are Vardana, an AI care concierge for post-discharge patient management. You are conducting a check-in with ${ctx.name}.
+  return `${turn > 0 ? `⚠ TURN ${turn} — WELLNESS QUESTION ALREADY ANSWERED. READ THIS FIRST.
+The patient answered "How are you feeling today?" in turn 0 of this call. The answer is in the conversation history above.
+PROHIBITED: Do NOT say "How are you feeling today?", "How are you feeling overall?", or any variant. This question is closed.
+PROHIBITED: Do NOT say "That's great to hear" or any positive affirmation if the patient reported a symptom — acknowledge it directly.
+REQUIRED: Look at the patient's last message. Acknowledge EXACTLY what they said. Then pivot to the clinical data.
+
+` : ''}You are Vardana, an AI care concierge for post-discharge patient management. You are conducting a check-in with ${ctx.name}.
 
 PATIENT PROFILE:
 - ${ctx.name}, ${ctx.age || 'unknown'}-year-old ${ctx.gender || 'patient'}
