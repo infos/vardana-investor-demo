@@ -1,4 +1,7 @@
 // TTS API — ElevenLabs primary, Cartesia Sonic fallback
+// Streams audio chunks as they arrive to minimize TTFB latency
+import { Readable } from 'stream';
+
 const ELEVENLABS_KEY = (process.env.ELEVENLABS_API_KEY || '').trim();
 const CARTESIA_KEY = (process.env.CARTESIA_API_KEY || '').trim();
 
@@ -12,9 +15,10 @@ const CARTESIA_VOICES = {
   Marcus: 'a0e99841-438c-4a64-b679-ae501e7d6091',
 };
 
-async function elevenlabsTTS(text, speaker) {
+// Returns a streaming Response, or throws on non-OK status
+async function fetchElevenLabs(text, speaker) {
   const voiceId = ELEVENLABS_VOICES[speaker] || ELEVENLABS_VOICES.AI;
-  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`, {
     method: 'POST',
     headers: {
       'xi-api-key': ELEVENLABS_KEY,
@@ -38,10 +42,11 @@ async function elevenlabsTTS(text, speaker) {
     try { const j = await res.json(); detail = j?.detail?.message || j?.detail || ''; } catch {}
     throw new Error(`ElevenLabs ${res.status}${detail ? ': ' + detail : ''}`);
   }
-  return Buffer.from(await res.arrayBuffer());
+  return res;
 }
 
-async function cartesiaTTS(text, speaker) {
+// Returns a streaming Response, or throws on non-OK status
+async function fetchCartesia(text, speaker) {
   const res = await fetch('https://api.cartesia.ai/tts/bytes', {
     method: 'POST',
     headers: {
@@ -73,7 +78,7 @@ async function cartesiaTTS(text, speaker) {
     try { const j = await res.json(); detail = j?.message || j?.error || ''; } catch {}
     throw new Error(`Cartesia ${res.status}${detail ? ': ' + detail : ''}`);
   }
-  return Buffer.from(await res.arrayBuffer());
+  return res;
 }
 
 export default async function handler(req, res) {
@@ -88,13 +93,13 @@ export default async function handler(req, res) {
   if (!text) return res.status(400).json({ error: 'text required' });
 
   try {
-    let audioBuf;
+    let upstreamRes = null;
     let ttsProvider = 'none';
 
-    // Primary: ElevenLabs
+    // Primary: ElevenLabs (streaming endpoint)
     if (ELEVENLABS_KEY) {
       try {
-        audioBuf = await elevenlabsTTS(text, speaker || 'AI');
+        upstreamRes = await fetchElevenLabs(text, speaker || 'AI');
         ttsProvider = 'elevenlabs';
       } catch (e) {
         console.error('ElevenLabs TTS failed, trying Cartesia:', e.message);
@@ -102,24 +107,30 @@ export default async function handler(req, res) {
     }
 
     // Fallback: Cartesia Sonic
-    if (!audioBuf && CARTESIA_KEY) {
+    if (!upstreamRes && CARTESIA_KEY) {
       try {
-        audioBuf = await cartesiaTTS(text, speaker || 'AI');
+        upstreamRes = await fetchCartesia(text, speaker || 'AI');
         ttsProvider = 'cartesia';
       } catch (e) {
         console.error('Cartesia TTS also failed:', e.message);
       }
     }
 
-    if (!audioBuf) {
+    if (!upstreamRes) {
       return res.status(503).json({ error: 'All TTS providers unavailable. Set ELEVENLABS_API_KEY or CARTESIA_API_KEY.' });
     }
 
+    // Stream chunks to client — audio playback starts on first chunk
     res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Content-Length', audioBuf.byteLength);
     res.setHeader('X-TTS-Provider', ttsProvider);
-    return res.status(200).send(audioBuf);
+    res.statusCode = 200;
+    const readable = Readable.fromWeb(upstreamRes.body);
+    readable.on('error', () => res.end());
+    readable.pipe(res);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    if (!res.headersSent) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.end();
   }
 }
