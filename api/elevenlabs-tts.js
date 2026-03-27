@@ -15,6 +15,14 @@ const CARTESIA_VOICES = {
   Marcus: 'a0e99841-438c-4a64-b679-ae501e7d6091',
 };
 
+// Normalize text for natural spoken audio — applied before all TTS calls
+function normalizeForSpeech(text) {
+  return text
+    .replace(/\b911\b/g, 'nine one one')   // prevent "nine hundred eleven"
+    .replace(/\b(\d+)\/(\d+)\s*mmHg/g, '$1 over $2 millimeters of mercury')
+    .replace(/\b(\d+)\/(\d+)\b(?!\s*mmHg)/g, (m, a, b) => /^\d{1,3}$/.test(a) && /^\d{1,3}$/.test(b) ? `${a} over ${b}` : m);
+}
+
 // Returns a streaming Response, or throws on non-OK status
 async function fetchElevenLabs(text, speaker) {
   const voiceId = ELEVENLABS_VOICES[speaker] || ELEVENLABS_VOICES.AI;
@@ -89,8 +97,9 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
-  const { text, speaker } = req.body || {};
-  if (!text) return res.status(400).json({ error: 'text required' });
+  const { text: rawText, speaker } = req.body || {};
+  if (!rawText) return res.status(400).json({ error: 'text required' });
+  const text = normalizeForSpeech(rawText);
 
   try {
     let upstreamRes = null;
