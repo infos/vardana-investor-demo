@@ -1055,7 +1055,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   const [preloadProgress, setPreloadProgress] = useState(0);
   const [preloadReady, setPreloadReady] = useState(false);
 
-  // Pre-fetch all audio segments on mount for scripted demo (sequential to avoid rate limits)
+  // Pre-fetch all audio segments on mount for scripted demo (parallel with stagger)
   useEffect(() => {
     if (!autoStartScripted || preloadedUrlsRef.current) return;
     let cancelled = false;
@@ -1068,14 +1068,22 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
           console.log("[TTS] Warm-up complete");
         } catch {} // Ignore warm-up failures
         if (cancelled || cancelRef.current) return;
-        const urls = new Array(ACTIVE_TRANSCRIPT.length);
-        for (let i = 0; i < ACTIVE_TRANSCRIPT.length; i++) {
-          if (cancelled || cancelRef.current) return;
-          urls[i] = await fetchAudio(ACTIVE_TRANSCRIPT[i].text, ACTIVE_TRANSCRIPT[i].speaker);
-          setPreloadProgress(Math.round((i + 1) / ACTIVE_TRANSCRIPT.length * 100));
-          // Small delay between requests to avoid TTS provider rate limits
-          if (i < ACTIVE_TRANSCRIPT.length - 1) await new Promise(r => setTimeout(r, 300));
-        }
+        // Fire all lines in parallel with 100ms stagger — reduces load time from ~12s to ~2-3s
+        let completed = 0;
+        const urls = await Promise.all(
+          ACTIVE_TRANSCRIPT.map((line, i) =>
+            new Promise(resolve => setTimeout(resolve, i * 100))
+              .then(() => {
+                if (cancelled || cancelRef.current) return null;
+                return fetchAudio(line.text, line.speaker);
+              })
+              .then(url => {
+                completed++;
+                setPreloadProgress(Math.round(completed / ACTIVE_TRANSCRIPT.length * 100));
+                return url;
+              })
+          )
+        );
         if (!cancelled) {
           preloadedUrlsRef.current = urls;
           setPreloadReady(true);
@@ -1115,14 +1123,22 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       return;
     }
     try {
-      // Fetch audio sequentially to avoid TTS provider rate limits
-      const urls = new Array(ACTIVE_TRANSCRIPT.length);
-      for (let i = 0; i < ACTIVE_TRANSCRIPT.length; i++) {
-        if (cancelRef.current) return;
-        urls[i] = await fetchAudio(ACTIVE_TRANSCRIPT[i].text, ACTIVE_TRANSCRIPT[i].speaker);
-        setLoadProgress(Math.round((i + 1) / ACTIVE_TRANSCRIPT.length * 100));
-        if (i < ACTIVE_TRANSCRIPT.length - 1) await new Promise(r => setTimeout(r, 300));
-      }
+      // Fetch all lines in parallel with 100ms stagger — much faster than sequential
+      let completed = 0;
+      const urls = await Promise.all(
+        ACTIVE_TRANSCRIPT.map((line, i) =>
+          new Promise(resolve => setTimeout(resolve, i * 100))
+            .then(() => {
+              if (cancelRef.current) return null;
+              return fetchAudio(line.text, line.speaker);
+            })
+            .then(url => {
+              completed++;
+              setLoadProgress(Math.round(completed / ACTIVE_TRANSCRIPT.length * 100));
+              return url;
+            })
+        )
+      );
       launchCall(() => playTTSSequence(urls));
     } catch (err) {
       setApiError(err.message || "Audio fetch failed.");
