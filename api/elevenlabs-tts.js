@@ -23,6 +23,7 @@ function normalizeForSpeech(text) {
     .replace(/\b(\d+)\/(\d+)\b(?!\s*mmHg)/g, (m, a, b) => /^\d{1,3}$/.test(a) && /^\d{1,3}$/.test(b) ? `${a} over ${b}` : m);
 }
 
+
 // Returns a streaming Response, or throws on non-OK status
 async function fetchElevenLabs(text, speaker) {
   const voiceId = ELEVENLABS_VOICES[speaker] || ELEVENLABS_VOICES.AI;
