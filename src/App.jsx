@@ -1061,18 +1061,12 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     let cancelled = false;
     (async () => {
       try {
-        // Warm up TTS provider — primes API connection and loads voice model
-        try {
-          console.log("[TTS] Warming up provider...");
-          await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: ".", speaker: "AI" }) });
-          console.log("[TTS] Warm-up complete");
-        } catch {} // Ignore warm-up failures
         if (cancelled || cancelRef.current) return;
-        // Fire all lines in parallel with 100ms stagger — reduces load time from ~12s to ~2-3s
+        // Fire all lines in parallel — first line primes the connection naturally
         let completed = 0;
         const urls = await Promise.all(
           ACTIVE_TRANSCRIPT.map((line, i) =>
-            new Promise(resolve => setTimeout(resolve, i * 100))
+            new Promise(resolve => setTimeout(resolve, i * 50))
               .then(() => {
                 if (cancelled || cancelRef.current) return null;
                 return fetchAudio(line.text, line.speaker);
