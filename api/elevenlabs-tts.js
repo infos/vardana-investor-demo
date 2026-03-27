@@ -42,7 +42,7 @@ async function fetchElevenLabs(text, speaker) {
         similarity_boost: 0.75,
         style: speaker === 'AI' ? 0.05 : 0.10,
         use_speaker_boost: true,
-        speed: speaker === 'AI' ? 0.95 : (speaker === 'Marcus' ? 0.88 : 0.85),
+        speed: speaker === 'AI' ? 0.95 : (speaker === 'Marcus' ? 0.88 : 0.78),
       },
     }),
   });
