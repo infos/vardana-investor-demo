@@ -152,12 +152,15 @@ const BASELINE_BP      = [[124,76],[126,78],[124,76],[128,80],[124,76],[126,78],
 
 function getSarahDemoVitals() {
   const today = new Date();
-  return BASELINE_WEIGHTS.map((w, i) => {
+  const baseline = BASELINE_WEIGHTS.map((w, i) => {
     const d = new Date(today);
     d.setDate(d.getDate() - (14 - i));       // day -14 .. day -1
     return { date: d.toISOString().split('T')[0], weightLbs: w,
              systolic: BASELINE_BP[i][0], diastolic: BASELINE_BP[i][1] };
   });
+  // Day 15 (today): +2.3 lb weight gain vs 48 hr ago, BP elevated to 136/86
+  baseline.push({ date: today.toISOString().split('T')[0], weightLbs: 187.7, systolic: 136, diastolic: 86 });
+  return baseline;
 }
 
 const SARAH_DEMO_LABS = {
@@ -227,7 +230,7 @@ REQUIRED: Look at the patient's last message. Acknowledge EXACTLY what they said
 ` : ''}You are Vardana, an AI care concierge for chronic heart failure post-discharge management. You are conducting a scheduled voice check-in with Sarah Chen.
 
 PATIENT PROFILE:
-- Sarah Chen, 67 F | HFrEF NYHA III | Day ${vitals.length + 1} of 90-day recovery
+- Sarah Chen, 67 F | HFrEF NYHA III | Day ${vitals.length} of 90-day recovery
 - Comorbidities (5): Hypertensive heart disease, Type 2 diabetes, CKD Stage 3a (eGFR 48), Morbid obesity
 - Meds: Carvedilol 12.5 mg BID · Lisinopril 10 mg · Furosemide 40 mg · Metformin 1000 mg BID · Spironolactone 25 mg
 - Care coordinator: Nurse Rachel Kim
@@ -334,11 +337,11 @@ If patient reports chest pain, shortness of breath, or vision changes: Respond i
 
 RESPONSE FORMAT: Phone call -- 2-4 short spoken sentences, warm and direct. Metadata LAST in <metadata> tags.
 Example: Good morning Marcus, this is the Vardana care concierge calling for your Day 22 check-in. I have pulled up your recent readings and want to talk about what I am seeing.
-<metadata>{"fhirQueries":[{"method":"GET","path":"/Patient/marcus-williams","result":"Patient loaded"}],"riskScore":${riskResult?.riskScore ?? 53},"generateAlert":false,"assessment":{"headache":"Pending","lisinopril":"Pending"},"phase":"greeting"}</metadata>
+<metadata>{"fhirQueries":[{"method":"GET","path":"/Patient/marcus-williams","result":"Patient loaded"}],"riskScore":53,"generateAlert":false,"assessment":{"headache":"Pending","lisinopril":"Pending"},"phase":"greeting"}</metadata>
 
 METADATA FIELDS:
 - fhirQueries: FHIR queries run this turn. Use marcus-williams as the subject ID.
-- riskScore: Start at ${riskResult?.riskScore ?? 53}. Increase to 68 if headache confirmed. Increase to 73 if missed medications confirmed.
+- riskScore: Start at 53. Increase to 68 if headache confirmed. Increase to 73 if missed medications confirmed. MAX 73 — never output a riskScore above 73 for this patient.
 - generateAlert: Set true when headache + BP trend + missed meds are all confirmed. This is a P2 alert.
 - assessment: Track confirmed findings. Keys: headache (Pending or Confirmed), lisinopril (Pending or Missed x3 days).
 - phase: greeting | symptoms | medications | guidance | escalation | done. CRITICAL: Only set phase to "done" on your FINAL closing message (step 7). Never set "done" while asking a question or waiting for patient input.` + buildPacingInstruction(turn, maxTurns);
@@ -683,7 +686,7 @@ export default async function handler(req, res) {
       const reply = fullText.replace(/<metadata>[\s\S]*$/, '').trim();
       let metadata = {
         fhirQueries: [],
-        riskScore: riskResult.riskScore,
+        riskScore: isMarcusContext ? 53 : riskResult.riskScore,
         generateAlert: riskResult.riskLevel === 'high' || riskResult.riskLevel === 'critical',
         assessment: isMarcusContext
           ? { headache: 'Pending', lisinopril: 'Pending' }
@@ -695,6 +698,8 @@ export default async function handler(req, res) {
       }
       metadata.fhirQueries = [...preFetchQueries, ...(metadata.fhirQueries || [])];
       if (metadata.riskScore < riskResult.riskScore) metadata.riskScore = riskResult.riskScore;
+      // Marcus scenario caps at 73 — his BP crisis is P2, not critical
+      if (isMarcusContext) metadata.riskScore = Math.min(metadata.riskScore, 73);
       if (riskResult.riskLevel === 'high' || riskResult.riskLevel === 'critical') {
         metadata.generateAlert = true;
       }

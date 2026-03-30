@@ -887,6 +887,15 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         const waitUpdate = () =>
           new Promise(r => sb.addEventListener('updateend', r, { once: true }));
 
+        const MIN_PLAY_BYTES = 12288; // ~0.4s at 128kbps — avoids cutting the first word
+        let bufferedBytes = 0;
+
+        const startPlayback = async () => {
+          if (sb.updating) await waitUpdate();
+          audio.volume = mutedRef.current ? 0 : 1;
+          audio.play().catch(() => {});
+        };
+
         const pump = async () => {
           try {
             while (true) {
@@ -894,15 +903,19 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
               if (value && value.byteLength > 0) {
                 if (sb.updating) await waitUpdate();
                 sb.appendBuffer(value);
-                if (!playStarted) {
+                bufferedBytes += value.byteLength;
+                if (!playStarted && bufferedBytes >= MIN_PLAY_BYTES) {
                   playStarted = true;
-                  if (sb.updating) await waitUpdate();
-                  audio.volume = mutedRef.current ? 0 : 1;
-                  audio.play().catch(() => {});
+                  await startPlayback();
                 }
               }
               if (streamDone) {
                 if (sb.updating) await waitUpdate();
+                if (!playStarted) {
+                  // Stream ended before threshold — start now with whatever we have
+                  playStarted = true;
+                  await startPlayback();
+                }
                 try { ms.endOfStream(); } catch {}
                 break;
               }
