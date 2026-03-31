@@ -255,15 +255,15 @@ export default function HomePage() {
             marginBottom: 24,
             color: C.s50,
           }}>
-            AI that catches chronic disease<br />
-            deterioration before<br />
-            <span style={{ color: C.teal }}>the next clinic visit.</span>
+            Chronic disease management<br />
+            that works <span style={{ color: C.teal }}>between<br />
+            clinic visits.</span>
           </h1>
           <p style={{
             fontSize: 17, lineHeight: 1.65, color: C.s400,
             marginBottom: 40, maxWidth: 460,
           }}>
-            Vardana is a voice-first AI care concierge. It reads a patient's clinical record during the call — not before it, not after it — and responds to what it finds in real time.
+            A daily check-in by phone, SMS, or chat that knows the patient's chart, their care plan, and what their devices are telling us. Catches warning signs early and keeps the care team informed.
           </p>
           <a href="mailto:hello@vardana.ai?subject=Demo Request: Vardana Health" style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -282,9 +282,8 @@ export default function HomePage() {
             borderTop: `1px solid ${C.s700}`,
           }}>
             {[
-              { value: '~47%', label: 'adults with uncontrolled hypertension or T2DM' },
-              { value: '$15K', label: 'avg readmission cost' },
-              { value: '90d',  label: 'structured recovery journey' },
+              { value: '~47%', label: 'adults with a chronic condition have poor disease control' },
+              { value: '90d',  label: 'structured care journey' },
             ].map(s => (
               <div key={s.label}>
                 <div style={{
@@ -332,12 +331,10 @@ export default function HomePage() {
               fontSize: 'clamp(28px, 3vw, 42px)', fontWeight: 400,
               letterSpacing: '-0.02em', color: C.s50, marginBottom: 16,
             }}>
-              A 90-day structured recovery journey
+              A 90-day structured care journey
             </h2>
             <p style={{ fontSize: 16, color: C.s500, maxWidth: 520, margin: '0 auto', lineHeight: 1.65 }}>
-              Most remote monitoring tools collect data and flag it for someone to review later.
-              Vardana reads a patient's latest readings during the call itself and responds
-              to what it finds, right then.
+              Vardana becomes a patient's personal companion between visits. It checks in daily, tracks care plan tasks, and keeps the care team in the loop on what is actually happening between appointments.
             </p>
           </div>
           {/* Phase cards */}
@@ -348,21 +345,21 @@ export default function HomePage() {
                 name: 'Stabilize',
                 color: C.j500,
                 borderColor: C.j600,
-                description: 'A daily phone call, no app needed. If BP readings are trending up or glucose is elevated, the care team hears about it the same day.',
+                description: 'A daily check-in, no app needed. Vardana reads the latest vitals from connected devices and the EHR, confirms medications were taken, and tells the care team what it found that day.',
               },
               {
                 phase: 'Phase 2 · Days 15–60',
                 name: 'Optimize',
                 color: C.a400,
                 borderColor: C.a500,
-                description: 'Vardana tracks HbA1c trends, glucose patterns, and medication adherence, and flags when targets are drifting before the next clinic visit.',
+                description: 'Vardana tracks how the patient is following their care plan, including medications, activity goals, and diet, and cross-references device data and lab trends to catch drift before the next visit.',
               },
               {
                 phase: 'Phase 3 · Days 61–90',
                 name: 'Maintain',
                 color: '#7A96B0',
                 borderColor: '#A8BAC8',
-                description: 'Patients leave with controlled BP, improved HbA1c, and a clear weight management plan. Vardana hands off smoothly to their primary care team.',
+                description: 'Patients finish knowing their warning signs, their routines, and what to do if something changes. Vardana hands off to their primary care team with a full picture of how the 90 days went.',
               },
             ].map(p => (
               <div key={p.name} style={{
@@ -412,10 +409,10 @@ export default function HomePage() {
             </div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: C.s50, marginBottom: 3 }}>
-                FHIR-native. Reasoning during the call.
+                FHIR-native. Connected to the full patient picture.
               </div>
               <p style={{ fontSize: 13, color: C.s500, margin: 0, lineHeight: 1.6 }}>
-                The voice agent pulls a patient's latest readings from their health record while they're on the call. It responds to what it finds, not to a snapshot from yesterday.
+                Vardana pulls from the patient's health record and connected devices on every check-in. Vital trends, lab values, medication history, and care plan tasks read during the conversation.
               </p>
             </div>
           </div>
@@ -436,26 +433,26 @@ export default function HomePage() {
               What we will measure
             </h2>
             <p style={{ fontSize: 16, color: C.s500, maxWidth: 500, margin: '0 auto', lineHeight: 1.65 }}>
-              We're running our pilot against matched controls, tracking clinical outcomes and utilization across a 90-day cardiometabolic management program.
+              We measure whether patients stay engaged, follow their care plan, and show meaningful improvement in the numbers that matter to their provider.
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
             {[
               {
-                metric: 'Preventable ED visits',
-                description: 'Primary endpoint vs matched controls',
+                metric: 'Patient engagement',
+                description: 'Check-in completion rate across all 90 days',
               },
               {
-                metric: 'Per-patient cost avoidance',
-                description: 'Estimated from avoided utilization',
+                metric: 'Care plan adherence',
+                description: 'Medications taken, tasks completed, goals followed',
               },
               {
-                metric: 'Engagement at 90 days',
-                description: 'Completion rate across all three journey phases',
+                metric: 'Clinical adoption',
+                description: 'Provider and care team utilization at 30, 60, and 90 days',
               },
               {
-                metric: 'HbA1c trajectory at 90 days',
-                description: 'Direction and magnitude vs. baseline',
+                metric: 'Health outcomes',
+                description: 'Direction of change in key clinical markers vs baseline',
               },
             ].map(m => (
               <div key={m.metric} style={{
@@ -504,11 +501,8 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 12, color: C.s500, lineHeight: 1.5 }}>
-              Reads from EHR on every call. No separate device program required.
-            </div>
             <div style={{ fontSize: 12, color: C.s700 }}>
-              HIPAA-compliant · FHIR R4
+              FHIR R4 · HIPAA-compliant
             </div>
           </div>
         </div>
@@ -524,7 +518,7 @@ export default function HomePage() {
             fontSize: 11, letterSpacing: '0.12em', color: C.tealText,
             fontWeight: 700, marginBottom: 20,
           }}>
-            REQUEST A PILOT
+            REQUEST A DEMO
           </div>
           <h2 style={{
             fontFamily: F.display,
@@ -532,21 +526,31 @@ export default function HomePage() {
             letterSpacing: '-0.02em', color: C.s50,
             marginBottom: 20, lineHeight: 1.15,
           }}>
-            See what Vardana does<br />for your cardiometabolic patients.
+            Want to see it with a<br />real patient scenario?
           </h2>
           <p style={{ fontSize: 16, color: C.s500, marginBottom: 44, lineHeight: 1.65 }}>
-            We're working with health systems and physician groups this year.
-            If you want to see it in action, reach out and we'll walk you through it.
+            We'll walk you through a live demo. Takes 20 minutes.
           </p>
-          <a href="mailto:hello@vardana.ai?subject=Demo Request: Vardana Health" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: C.teal, color: '#FFFFFF',
-            padding: '15px 36px', borderRadius: 10,
-            fontSize: 15, fontWeight: 700, textDecoration: 'none',
-            boxShadow: `0 0 40px ${C.teal}35`,
-          }}>
-            Request a Demo →
-          </a>
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <a href="mailto:hello@vardana.ai?subject=Demo Request: Vardana Health" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: C.teal, color: '#FFFFFF',
+              padding: '15px 36px', borderRadius: 10,
+              fontSize: 15, fontWeight: 700, textDecoration: 'none',
+              boxShadow: `0 0 40px ${C.teal}35`,
+            }}>
+              Request a Demo →
+            </a>
+            <a href="mailto:hello@vardana.ai" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'transparent', color: C.s50,
+              padding: '15px 36px', borderRadius: 10,
+              fontSize: 15, fontWeight: 700, textDecoration: 'none',
+              border: `1px solid ${C.s700}`,
+            }}>
+              Contact Us
+            </a>
+          </div>
         </div>
       </section>
       {/* ── FOOTER ── */}
@@ -560,7 +564,7 @@ export default function HomePage() {
           Vardana Health, Inc.
         </div>
         <div style={{ fontSize: 12, color: C.s700, textAlign: 'center' }}>
-          Pre-seed · Seattle, WA · FHIR R4 · HIPAA-compliant architecture
+          Seattle, WA · FHIR R4
         </div>
         <a href="mailto:hello@vardana.ai" style={{ fontSize: 12, color: C.s500, textDecoration: 'none' }}>
           hello@vardana.ai
