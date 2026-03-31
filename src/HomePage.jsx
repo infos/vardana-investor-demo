@@ -352,7 +352,7 @@ export default function HomePage() {
                 name: 'Optimize',
                 color: C.a400,
                 borderColor: C.a500,
-                description: 'Vardana tracks how the patient is following their care plan, including medications, activity goals, and diet, and cross-references device data and lab trends to catch drift before the next visit.',
+                description: 'Vardana tracks how the patient is following their care plan, including medications, activity goals, and diet, and surfaces early signs that something needs attention before the next visit.',
               },
               {
                 phase: 'Phase 3 · Days 61–90',
@@ -447,8 +447,8 @@ export default function HomePage() {
                 description: 'Medications taken, tasks completed, goals followed',
               },
               {
-                metric: 'Clinical adoption',
-                description: 'Provider and care team utilization at 30, 60, and 90 days',
+                metric: 'Care team capacity',
+                description: 'Patients actively managed per coordinator without adding headcount',
               },
               {
                 metric: 'Health outcomes',
