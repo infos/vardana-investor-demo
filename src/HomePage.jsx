@@ -444,22 +444,18 @@ export default function HomePage() {
               {
                 metric: 'Preventable ED visits',
                 description: 'Primary endpoint vs matched controls',
-                source: 'Pilot measure',
               },
               {
                 metric: 'Per-patient cost avoidance',
                 description: 'Estimated from avoided utilization',
-                source: 'Pilot measure',
               },
               {
                 metric: 'Engagement at 90 days',
                 description: 'Completion rate across all three journey phases',
-                source: 'Reported at day 30, 60, 90',
               },
               {
                 metric: 'HbA1c trajectory at 90 days',
                 description: 'Direction and magnitude vs. baseline',
-                source: 'Pilot measure',
               },
             ].map(m => (
               <div key={m.metric} style={{
@@ -474,17 +470,8 @@ export default function HomePage() {
                 }}>
                   {m.metric}
                 </div>
-                <div style={{ fontSize: 13, color: C.s500, marginBottom: 14, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 13, color: C.s500, lineHeight: 1.5, margin: 0 }}>
                   {m.description}
-                </div>
-                <div style={{
-                  fontSize: 11, color: C.a400, fontWeight: 600,
-                  background: `${C.a400}0f`,
-                  border: `1px solid ${C.a400}22`,
-                  borderRadius: 6, padding: '4px 10px',
-                  display: 'inline-block', lineHeight: 1.4,
-                }}>
-                  {m.source}
                 </div>
               </div>
             ))}
@@ -548,7 +535,7 @@ export default function HomePage() {
             See what Vardana does<br />for your cardiometabolic patients.
           </h2>
           <p style={{ fontSize: 16, color: C.s500, marginBottom: 44, lineHeight: 1.65 }}>
-            We're working with self-insured employers and health systems this year.
+            We're working with health systems and physician groups this year.
             If you want to see it in action, reach out and we'll walk you through it.
           </p>
           <a href="mailto:hello@vardana.ai?subject=Demo Request: Vardana Health" style={{
