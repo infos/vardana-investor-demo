@@ -2,6 +2,7 @@ import React from 'react';
 import { DT } from './demo/tokens';
 import { DemoShell, VardanaLogo, FhirFootnote } from './demo/DemoShell';
 import { useIsMobile } from './demo/useIsMobile';
+import { DEMO_BASE } from './demoPath';
 
 function DemoCard({ badge, badgeColor, title, description, bullets, bulletColor, ctaLabel, ctaBackground, ctaColor, onClick }) {
   return (
@@ -165,7 +166,7 @@ export default function DemoPage({ navigate }) {
           ctaLabel="Start Live Demo"
           ctaBackground={DT.jade.default}
           ctaColor="white"
-          onClick={() => navigate('/demo/live')}
+          onClick={() => navigate(`${DEMO_BASE}/live`)}
         />
         <DemoCard
           badge="~90 SECONDS / NO MIC"
@@ -182,7 +183,7 @@ export default function DemoPage({ navigate }) {
           ctaLabel="Watch Recorded Demo"
           ctaBackground={DT.amber.default}
           ctaColor={DT.bg.page}
-          onClick={() => navigate('/demo/recorded')}
+          onClick={() => navigate(`${DEMO_BASE}/recorded`)}
         />
       </div>
 

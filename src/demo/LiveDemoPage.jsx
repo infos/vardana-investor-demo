@@ -3,6 +3,7 @@ import { DT } from './tokens';
 import { DemoShell, BackButton, PrimaryButton, GhostButton } from './DemoShell';
 import AboutSlide from './AboutSlide';
 import ScenarioSlide from './ScenarioSlide';
+import { DEMO_BASE } from '../demoPath';
 import { useIsMobile } from './useIsMobile';
 
 export default function LiveDemoPage({ navigate }) {
@@ -34,10 +35,10 @@ export default function LiveDemoPage({ navigate }) {
 
   return (
     <DemoShell>
-      <BackButton onClick={() => step === 'about' ? navigate('/demo') : setStep('about')} />
+      <BackButton onClick={() => step === 'about' ? navigate(DEMO_BASE) : setStep('about')} />
       {step === 'about' ? (
         <AboutSlide
-          onBack={() => navigate('/demo')}
+          onBack={() => navigate(DEMO_BASE)}
           onSkip={() => navigate(`/coordinator?demo=live${patientParam}`)}
           onNext={() => setStep('scenario')}
         />

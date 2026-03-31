@@ -1,3 +1,5 @@
+import { DEMO_BASE } from '../demoPath';
+
 export default function ScriptedDemoPage({ navigate }) {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
@@ -7,7 +9,7 @@ export default function ScriptedDemoPage({ navigate }) {
       {/* Back link */}
       <div style={{ padding: '20px 24px' }}>
         <span
-          onClick={() => navigate('/demo')}
+          onClick={() => navigate(DEMO_BASE)}
           style={{ fontSize: 13, color: '#556882', textDecoration: 'none', cursor: 'pointer' }}
         >
           &larr; Back
