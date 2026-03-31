@@ -1,6 +1,7 @@
 User-agent: *
 Disallow: /demo
 Disallow: /demo/
+Disallow: /demo/gkbnbumd7k32
 Disallow: /coordinator
 Disallow: /coordinator/
 Disallow: /patient
