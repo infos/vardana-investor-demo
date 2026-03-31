@@ -9,6 +9,7 @@ import LiveDemoPage from './demo/LiveDemoPage.jsx'
 import ROICalculator from './ROICalculator.jsx'
 import AdminAnalytics from './AdminAnalytics.jsx'
 import { useAnalytics } from './useAnalytics'
+import { DEMO_BASE } from './demoPath'
 
 function navigate(path) {
   window.history.pushState({}, '', path);
@@ -29,10 +30,10 @@ function Router() {
 
   if (pathname === '/coordinator') return <App initialRole="coordinator" navigate={navigate} />;
   if (pathname === '/patient') return <App initialRole="patient" navigate={navigate} />;
-  if (pathname === '/demo/scripted') return <ScriptedDemoPage navigate={navigate} />;
-  if (pathname === '/demo/recorded') return <RecordedDemoPage navigate={navigate} />;
-  if (pathname === '/demo/live') return <LiveDemoPage navigate={navigate} />;
-  if (pathname === '/demo') return <DemoPage navigate={navigate} />;
+  if (pathname === `${DEMO_BASE}/scripted`) return <ScriptedDemoPage navigate={navigate} />;
+  if (pathname === `${DEMO_BASE}/recorded`) return <RecordedDemoPage navigate={navigate} />;
+  if (pathname === `${DEMO_BASE}/live`) return <LiveDemoPage navigate={navigate} />;
+  if (pathname === DEMO_BASE) return <DemoPage navigate={navigate} />;
   if (pathname === '/roi') return <ROICalculator />;
   if (pathname === '/admin') return <AdminAnalytics />;
   return <HomePage navigate={navigate} />;

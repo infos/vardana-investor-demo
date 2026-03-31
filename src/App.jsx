@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, ReferenceLine, Tooltip, CartesianGrid } from "recharts";
+import { DEMO_BASE } from './demoPath';
 
 // ── Data ──
 const WEIGHT_DATA = [
@@ -4421,7 +4422,7 @@ function PatientExperienceView({ onSwitchRole }) {
 
 // ── App Entry (routed via main.jsx) ──
 export default function App({ initialRole, navigate }) {
-  const goBack = () => navigate('/demo');
+  const goBack = () => navigate(DEMO_BASE);
   const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const demoParam = searchParams.get('demo');
   const patientParam = searchParams.get('patient');
@@ -4433,6 +4434,6 @@ export default function App({ initialRole, navigate }) {
   if (initialRole === "patient") return <PatientExperienceView onSwitchRole={goBack} />;
 
   // Fallback — redirect to demo page
-  navigate('/demo');
+  navigate(DEMO_BASE);
   return null;
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { DEMO_BASE } from './demoPath';
 
 export function useAnalytics() {
   const sentPaths = useRef(new Set());
@@ -37,7 +38,7 @@ export function useAnalytics() {
       const path = window.location.pathname + window.location.search;
       const ref = new URLSearchParams(window.location.search).get('ref') || null;
 
-      const tracked = ['/demo', '/coordinator', '/roi'];
+      const tracked = [DEMO_BASE, '/coordinator', '/roi'];
       const shouldTrack = tracked.some(p => window.location.pathname.startsWith(p));
       if (!shouldTrack) return;
 
