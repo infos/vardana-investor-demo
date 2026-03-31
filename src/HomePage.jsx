@@ -46,7 +46,7 @@ const F = {
 };
 // ─── Animated coordinator widget ─────────────────────────────────────────────
 function HeroWidget() {
-  const [riskScore, setRiskScore] = useState(68);
+  const [riskScore, setRiskScore] = useState(62);
   const [phase, setPhase] = useState(0);
   useEffect(() => {
     const t1 = setTimeout(() => setPhase(1), 1400);
@@ -54,7 +54,7 @@ function HeroWidget() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
   useEffect(() => {
-    const targets = [68, 72, 84];
+    const targets = [62, 67, 78];
     const target = targets[phase];
     if (riskScore === target) return;
     const step = riskScore < target ? 1 : -1;
@@ -68,10 +68,10 @@ function HeroWidget() {
   }, [phase]);
   const riskColor = riskScore >= 80 ? C.cr500 : riskScore >= 70 ? C.a400 : C.j500;
   const signals = [
-    { label: 'Weight +2.3 lbs / 48 hr',        active: phase >= 1, color: C.a400 },
-    { label: 'BP 136/86, reversed trend',       active: phase >= 1, color: C.a400 },
-    { label: 'Patient: fatigue + ankle swelling', active: phase >= 2, color: C.cr500 },
-    { label: '3-day trajectory reversal',         active: phase >= 2, color: C.cr500 },
+    { label: 'BP 148/92 — 3-day upward trend',          active: phase >= 1, color: '#f59e0b' },
+    { label: 'Missed lisinopril · 3 of last 7 days',    active: phase >= 1, color: '#f59e0b' },
+    { label: 'Patient: fatigue + increased thirst',      active: phase >= 2, color: '#ef4444' },
+    { label: 'HbA1c trajectory: +0.4 since last draw',  active: phase >= 2, color: '#ef4444' },
   ];
   return (
     <div style={{
@@ -119,8 +119,8 @@ function HeroWidget() {
         alignItems: 'center',
       }}>
         <div>
-          <div style={{ color: '#F5F7FA', fontWeight: 700, fontSize: 13, marginBottom: 2 }}>Sarah Chen · 67F</div>
-          <div style={{ color: '#7A90A8', fontSize: 11 }}>Heart Failure · Day 15 of 90 · Stabilize→Optimize</div>
+          <div style={{ color: '#F5F7FA', fontWeight: 700, fontSize: 13, marginBottom: 2 }}>Marcus Williams · 54M</div>
+          <div style={{ color: '#7A90A8', fontSize: 11 }}>HTN · T2DM · Day 22 of 90 · Optimize</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{
@@ -129,7 +129,7 @@ function HeroWidget() {
           }}>
             {riskScore}
           </div>
-          <div style={{ fontSize: 9, color: '#556882', letterSpacing: '0.06em', marginTop: 2 }}>DECOMP RISK</div>
+          <div style={{ fontSize: 9, color: '#556882', letterSpacing: '0.06em', marginTop: 2 }}>CARDIOMETABOLIC RISK</div>
         </div>
       </div>
       {/* Evidence chain */}
@@ -160,9 +160,9 @@ function HeroWidget() {
           FHIR R4 · LIVE QUERIES
         </div>
         {[
-          'GET /Observation?subject=sarah-chen&code=29463-7&_count=14',
-          'GET /Condition?subject=sarah-chen&clinical-status=active',
-          'POST /Flag (decompensation-risk · severity=high)',
+          'GET /Observation?subject=marcus&code=55284-4&_count=14',
+          'GET /MedicationRequest?subject=marcus&status=active',
+          'GET /Observation?subject=marcus&code=4548-4',
         ].map((line, i) => (
           <div key={i} style={{
             fontSize: 10, color: '#556882', marginBottom: 3,
@@ -244,7 +244,7 @@ export default function HomePage() {
             letterSpacing: '0.08em', marginBottom: 28,
           }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.teal }} />
-            CHRONIC CARE · PRE-SEED
+            CHRONIC CARE
           </div>
           <h1 style={{
             fontFamily: F.display,
@@ -255,17 +255,15 @@ export default function HomePage() {
             marginBottom: 24,
             color: C.s50,
           }}>
-            AI care concierge for<br />
-            chronic conditions.<br />
-            <span style={{ color: C.teal }}>Catches risks early.</span>
+            AI that catches chronic disease<br />
+            deterioration before<br />
+            <span style={{ color: C.teal }}>the next clinic visit.</span>
           </h1>
           <p style={{
             fontSize: 17, lineHeight: 1.65, color: C.s400,
             marginBottom: 40, maxWidth: 460,
           }}>
-            Patients with heart failure, hypertension, and diabetes face their highest risk
-            between visits. Vardana checks in daily by phone, catches warning signs early,
-            and keeps their care team in the loop.
+            Vardana is a voice-first AI care concierge. It reads a patient's clinical record during the call — not before it, not after it — and responds to what it finds in real time.
           </p>
           <a href="mailto:hello@vardana.ai?subject=Demo Request: Vardana Health" style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -284,7 +282,7 @@ export default function HomePage() {
             borderTop: `1px solid ${C.s700}`,
           }}>
             {[
-              { value: '~20%', label: '30-day chronic care readmission rate' },
+              { value: '~47%', label: 'adults with uncontrolled hypertension or T2DM' },
               { value: '$15K', label: 'avg readmission cost' },
               { value: '90d',  label: 'structured recovery journey' },
             ].map(s => (
@@ -350,21 +348,21 @@ export default function HomePage() {
                 name: 'Stabilize',
                 color: C.j500,
                 borderColor: C.j600,
-                description: 'A daily phone call, no app needed. If something looks off with weight or blood pressure, the care team hears about it the same day.',
+                description: 'A daily phone call, no app needed. If BP readings are trending up or glucose is elevated, the care team hears about it the same day.',
               },
               {
                 phase: 'Phase 2 · Days 15–60',
                 name: 'Optimize',
                 color: C.a400,
                 borderColor: C.a500,
-                description: 'As the patient settles in, Vardana tracks how they\'re responding to their medications and activity, and keeps goals in line with what their care team has planned.',
+                description: 'Vardana tracks HbA1c trends, glucose patterns, and medication adherence, and flags when targets are drifting before the next clinic visit.',
               },
               {
                 phase: 'Phase 3 · Days 61–90',
                 name: 'Maintain',
                 color: '#7A96B0',
                 borderColor: '#A8BAC8',
-                description: 'By the end, patients know their warning signs and what to do about them. Vardana helps hand care off smoothly to their primary doctor.',
+                description: 'Patients leave with controlled BP, improved HbA1c, and a clear weight management plan. Vardana hands off smoothly to their primary care team.',
               },
             ].map(p => (
               <div key={p.name} style={{
@@ -438,21 +436,20 @@ export default function HomePage() {
               What we will measure
             </h2>
             <p style={{ fontSize: 16, color: C.s500, maxWidth: 500, margin: '0 auto', lineHeight: 1.65 }}>
-              We're running our pilot against matched controls. The main thing we're
-              measuring is whether fewer patients end up back in the hospital within 30 days.
+              We're running our pilot against matched controls, tracking clinical outcomes and utilization across a 90-day cardiometabolic management program.
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
             {[
               {
-                metric: '30-day readmissions',
+                metric: 'Preventable ED visits',
                 description: 'Primary endpoint vs matched controls',
-                source: 'Pilot target',
+                source: 'Pilot measure',
               },
               {
                 metric: 'Per-patient cost avoidance',
-                description: 'Calculated from readmission delta',
-                source: 'Benchmark: ~$15K avg readmit (AHRQ)',
+                description: 'Estimated from avoided utilization',
+                source: 'Pilot measure',
               },
               {
                 metric: 'Engagement at 90 days',
@@ -460,9 +457,9 @@ export default function HomePage() {
                 source: 'Reported at day 30, 60, 90',
               },
               {
-                metric: 'Days to first detection',
-                description: 'vs symptom-triggered ER presentation',
-                source: 'Remote monitoring literature',
+                metric: 'HbA1c trajectory at 90 days',
+                description: 'Direction and magnitude vs. baseline',
+                source: 'Pilot measure',
               },
             ].map(m => (
               <div key={m.metric} style={{
@@ -520,6 +517,9 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
+            <div style={{ fontSize: 12, color: C.s500, lineHeight: 1.5 }}>
+              Reads from EHR on every call. No separate device program required.
+            </div>
             <div style={{ fontSize: 12, color: C.s700 }}>
               HIPAA-compliant · FHIR R4
             </div>
@@ -545,7 +545,7 @@ export default function HomePage() {
             letterSpacing: '-0.02em', color: C.s50,
             marginBottom: 20, lineHeight: 1.15,
           }}>
-            See what Vardana does<br />for your patients.
+            See what Vardana does<br />for your cardiometabolic patients.
           </h2>
           <p style={{ fontSize: 16, color: C.s500, marginBottom: 44, lineHeight: 1.65 }}>
             We're working with self-insured employers and health systems this year.
