@@ -1,5 +1,26 @@
 const API_KEY = process.env.ANTHROPIC_API_KEY;
 
+// ── AWS Bedrock config ─────────────────────────────────────────────────────
+// Set USE_BEDROCK=false to fall back to direct Anthropic API
+const USE_BEDROCK = process.env.USE_BEDROCK !== 'false';
+const BEDROCK_REGION = process.env.AWS_BEDROCK_REGION || 'us-east-1';
+const BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID || 'anthropic.claude-sonnet-4-6-20250514';
+
+let bedrockClient = null;
+function getBedrockClient() {
+  if (!bedrockClient) {
+    const { BedrockRuntimeClient } = require('@aws-sdk/client-bedrock-runtime');
+    bedrockClient = new BedrockRuntimeClient({
+      region: BEDROCK_REGION,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      },
+    });
+  }
+  return bedrockClient;
+}
+
 // =============================================================================
 // STEP 1 — Decompensation Risk Algorithm (ported from src/lib/clinical-skills/decompensation.ts)
 // Runs server-side before calling the LLM so the AI starts from facts, not guesses.
@@ -659,26 +680,87 @@ export default async function handler(req, res) {
 
     // ── 7. Call Claude ──────────────────────────────────────────────────────
     const useStreaming = streamRequested && !evalMode;
+    const maxTokens = chatMode ? 150 : 350;
 
-    const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: chatMode ? 150 : 350,
-        system: systemPrompt,
-        messages,
-        ...(useStreaming && { stream: true }),
-      }),
-    });
+    let apiRes;
+
+    if (USE_BEDROCK) {
+      // ── Bedrock path ────────────────────────────────────────────────────
+      const client = getBedrockClient();
+
+      if (useStreaming) {
+        const { InvokeModelWithResponseStreamCommand } = require('@aws-sdk/client-bedrock-runtime');
+        const cmd = new InvokeModelWithResponseStreamCommand({
+          modelId: BEDROCK_MODEL_ID,
+          contentType: 'application/json',
+          accept: 'application/json',
+          body: JSON.stringify({
+            anthropic_version: 'bedrock-2023-05-31',
+            max_tokens: maxTokens,
+            system: systemPrompt,
+            messages,
+          }),
+        });
+
+        let bedrockStream;
+        try {
+          bedrockStream = await client.send(cmd);
+        } catch (err) {
+          return res.status(502).json({ error: `Bedrock API error: ${err.message}` });
+        }
+
+        // Wrap Bedrock streaming response into the same SSE shape used below
+        apiRes = { __bedrock_stream: bedrockStream, ok: true };
+      } else {
+        const { InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
+        const cmd = new InvokeModelCommand({
+          modelId: BEDROCK_MODEL_ID,
+          contentType: 'application/json',
+          accept: 'application/json',
+          body: JSON.stringify({
+            anthropic_version: 'bedrock-2023-05-31',
+            max_tokens: maxTokens,
+            system: systemPrompt,
+            messages,
+          }),
+        });
+
+        let bedrockRes;
+        try {
+          bedrockRes = await client.send(cmd);
+        } catch (err) {
+          return res.status(502).json({ error: `Bedrock API error: ${err.message}` });
+        }
+
+        const body = JSON.parse(new TextDecoder().decode(bedrockRes.body));
+        // Wrap as a fake response matching the Anthropic shape
+        apiRes = {
+          ok: true,
+          __bedrock_json: body,
+        };
+      }
+    } else {
+      // ── Direct Anthropic API path ───────────────────────────────────────
+      apiRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': API_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: maxTokens,
+          system: systemPrompt,
+          messages,
+          ...(useStreaming && { stream: true }),
+        }),
+      });
+    }
 
     if (!apiRes.ok) {
-      const err = await apiRes.text();
-      return res.status(apiRes.status).json({ error: `Anthropic API ${apiRes.status}: ${err}` });
+      const err = typeof apiRes.text === 'function' ? await apiRes.text() : 'Unknown error';
+      return res.status(apiRes.status || 502).json({ error: `Claude API error: ${err}` });
     }
 
     // Helper: build metadata from full text + risk result
@@ -716,35 +798,53 @@ export default async function handler(req, res) {
 
       let fullText = '';
       let inMetadata = false;
-      const reader = apiRes.body.getReader();
-      const decoder = new TextDecoder();
-      let sseBuffer = '';
+
+      // Helper: process a text delta chunk (shared by both paths)
+      const processTextDelta = (text) => {
+        fullText += text;
+        if (!inMetadata) {
+          if (fullText.includes('<metadata>')) {
+            inMetadata = true;
+            const before = text.split('<metadata>')[0];
+            if (before) res.write(`data: ${JSON.stringify({ type: 'text', content: before })}\n\n`);
+          } else {
+            res.write(`data: ${JSON.stringify({ type: 'text', content: text })}\n\n`);
+          }
+        }
+      };
 
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          sseBuffer += decoder.decode(value, { stream: true });
+        if (apiRes.__bedrock_stream) {
+          // ── Bedrock streaming ───────────────────────────────────────────
+          const stream = apiRes.__bedrock_stream.body;
+          for await (const event of stream) {
+            if (event.chunk) {
+              const parsed = JSON.parse(new TextDecoder().decode(event.chunk.bytes));
+              if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
+                processTextDelta(parsed.delta.text);
+              }
+            }
+          }
+        } else {
+          // ── Anthropic SSE streaming ─────────────────────────────────────
+          const reader = apiRes.body.getReader();
+          const decoder = new TextDecoder();
+          let sseBuffer = '';
 
-          const lines = sseBuffer.split('\n');
-          sseBuffer = lines.pop();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            sseBuffer += decoder.decode(value, { stream: true });
 
-          for (const line of lines) {
-            if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
-            let event;
-            try { event = JSON.parse(line.slice(6)); } catch { continue; }
-            if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
-              const text = event.delta.text;
-              fullText += text;
-              // Stop forwarding once <metadata> tag starts
-              if (!inMetadata) {
-                if (fullText.includes('<metadata>')) {
-                  inMetadata = true;
-                  const before = text.split('<metadata>')[0];
-                  if (before) res.write(`data: ${JSON.stringify({ type: 'text', content: before })}\n\n`);
-                } else {
-                  res.write(`data: ${JSON.stringify({ type: 'text', content: text })}\n\n`);
-                }
+            const lines = sseBuffer.split('\n');
+            sseBuffer = lines.pop();
+
+            for (const line of lines) {
+              if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
+              let event;
+              try { event = JSON.parse(line.slice(6)); } catch { continue; }
+              if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+                processTextDelta(event.delta.text);
               }
             }
           }
@@ -760,7 +860,7 @@ export default async function handler(req, res) {
     }
 
     // ── 7c. Non-streaming path (chat mode, eval mode, legacy) ─────────────
-    const data     = await apiRes.json();
+    const data     = apiRes.__bedrock_json || await apiRes.json();
     const fullText = data.content?.[0]?.text || '';
     const { reply, metadata } = buildMetadata(fullText);
 

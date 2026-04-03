@@ -15,7 +15,7 @@ Deployed on Vercel at **vardana.ai**.
 - **Frontend:** Vite + React 18 SPA (JavaScript/JSX, not TypeScript)
 - **Routing:** Custom pushState router in `src/main.jsx` (no React Router)
 - **Backend:** Vercel serverless functions (`api/*.js`)
-- **AI:** Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) via `api/voice-chat.js`
+- **AI:** Claude via AWS Bedrock (default: `anthropic.claude-sonnet-4-6-20250514`), fallback to direct Anthropic API (`claude-haiku-4-5-20251001`) — `api/voice-chat.js`
 - **TTS:** ElevenLabs primary (`eleven_turbo_v2_5`), Cartesia Sonic fallback — routed through `api/tts.js`
 - **Charts:** Recharts (weight, BP, glucose trend lines)
 - **Analytics:** Custom `useAnalytics` hook + `api/analytics.js` + `api/track.js`
@@ -151,7 +151,12 @@ Mute toggle controls `gainRef.current.gain.value` (not `audio.muted`).
 |----------|---------|
 | `TTS_API_KEY` / `ELEVENLABS_API_KEY` | ElevenLabs TTS (primary) |
 | `CARTESIA_API_KEY` | Cartesia Sonic TTS (fallback) |
-| `ANTHROPIC_API_KEY` | Claude Haiku for live voice-chat |
+| `ANTHROPIC_API_KEY` | Claude API key (fallback when `USE_BEDROCK=false`) |
+| `AWS_ACCESS_KEY_ID` | AWS credentials for Bedrock |
+| `AWS_SECRET_ACCESS_KEY` | AWS credentials for Bedrock |
+| `USE_BEDROCK` | `true` (default) or `false` to use direct Anthropic API |
+| `AWS_BEDROCK_REGION` | Bedrock region (default: `us-east-1`) |
+| `BEDROCK_MODEL_ID` | Bedrock model (default: `anthropic.claude-sonnet-4-6-20250514`) |
 | `MARCUS_VOICE_ID` | Optional ElevenLabs voice override for Marcus |
 | `EPIC_CLIENT_ID` | Epic FHIR sandbox client ID |
 
