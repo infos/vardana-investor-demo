@@ -10,7 +10,7 @@ const ELEVENLABS_VOICES = { AI: '0fbdXLXuDBZXm2IHek4L', Sarah: 'RGb96Dcl0k5eVje8
 
 // Cartesia fallback voices
 const CARTESIA_VOICES = {
-  AI: 'f786b574-daa5-4673-aa0c-cbe3e8534c02',
+  AI: 'f9836c6e-a0bd-460e-9d3c-f7299fa60f94',
   Sarah: '6ccbfb76-1fc6-48f7-b71d-91ac6298247b',
   Marcus: 'a0e99841-438c-4a64-b679-ae501e7d6091',
 };
