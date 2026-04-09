@@ -535,34 +535,37 @@ function RosterView({ onSelect, onCallPatient, epicPatients = [], epicLoading, o
           const showPointer = isScriptedDemo && isPrimaryRow;
           return (
           <div key={p.id} style={{ position: "relative", display: "block", opacity: 1, transition: "all 0.3s ease" }}>
-          <div role="button" tabIndex={0} onClick={() => onSelect(p)} onKeyDown={(e) => { if (e.key === 'Enter') onSelect(p); }} style={{ width: "100%", background: c.card, border: `1px solid ${p.alert ? "#FECACA" : c.border}`, borderRadius: c.radius, padding: "16px 20px", cursor: "pointer", fontFamily: c.font, textAlign: "left", boxShadow: isScriptedDemo && isPrimaryRow ? "0 0 0 2px rgba(245,158,11,0.4)" : c.shadow, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 16, borderLeft: p.alert ? `4px solid ${c.red}` : `4px solid transparent`, animation: isScriptedDemo && isPrimaryRow ? "amberBorderPulse 1.5s ease-in-out infinite" : "none" }}>
+          <div role="button" tabIndex={0} onClick={() => onSelect(p)} onKeyDown={(e) => { if (e.key === 'Enter') onSelect(p); }} style={{ width: "100%", background: c.card, border: `1px solid ${p.alert ? "#FECACA" : c.border}`, borderRadius: c.radius, padding: isMobile ? "12px 14px" : "16px 20px", cursor: "pointer", fontFamily: c.font, textAlign: "left", boxShadow: isScriptedDemo && isPrimaryRow ? "0 0 0 2px rgba(245,158,11,0.4)" : c.shadow, transition: "all 0.15s", display: "flex", flexWrap: isMobile ? "wrap" : "nowrap", alignItems: "center", gap: isMobile ? 8 : 16, borderLeft: p.alert ? `4px solid ${c.red}` : `4px solid transparent`, animation: isScriptedDemo && isPrimaryRow ? "amberBorderPulse 1.5s ease-in-out infinite" : "none" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>{p.name}</span>
-                <span style={{ fontSize: 12, color: c.textLight }}>{p.age}{p.gender || ""}</span>
+                <span style={{ fontSize: isMobile ? 14 : 15, fontWeight: 700, color: c.text }}>{p.name}</span>
+                <span style={{ fontSize: isMobile ? 11 : 12, color: c.textLight }}>{p.age}{p.gender || ""}</span>
               </div>
-              {p.alert && <div style={{ fontSize: 13, color: c.red, fontWeight: 600, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={13} color={c.red} /> {p.alertType} — {p.alertTime}</div>}
+              {p.alert && <div style={{ fontSize: isMobile ? 12 : 13, color: c.red, fontWeight: 600, marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}><Icon name="alert" size={13} color={c.red} /> {p.alertType} — {p.alertTime}</div>}
               {p.scheduledOutreach && !p.alert && (
-                <div style={{ fontSize: 12, color: c.teal, fontWeight: 600, marginTop: 4 }}>
+                <div style={{ fontSize: isMobile ? 11 : 12, color: c.teal, fontWeight: 600, marginTop: 4 }}>
                   <Icon name="calendar" size={12} color={c.teal} style={{ marginRight: 4 }} /> {p.scheduledOutreach}
                 </div>
               )}
             </div>
-            <div style={{ textAlign: "center", minWidth: 80 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>Day {p.day}</div>
-              <div style={{ fontSize: 11, color: c.textLight }}>{p.phase}</div>
-            </div>
-            <div style={{ textAlign: "right", minWidth: 80 }}>
+            {!isMobile && (
+              <div style={{ textAlign: "center", minWidth: 80 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>Day {p.day}</div>
+                <div style={{ fontSize: 11, color: c.textLight }}>{p.phase}</div>
+              </div>
+            )}
+            <div style={{ textAlign: isMobile ? "left" : "right", minWidth: isMobile ? undefined : 80, ...(isMobile ? { display: "flex", alignItems: "center", gap: 8 } : {}) }}>
               <RiskBadge level={displayLevel} score={displayRisk} />
-              {ro && <div style={{ fontSize: 10, color: c.teal, fontWeight: 600, marginTop: 2 }}>Assessed during call</div>}
-              {!ro && <div style={{ marginTop: 4 }}><TrendArrow trend={p.trend} /></div>}
+              {isMobile && <span style={{ fontSize: 11, color: c.textLight }}>Day {p.day}</span>}
+              {ro && <div style={{ fontSize: 10, color: c.teal, fontWeight: 600, marginTop: isMobile ? 0 : 2 }}>Assessed during call</div>}
+              {!ro && !isMobile && <div style={{ marginTop: 4 }}><TrendArrow trend={p.trend} /></div>}
             </div>
             {isPrimaryRow && p.alert && (
-              <button onClick={(e) => { e.stopPropagation(); onCallPatient && onCallPatient(p); }} style={{ padding: "8px 16px", borderRadius: 8, background: DS.color.slate[950], color: "white", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", flexShrink: 0, animation: "amberBorderPulse 1.5s ease-in-out infinite" }}>
+              <button onClick={(e) => { e.stopPropagation(); onCallPatient && onCallPatient(p); }} style={{ padding: isMobile ? "10px 0" : "8px 16px", borderRadius: 8, background: DS.color.slate[950], color: "white", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: c.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, whiteSpace: "nowrap", flexShrink: 0, width: isMobile ? "100%" : "auto", animation: "amberBorderPulse 1.5s ease-in-out infinite" }}>
                 <Icon name="phone" size={13} color="white" /> Call Patient
               </button>
             )}
-            <span style={{ fontSize: 16, color: c.textLight }}>›</span>
+            {!isMobile && <span style={{ fontSize: 16, color: c.textLight }}>›</span>}
           </div>
           {showPointer && showPointerArrow && (
             <div style={{ position: "absolute", right: 56, top: "50%", transform: "translateY(-50%)", animation: "pointerBounce 0.6s ease infinite alternate", pointerEvents: "none", zIndex: 50 }}>
@@ -2831,6 +2834,7 @@ function SMSPathDemo({ patient, onComplete }) {
 function AIReasoningCard({ onOutreach, onBack, isScriptedDemo = false, isMarcus = false }) {
   const [expanded, setExpanded] = useState(false);
   const [showEHR, setShowEHR] = useState(false);
+  const isMobile = useIsMobile();
 
   const alertLabel = isMarcus ? "BP Crisis Risk · Action Required" : "Decompensation Risk · Action Required";
   const alertTitle = isMarcus ? "4-day BP worsening trend detected" : "Early decompensation pattern detected";
@@ -2901,7 +2905,7 @@ function AIReasoningCard({ onOutreach, onBack, isScriptedDemo = false, isMarcus 
 
       <div style={{ padding: "16px 24px", borderBottom: `1px solid ${DS.color.border.subtle}`, background: DS.color.crimson[50] }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: DS.color.slate[500], textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Evidence Chain</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10 }}>
           {evidence.map((s, i) => (
             <div key={i} style={{ padding: "10px 12px", borderRadius: DS.radius.md, background: DS.color.canvas.white, border: `1px solid ${DS.color.border.subtle}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
