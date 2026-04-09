@@ -3,6 +3,7 @@ import { DT } from './tokens';
 import { DemoShell, BackButton, VardanaLogo, FhirFootnote } from './DemoShell';
 import { useIsMobile } from './useIsMobile';
 import { DEMO_BASE } from '../demoPath';
+import VoiceCallWidget from '../components/VoiceCallWidget';
 
 const STEPS = [
   { num: 1, title: 'Enrollment SMS', subtitle: 'Patient receives program invitation' },
@@ -292,123 +293,28 @@ function Step3() {
   );
 }
 
-// ── Step 4: Voice Check-in ──
-function Step4() {
-  const [visibleLines, setVisibleLines] = useState(0);
-  const timerRef = useRef(null);
-
-  const transcript = [
-    { speaker: 'AI', text: 'Good morning, Marcus. How are you feeling today?' },
-    { speaker: 'Marcus', text: "Pretty good, but I've been getting some headaches the last couple days." },
-    { speaker: 'AI', text: "I see your blood pressure has been trending up — 138 over 84 today, up from 129 over 80 last week. Have you been taking your Lisinopril consistently?" },
-    { speaker: 'Marcus', text: "Honestly, I missed it a couple of times this week." },
-    { speaker: 'AI', text: "That's important to share. Missing doses can cause your BP to rise. I'm going to flag this for David, your coordinator." },
-  ];
-
-  const evidence = [
-    'BP trend: 129/80 → 138/84 (+9/+4 over 7 days)',
-    'Patient reports headaches — correlates with BP elevation',
-    'Medication adherence concern: missed Lisinopril doses',
-    'Risk assessment: Stage 1 HTN, worsening trajectory',
-  ];
-
-  const riskScores = [53, 53, 62, 68, 68];
-
-  useEffect(() => {
-    setVisibleLines(0);
-    let idx = 0;
-    const show = () => {
-      idx++;
-      if (idx > transcript.length) return;
-      setVisibleLines(idx);
-      timerRef.current = setTimeout(show, 2000);
-    };
-    timerRef.current = setTimeout(show, 1000);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, []);
-
+// ── Step 4: Voice Check-in (uses VoiceCallWidget) ──
+function Step4({ onAlert }) {
   return (
-    <SplitView
-      left={
-        <Card style={{ background: '#0F172A', border: 'none' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: DT.jade.default, animation: 'pulse 1.5s ease-in-out infinite' }} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>Connected</span>
-            </div>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontVariantNumeric: 'tabular-nums' }}>2:34</span>
-          </div>
-          <style>{`@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } } @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }`}</style>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {transcript.slice(0, visibleLines).map((msg, i) => (
-              <div key={i} style={{
-                display: 'flex', flexDirection: 'column',
-                alignItems: msg.speaker === 'Marcus' ? 'flex-end' : 'flex-start',
-                animation: 'fadeIn 0.4s ease-out',
-              }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginBottom: 3, textTransform: 'uppercase' }}>
-                  {msg.speaker === 'AI' ? 'Vardana AI' : msg.speaker}
-                </div>
-                <div style={{
-                  padding: '9px 13px',
-                  borderRadius: msg.speaker === 'Marcus' ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
-                  background: msg.speaker === 'Marcus' ? 'rgba(61,191,160,0.2)' : 'rgba(255,255,255,0.06)',
-                  border: `1px solid ${msg.speaker === 'Marcus' ? 'rgba(61,191,160,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                  color: 'rgba(255,255,255,0.9)', fontSize: 12, lineHeight: 1.5, maxWidth: '88%',
-                }}>
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-            {visibleLines < transcript.length && (
-              <div style={{ display: 'flex', gap: 4, paddingLeft: 4 }}>
-                {[0, 0.2, 0.4].map((d, i) => (
-                  <div key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.3)', animation: `pulse 1s ease-in-out ${d}s infinite` }} />
-                ))}
-              </div>
-            )}
-          </div>
-        </Card>
-      }
-      right={
-        <Card>
-          <div style={{ fontSize: 12, fontWeight: 700, color: DT.text.primary, marginBottom: 14 }}>Clinical Reasoning</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-            {evidence.slice(0, Math.max(0, visibleLines - 1)).map((e, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, fontSize: 11, color: DT.text.secondary, animation: 'fadeIn 0.4s ease-out' }}>
-                <span style={{ color: DT.amber.default, flexShrink: 0, marginTop: 1 }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
-                </span>
-                {e}
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: DT.bg.well, borderRadius: DT.radius.sm, marginBottom: 12 }}>
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: DT.text.muted, textTransform: 'uppercase' }}>Risk Score</div>
-              <div style={{ fontSize: 28, fontWeight: 400, color: visibleLines >= 4 ? DT.amber.default : DT.text.primary, fontFamily: DT.font.display, transition: 'all 0.5s' }}>
-                {riskScores[Math.min(visibleLines, riskScores.length - 1)]}
-              </div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ height: 6, background: DT.border.subtle, borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${riskScores[Math.min(visibleLines, riskScores.length - 1)]}%`, background: visibleLines >= 4 ? DT.amber.default : DT.jade.default, borderRadius: 3, transition: 'all 0.5s' }} />
-              </div>
-            </div>
-          </div>
-          {visibleLines >= 5 && (
-            <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
-              <Badge color={DT.amber.default}>P2 — Medication Adherence + BP Trend</Badge>
-            </div>
-          )}
-        </Card>
-      }
+    <VoiceCallWidget
+      patientId="1de9768a-2459-4586-a888-d184a70479cc"
+      sessionToken="demo"
+      mode="demo"
+      onAlert={(alertPayload) => { if (onAlert) onAlert(alertPayload); }}
     />
   );
 }
 
 // ── Step 5: Escalation ──
-function Step5() {
+function Step5({ alert: liveAlert }) {
+  const hasLiveAlert = liveAlert && liveAlert.patient_name;
+  const alertTitle = hasLiveAlert ? liveAlert.reason : 'Medication Non-Adherence + BP Trend';
+  const alertSeverity = hasLiveAlert ? liveAlert.risk_level : 'P2';
+  const alertTrigger = hasLiveAlert ? liveAlert.reason : 'Missed Lisinopril doses, BP 138/84 trending up from 129/80';
+  const alertRisk = hasLiveAlert ? '84 (High)' : '68 (Medium-High)';
+  const alertColor = hasLiveAlert ? DT.crimson : DT.amber.default;
+  const alertBgColor = hasLiveAlert ? DT.crimsonBg : undefined;
+
   return (
     <SplitView
       left={
@@ -422,7 +328,9 @@ function Step5() {
           <div style={{ background: DT.bg.well, borderRadius: DT.radius.sm, padding: '14px 16px', marginBottom: 12 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: DT.text.primary, marginBottom: 6 }}>Summary</div>
             <p style={{ fontSize: 12, color: DT.text.secondary, lineHeight: 1.6, margin: 0 }}>
-              We discussed your blood pressure and medication. Your coordinator David will follow up with you about your Lisinopril schedule.
+              {hasLiveAlert
+                ? 'Marcus reported chest pain during check-in. Care coordinator David Park has been notified immediately. If pain returns, call 911.'
+                : 'We discussed your blood pressure and medication. Your coordinator David will follow up with you about your Lisinopril schedule.'}
             </p>
           </div>
           <div style={{ fontSize: 12, color: DT.text.muted, marginBottom: 8 }}>
@@ -432,17 +340,17 @@ function Step5() {
         </Card>
       }
       right={
-        <Card style={{ borderLeft: `4px solid ${DT.amber.default}` }}>
+        <Card style={{ borderLeft: `4px solid ${alertColor}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <Badge color={DT.amber.default}>P2 Alert</Badge>
+            <Badge color={alertColor}>{alertSeverity} Alert</Badge>
             <span style={{ fontSize: 11, color: DT.text.muted }}>Sent to David Park, RN at 9:47 AM</span>
           </div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: DT.text.primary, marginBottom: 8, fontFamily: DT.font.display }}>Medication Non-Adherence + BP Trend</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: DT.text.primary, marginBottom: 8, fontFamily: DT.font.display }}>{alertTitle}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
             {[
               ['Patient', 'Marcus Williams'],
-              ['Trigger', 'Missed Lisinopril doses, BP 138/84 trending up from 129/80'],
-              ['Risk', '68 (Medium-High)'],
+              ['Trigger', alertTrigger],
+              ['Risk', alertRisk],
             ].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', gap: 8, fontSize: 12 }}>
                 <span style={{ color: DT.text.muted, minWidth: 55, fontWeight: 600 }}>{k}</span>
@@ -452,13 +360,12 @@ function Step5() {
           </div>
           <div style={{ fontSize: 11, fontWeight: 700, color: DT.text.muted, textTransform: 'uppercase', marginBottom: 8 }}>Recommended Actions</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {[
-              'Coordinator callback within 4 hours',
-              'Consider medication timing adjustment',
-              'Increase BP monitoring frequency',
-            ].map((a, i) => (
+            {(hasLiveAlert
+              ? ['Immediate coordinator callback', 'Rule out cardiac event — consider ER referral', 'Increase monitoring frequency']
+              : ['Coordinator callback within 4 hours', 'Consider medication timing adjustment', 'Increase BP monitoring frequency']
+            ).map((a, i) => (
               <div key={i} style={{ display: 'flex', gap: 6, fontSize: 11, color: DT.text.secondary, alignItems: 'center' }}>
-                <span style={{ width: 4, height: 4, borderRadius: '50%', background: DT.amber.default, flexShrink: 0 }} />
+                <span style={{ width: 4, height: 4, borderRadius: '50%', background: alertColor, flexShrink: 0 }} />
                 {a}
               </div>
             ))}
@@ -516,6 +423,7 @@ const STEP_COMPONENTS = [Step1, Step2, Step3, Step4, Step5, Step6];
 export default function ClinicalDemoPage({ navigate }) {
   const [step, setStep] = useState(0);
   const [fadeKey, setFadeKey] = useState(0);
+  const [coordinatorAlert, setCoordinatorAlert] = useState(null);
 
   const goTo = (s) => {
     if (s >= 0 && s < STEPS.length) {
@@ -562,7 +470,13 @@ export default function ClinicalDemoPage({ navigate }) {
 
       {/* Step content */}
       <div key={fadeKey} style={{ animation: 'stepFade 0.3s ease-out', marginBottom: 32 }}>
-        <StepContent />
+        {step === 3 ? (
+          <StepContent onAlert={(a) => setCoordinatorAlert(a)} />
+        ) : step === 4 ? (
+          <StepContent alert={coordinatorAlert} />
+        ) : (
+          <StepContent />
+        )}
       </div>
 
       {/* Navigation */}

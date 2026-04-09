@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DT } from './demo/tokens';
+import VoiceCallWidget from './components/VoiceCallWidget';
 
 const MOCK_DATA = {
   firstName: 'Marcus',
@@ -18,13 +19,6 @@ const MOCK_DATA = {
   ],
 };
 
-const MOCK_TRANSCRIPT = [
-  { speaker: 'AI', text: 'Good morning, Marcus. This is your Vardana Care Concierge. How are you feeling today?' },
-  { speaker: 'Marcus', text: 'Pretty good, but I\'ve been getting some headaches the last couple days.' },
-  { speaker: 'AI', text: 'I see your blood pressure has been trending up — 138 over 84 today. Have you been taking your Lisinopril consistently?' },
-  { speaker: 'Marcus', text: 'Honestly, I missed it a couple of times this week.' },
-  { speaker: 'AI', text: 'That\'s important to share. I\'m going to flag this for David, your coordinator. He\'ll reach out today.' },
-];
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -152,12 +146,7 @@ export default function CheckinPage({ navigate }) {
   const [state, setState] = useState('idle'); // idle | connecting | active | complete
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [connectProgress, setConnectProgress] = useState(0);
-  const [elapsed, setElapsed] = useState(0);
-  const [transcript, setTranscript] = useState([]);
   const [showScheduler, setShowScheduler] = useState(false);
-  const timerRef = useRef(null);
-  const transcriptRef = useRef(null);
   const isDemo = new URLSearchParams(window.location.search).get('token') === 'demo';
 
   // Load patient data
@@ -178,72 +167,9 @@ export default function CheckinPage({ navigate }) {
       .catch(() => { setData(MOCK_DATA); setLoading(false); });
   }, []);
 
-  // Connection animation
-  useEffect(() => {
-    if (state !== 'connecting') return;
-    const start = Date.now();
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - start;
-      const progress = Math.min(elapsed / 3000, 1);
-      setConnectProgress(progress);
-      if (progress >= 1) {
-        clearInterval(interval);
-        setState('active');
-        setTranscript([]);
-      }
-    }, 50);
-    return () => clearInterval(interval);
-  }, [state]);
-
-  // Demo transcript streaming
-  useEffect(() => {
-    if (state !== 'active' || !isDemo) return;
-    let idx = 0;
-    const addNext = () => {
-      if (idx >= MOCK_TRANSCRIPT.length) {
-        setTimeout(() => setState('complete'), 2000);
-        return;
-      }
-      setTranscript(prev => [...prev, MOCK_TRANSCRIPT[idx]]);
-      idx++;
-      timerRef.current = setTimeout(addNext, 2500);
-    };
-    timerRef.current = setTimeout(addNext, 1000);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [state, isDemo]);
-
-  // Elapsed timer
-  useEffect(() => {
-    if (state !== 'active') return;
-    const start = Date.now();
-    const interval = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
-    return () => clearInterval(interval);
-  }, [state]);
-
-  // Auto-scroll transcript
-  useEffect(() => {
-    if (transcriptRef.current) {
-      transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
-    }
-  }, [transcript]);
-
   const startCall = () => {
     setState('connecting');
-    if (!isDemo) {
-      const token = new URLSearchParams(window.location.search).get('token');
-      fetch('https://3.89.228.45:8765/session/start', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      }).catch(() => {});
-    }
   };
-
-  const endCall = () => {
-    setState('complete');
-    if (timerRef.current) clearTimeout(timerRef.current);
-  };
-
-  const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   if (loading) {
     return (
@@ -365,73 +291,15 @@ export default function CheckinPage({ navigate }) {
           </div>
         )}
 
-        {/* STATE: Connecting */}
-        {state === 'connecting' && (
-          <div style={{ background: DT.bg.card, border: `1px solid ${DT.border.subtle}`, borderRadius: DT.radius.lg, padding: '24px 20px', textAlign: 'center', animation: 'fadeUp 0.3s ease-out' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: DT.text.primary, marginBottom: 16 }}>Connecting your call...</div>
-            <div style={{ position: 'relative', height: 6, background: DT.bg.well, borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${connectProgress * 100}%`, background: `linear-gradient(90deg, ${DT.accent}, ${DT.jade.default})`, borderRadius: 3, transition: 'width 0.1s linear' }} />
-            </div>
-            <div style={{ fontSize: 12, color: DT.text.muted }}>Setting up secure connection</div>
-          </div>
-        )}
-
-        {/* STATE: Active */}
-        {state === 'active' && (
-          <div style={{ background: DT.bg.card, border: `1px solid ${DT.border.subtle}`, borderRadius: DT.radius.lg, overflow: 'hidden', animation: 'fadeUp 0.3s ease-out' }}>
-            {/* Call header */}
-            <div style={{ padding: '16px 20px', borderBottom: `1px solid ${DT.border.subtle}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: DT.jade.default, animation: 'pulse 1.5s ease-in-out infinite' }} />
-                <span style={{ fontSize: 14, fontWeight: 700, color: DT.text.primary }}>Call in progress</span>
-              </div>
-              <span style={{ fontSize: 14, fontWeight: 600, color: DT.text.muted, fontVariantNumeric: 'tabular-nums' }}>{formatTime(elapsed)}</span>
-            </div>
-
-            {/* Transcript */}
-            <div ref={transcriptRef} style={{ padding: '16px 20px', maxHeight: 280, overflowY: 'auto' }}>
-              {transcript.map((msg, i) => (
-                <div key={i} style={{
-                  marginBottom: 12,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: msg.speaker === 'Marcus' ? 'flex-end' : 'flex-start',
-                  animation: 'fadeUp 0.3s ease-out',
-                }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: DT.text.muted, marginBottom: 4, textTransform: 'uppercase' }}>{msg.speaker === 'AI' ? 'Vardana AI' : msg.speaker}</div>
-                  <div style={{
-                    padding: '10px 14px',
-                    borderRadius: msg.speaker === 'Marcus' ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
-                    background: msg.speaker === 'Marcus' ? `${DT.accent}15` : DT.bg.well,
-                    border: `1px solid ${msg.speaker === 'Marcus' ? `${DT.accent}30` : DT.border.subtle}`,
-                    fontSize: 13, color: DT.text.primary, lineHeight: 1.5, maxWidth: '85%',
-                  }}>
-                    {msg.text}
-                  </div>
-                </div>
-              ))}
-              {transcript.length > 0 && transcript.length < MOCK_TRANSCRIPT.length && state === 'active' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 0' }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: DT.text.muted, animation: 'pulse 1s ease-in-out infinite' }} />
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: DT.text.muted, animation: 'pulse 1s ease-in-out 0.2s infinite' }} />
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: DT.text.muted, animation: 'pulse 1s ease-in-out 0.4s infinite' }} />
-                </div>
-              )}
-            </div>
-
-            {/* End call */}
-            <div style={{ padding: '12px 20px', borderTop: `1px solid ${DT.border.subtle}` }}>
-              <button
-                onClick={endCall}
-                style={{
-                  width: '100%', padding: '12px', borderRadius: DT.radius.md,
-                  background: DT.crimson, color: 'white', border: 'none',
-                  fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: DT.font.body,
-                }}
-              >
-                End call
-              </button>
-            </div>
+        {/* STATE: Connecting + Active (VoiceCallWidget) */}
+        {(state === 'connecting' || state === 'active') && (
+          <div style={{ animation: 'fadeUp 0.3s ease-out' }}>
+            <VoiceCallWidget
+              patientId={isDemo ? '1de9768a-2459-4586-a888-d184a70479cc' : new URLSearchParams(window.location.search).get('patient_id') || ''}
+              sessionToken={new URLSearchParams(window.location.search).get('token') || 'demo'}
+              mode="patient"
+              onComplete={() => setState('complete')}
+            />
           </div>
         )}
 
