@@ -296,14 +296,14 @@ const MARCUS_CLINICAL_DATA = {
 };
 
 const MARCUS_VOICE_TRANSCRIPT = [
-  { t: 1200, speaker: "AI", text: "Good morning, Marcus. This is your Vardana Care Concierge calling for your daily check-in. You are on Day 22 of your 90-day program. Before we start, I want to let you know I am pulling up your recent readings." },
-  { t: 7000, speaker: "AI", text: "I can see your blood pressure this morning was 158 over 98. That is higher than where you were last week, when you were at 129 over 80. How are you feeling today?" },
-  { t: 12000, speaker: "Marcus", text: "Honestly, I have had a bit of a headache since I woke up. Nothing terrible, but it is there." },
-  { t: 16000, speaker: "AI", text: "Thank you for telling me that. A headache combined with a rising blood pressure trend over the last few days is something I want to make sure your care team knows about. Can I ask, have you been taking your blood pressure medications consistently this week?" },
-  { t: 23000, speaker: "Marcus", text: "Actually, no. I ran out of Lisinopril a few days ago and I kept forgetting to call the pharmacy. I have been taking the other one though." },
-  { t: 28500, speaker: "AI", text: "I appreciate you being honest with me. Missing Lisinopril for a few days, combined with the BP trend and the headache, means your care team should follow up with you today. I am sending a priority alert to Nurse David Park right now. He will reach out to help get your medication sorted and check in on how you are feeling. Are you having any chest pain, shortness of breath, or vision changes?" },
-  { t: 37000, speaker: "Marcus", text: "No, nothing like that. Just the headache." },
-  { t: 39500, speaker: "AI", text: "Good. Please take it easy this morning, avoid salty foods, and stay hydrated. David will be in touch today. If the headache gets worse or you develop any chest pain or vision changes before he calls, please call 911 or go to the emergency room. You are doing the right thing by staying on top of this." },
+  { t: 1200, speaker: "AI", text: "Good morning, Marcus. This is your Vardana Care Concierge calling for your Day 22 check-in. How are you feeling today?" },
+  { t: 5500, speaker: "Marcus", text: "I have had a bit of a headache since I woke up. Nothing terrible, but it is there." },
+  { t: 9000, speaker: "AI", text: "I am sorry to hear that. I am looking at your readings, and your blood pressure this morning was 158 over 98. That is noticeably higher than where you were last week at 129 over 80. A headache with that kind of blood pressure trend is something we need to pay attention to. Have you been taking your Lisinopril consistently?" },
+  { t: 18000, speaker: "Marcus", text: "Actually, no. I ran out a few days ago and I kept forgetting to call the pharmacy. I have been taking the Amlodipine though." },
+  { t: 23000, speaker: "AI", text: "I appreciate you telling me that. Missing Lisinopril for a few days is very likely why your blood pressure has gone up, and that could be causing your headache too. I am sending a priority alert to your care coordinator David Park right now so he can help get your medication sorted today." },
+  { t: 31000, speaker: "Marcus", text: "Okay. Is it serious?" },
+  { t: 33000, speaker: "AI", text: "Your blood pressure is elevated but you are not in immediate danger. David will call you today to arrange a refill and talk about whether a different dosing schedule might work better for you. In the meantime, please take it easy, stay hydrated, and avoid salty foods. If the headache gets worse or you develop any chest pain or vision changes, call 911 right away." },
+  { t: 42000, speaker: "Marcus", text: "Got it. Thanks for checking in." },
 ];
 
 const MARCUS_FHIR_QUERIES = [
@@ -2811,9 +2811,47 @@ function SMSPathDemo({ patient, onComplete }) {
 }
 
 // ── AI Reasoning Card ──
-function AIReasoningCard({ onOutreach, onBack, isScriptedDemo = false }) {
+function AIReasoningCard({ onOutreach, onBack, isScriptedDemo = false, isMarcus = false }) {
   const [expanded, setExpanded] = useState(false);
   const [showEHR, setShowEHR] = useState(false);
+
+  const alertLabel = isMarcus ? "BP Crisis Risk · Action Required" : "Decompensation Risk · Action Required";
+  const alertTitle = isMarcus ? "4-day BP worsening trend detected" : "Early decompensation pattern detected";
+  const riskScore = isMarcus ? 53 : 72;
+  const summary = isMarcus
+    ? <>Marcus's blood pressure has worsened from <span style={{ fontFamily: DS.fontMono }}>129/80</span> to <span style={{ fontFamily: DS.fontMono }}>158/98</span> over 4 days. Fasting glucose elevated at <span style={{ fontFamily: DS.fontMono }}>186 mg/dL</span>. Patient reported headache this morning. Lisinopril non-adherence suspected — patient ran out of medication several days ago.</>
+    : <>Sarah's weight increased <strong style={{ color: c.text, fontFamily: DS.fontMono }}>2.3 lbs</strong> over 48 hours (<span style={{ fontFamily: DS.fontMono }}>185.4 → 187.7</span> lbs), coinciding with the end of the Stabilize phase (Day 14). Blood pressure has reversed from a best of <span style={{ fontFamily: DS.fontMono }}>126/78</span> to <span style={{ fontFamily: DS.fontMono }}>136/86</span>. Patient self-reported increased fatigue yesterday and ankle edema this morning via the AI concierge.</>;
+  const evidence = isMarcus ? [
+    { iconName: "stethoscope", label: "Blood Pressure", value: "158/98 mmHg", status: "critical", detail: "4-day worsening from 129/80" },
+    { iconName: "trend_up", label: "Glucose", value: "186 mg/dL", status: "warning", detail: "Fasting, elevated above target" },
+    { iconName: "chat", label: "Patient Report", value: "Headache", status: "warning", detail: "Onset this morning, persistent" },
+    { iconName: "pill", label: "Adherence", value: "Lisinopril missed", status: "critical", detail: "Ran out, pharmacy not called" },
+  ] : [
+    { iconName: "scale", label: "Weight", value: "+2.3 lbs / 48hr", status: "critical", detail: "Exceeded 2 lb/48hr threshold" },
+    { iconName: "stethoscope", label: "Blood Pressure", value: "136/86 mmHg", status: "warning", detail: "Reversed from 126/78 best" },
+    { iconName: "chat", label: "Patient Report", value: "Fatigue + edema", status: "critical", detail: "Ankle swelling confirmed today" },
+    { iconName: "trend_up", label: "Trajectory", value: "3-day reversal", status: "warning", detail: "Trend inflection after 12-day decline" },
+  ];
+  const contextNote = isMarcus
+    ? <>Patient is at <span style={{ fontFamily: DS.fontDisplay }}>Day 22</span> — in <strong style={{ color: c.text }}>Stabilize → Optimize</strong> phase. BP crisis in HTN + T2DM patients with medication non-adherence requires <strong style={{ color: c.text }}>urgent coordinator follow-up</strong> to prevent end-organ damage.</>
+    : <>Patient is at <span style={{ fontFamily: DS.fontDisplay }}>Day 15</span> — transitioning from <strong style={{ color: c.text }}>Stabilize → Optimize</strong> phase. Weight reversal at phase transition is a recognized pattern in CHF post-discharge populations, often associated with <strong style={{ color: c.text }}>suboptimal diuretic titration</strong> during care transitions.</>;
+  const actions = isMarcus ? [
+    { priority: "1", action: "Contact patient within 4 hours", detail: "Assess headache severity, confirm missed Lisinopril doses. Patient expects outreach — AI concierge informed him this morning.", tag: "Coordinator" },
+    { priority: "2", action: "Arrange Lisinopril refill and discuss timing", detail: "20mg daily — consider PM dosing if morning adherence is poor. Verify pharmacy on file.", tag: "Clinical" },
+    { priority: "3", action: "Increase BP monitoring to twice daily for 7 days", detail: "If BP does not return below 140/90 within 72 hours, escalate to PCP for medication adjustment.", tag: "Follow-up" },
+  ] : [
+    { priority: "1", action: "Contact patient within 4 hours", detail: "Assess edema severity, dyspnea at rest, medication adherence. Patient expects outreach — AI concierge informed her this morning.", tag: "Coordinator" },
+    { priority: "2", action: "Discuss Furosemide dose increase with cardiology", detail: "40mg → 60mg. CKD Stage 3a (eGFR 48) — monitor creatinine if dose changed.", tag: "Clinical" },
+    { priority: "3", action: "Schedule weight check follow-up at 48 hours", detail: "If weight does not decrease by ≥1 lb post-adjustment, escalate to cardiology appointment.", tag: "Follow-up" },
+  ];
+  const patientName = isMarcus ? "Marcus" : "Sarah";
+  const checkinHistory = isMarcus ? [
+    { time: "Yesterday 7:30 AM", who: "AI → Patient", text: "Routine check-in. BP 154/96, trending up. Patient confirmed taking Amlodipine but ran out of Lisinopril." },
+    { time: "Today 7:30 AM", who: "AI → Patient", text: "BP 158/98, 4-day worsening trend. Patient reported headache. Missed Lisinopril for several days. AI escalated to care coordinator David Park." },
+  ] : [
+    { time: "Yesterday 8:00 AM", who: "AI → Patient", text: "Asked about weight increase (+1.1 lbs). Patient reported feeling 'a little more tired than usual.' AI advised low-sodium diet, confirmed Furosemide adherence." },
+    { time: "Today 7:45 AM", who: "AI → Patient", text: "Flagged 2.3 lb/48hr weight gain. Patient confirmed ankle swelling. AI informed patient that care coordinator would reach out. Advised continued medication adherence and sodium restriction." },
+  ];
 
   return (
     <div style={{ background: c.card, borderRadius: DS.radius.lg, boxShadow: DS.shadow.alert, borderLeft: `4px solid ${DS.color.crimson[600]}`, overflow: "hidden" }}>
@@ -2825,13 +2863,13 @@ function AIReasoningCard({ onOutreach, onBack, isScriptedDemo = false }) {
               <Icon name="alert" size={22} color={DS.color.crimson[600]} />
             </div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: DS.color.crimson[600], textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Decompensation Risk · Action Required</div>
-              <div style={{ fontSize: 18, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay, lineHeight: 1.3 }}>Early decompensation pattern detected</div>
-              <div style={{ fontSize: 13, color: c.textLight, marginTop: 4 }}>Generated 38 min ago · Confidence: High</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: DS.color.crimson[600], textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{alertLabel}</div>
+              <div style={{ fontSize: 18, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay, lineHeight: 1.3 }}>{alertTitle}</div>
+              <div style={{ fontSize: 13, color: c.textLight, marginTop: 4 }}>Generated {isMarcus ? "12" : "38"} min ago · Confidence: High</div>
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-            <span style={{ fontSize: 28, fontWeight: 400, color: DS.color.crimson[600], fontFamily: DS.fontDisplay, lineHeight: 1 }}>72</span>
+            <span style={{ fontSize: 28, fontWeight: 400, color: DS.color.crimson[600], fontFamily: DS.fontDisplay, lineHeight: 1 }}>{riskScore}</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: DS.color.crimson[600] }}>/ 100</span>
             <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: DS.radius.sm, background: DS.color.crimson[50], color: DS.color.crimson[600], border: `1px solid ${DS.color.crimson[100]}` }}>P2 — Urgent</span>
           </div>
@@ -2840,19 +2878,14 @@ function AIReasoningCard({ onOutreach, onBack, isScriptedDemo = false }) {
 
       <div style={{ padding: "18px 24px", borderBottom: `1px solid ${DS.color.border.subtle}` }}>
         <div style={{ fontSize: 14, color: c.textMed, lineHeight: 1.65 }}>
-          Sarah's weight increased <strong style={{ color: c.text, fontFamily: DS.fontMono }}>2.3 lbs</strong> over 48 hours (<span style={{ fontFamily: DS.fontMono }}>185.4 → 187.7</span> lbs), coinciding with the end of the Stabilize phase (Day 14). Blood pressure has reversed from a best of <span style={{ fontFamily: DS.fontMono }}>126/78</span> to <span style={{ fontFamily: DS.fontMono }}>136/86</span>. Patient self-reported increased fatigue yesterday and ankle edema this morning via the AI concierge.
+          {summary}
         </div>
       </div>
 
       <div style={{ padding: "16px 24px", borderBottom: `1px solid ${DS.color.border.subtle}`, background: DS.color.crimson[50] }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: DS.color.slate[500], textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Evidence Chain</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {[
-            { iconName: "scale", label: "Weight", value: "+2.3 lbs / 48hr", status: "critical", detail: "Exceeded 2 lb/48hr threshold" },
-            { iconName: "stethoscope", label: "Blood Pressure", value: "136/86 mmHg", status: "warning", detail: "Reversed from 126/78 best" },
-            { iconName: "chat", label: "Patient Report", value: "Fatigue + edema", status: "critical", detail: "Ankle swelling confirmed today" },
-            { iconName: "trend_up", label: "Trajectory", value: "3-day reversal", status: "warning", detail: "Trend inflection after 12-day decline" },
-          ].map((s, i) => (
+          {evidence.map((s, i) => (
             <div key={i} style={{ padding: "10px 12px", borderRadius: DS.radius.md, background: DS.color.canvas.white, border: `1px solid ${DS.color.border.subtle}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <Icon name={s.iconName} size={14} color={s.status === "critical" ? DS.color.crimson[600] : DS.color.amber[500]} />
@@ -2867,18 +2900,14 @@ function AIReasoningCard({ onOutreach, onBack, isScriptedDemo = false }) {
 
       <div style={{ padding: "14px 24px", borderBottom: `1px solid ${DS.color.border.subtle}`, background: DS.color.slate[50] }}>
         <div style={{ fontSize: 13, color: DS.color.slate[500], lineHeight: 1.6 }}>
-          Patient is at <span style={{ fontFamily: DS.fontDisplay }}>Day 15</span> — transitioning from <strong style={{ color: c.text }}>Stabilize → Optimize</strong> phase. Weight reversal at phase transition is a recognized pattern in CHF post-discharge populations, often associated with <strong style={{ color: c.text }}>suboptimal diuretic titration</strong> during care transitions.
+          {contextNote}
         </div>
       </div>
 
       <div style={{ padding: "16px 24px", borderBottom: `1px solid ${DS.color.border.subtle}` }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: DS.color.slate[500], textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Recommended Actions</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {[
-            { priority: "1", action: "Contact patient within 4 hours", detail: "Assess edema severity, dyspnea at rest, medication adherence. Patient expects outreach — AI concierge informed her this morning.", tag: "Coordinator" },
-            { priority: "2", action: "Discuss Furosemide dose increase with cardiology", detail: "40mg → 60mg. CKD Stage 3a (eGFR 48) — monitor creatinine if dose changed.", tag: "Clinical" },
-            { priority: "3", action: "Schedule weight check follow-up at 48 hours", detail: "If weight does not decrease by ≥1 lb post-adjustment, escalate to cardiology appointment.", tag: "Follow-up" },
-          ].map((r, i) => (
+          {actions.map((r, i) => (
             <div key={i} style={{ display: "flex", gap: 12, padding: "12px 14px", background: c.card, borderRadius: 10, border: `1px solid ${c.border}` }}>
               <div style={{ width: 28, height: 28, borderRadius: DS.radius.sm, flexShrink: 0, background: DS.color.slate[900], color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, fontFamily: DS.fontDisplay }}>{r.priority}</div>
               <div style={{ flex: 1 }}>
@@ -2898,7 +2927,7 @@ function AIReasoningCard({ onOutreach, onBack, isScriptedDemo = false }) {
         <button onClick={() => setExpanded(!expanded)} style={{ width: "100%", padding: "14px 20px", border: "none", background: "none", cursor: "pointer", fontFamily: c.font, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: expanded ? `1px solid ${c.border}` : "none" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Icon name="chat" size={14} color={c.textMed} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: c.textMed }}>What Sarah told Vardana today →</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: c.textMed }}>What {patientName} told Vardana today →</span>
           </div>
           <span style={{ fontSize: 14, color: c.textLight, transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "rotate(0)" }}>⌄</span>
         </button>
@@ -2906,10 +2935,7 @@ function AIReasoningCard({ onOutreach, onBack, isScriptedDemo = false }) {
         {expanded && (
           <div style={{ padding: "12px 20px 16px" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {[
-                { time: "Yesterday 8:00 AM", who: "AI → Patient", text: "Asked about weight increase (+1.1 lbs). Patient reported feeling 'a little more tired than usual.' AI advised low-sodium diet, confirmed Furosemide adherence." },
-                { time: "Today 7:45 AM", who: "AI → Patient", text: "Flagged 2.3 lb/48hr weight gain. Patient confirmed ankle swelling. AI informed patient that care coordinator would reach out. Advised continued medication adherence and sodium restriction." },
-              ].map((ex, i) => (
+              {checkinHistory.map((ex, i) => (
                 <div key={i} style={{ padding: "10px 14px", background: c.borderLight, borderRadius: 8, borderLeft: `3px solid ${c.accent}` }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: c.accent }}>{ex.who}</span>
@@ -3724,7 +3750,7 @@ function PatientDetail({ patient, onBack, onOutreach, callData, guidanceBanner, 
   const [showContactPointer, setShowContactPointer] = useState(false);
   if (patient.isEpic) return <EpicPatientDetail patient={patient} onOutreach={onOutreach} callData={callData} />;
 
-  const isSarahChen = patient.id === 1;
+  const isPrimaryPatient = patient.id === 1 || patient.id === 101;
 
   // Scripted demo: show pointer at 5s, auto-trigger Contact Patient at 7s
   useEffect(() => {
@@ -3761,9 +3787,9 @@ function PatientDetail({ patient, onBack, onOutreach, callData, guidanceBanner, 
       </div>
 
       <div style={{ paddingBottom: patient.alert ? 80 : 0 }}>
-        {isSarahChen ? (
+        {isPrimaryPatient ? (
           <>
-            <AIReasoningCard onOutreach={onOutreach} onBack={onBack} isScriptedDemo={isScriptedDemo} />
+            <AIReasoningCard onOutreach={onOutreach} onBack={onBack} isScriptedDemo={isScriptedDemo} isMarcus={patient.id === 101} />
             {callData && <RecentCallCard callData={callData} />}
             {!isScriptedDemo && <div style={{ marginTop: 20 }}><SupportingData /></div>}
           </>
