@@ -1275,7 +1275,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
 
   const demoCache = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('cache') === '1';
 
-  const activePatientKey = patient?.id === 5 ? 'marcus' : patient?.id === 1 ? 'sarah' : undefined;
+  const activePatientKey = (patient?.id === 5 || patient?.id === 101) ? 'marcus' : patient?.id === 1 ? 'sarah' : undefined;
 
   const sendToAPI = async (msgs, turn, maxTurns) => {
     const res = await fetch("/api/voice-chat", {
