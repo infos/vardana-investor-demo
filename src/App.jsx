@@ -753,7 +753,13 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   // Call this in button click handlers BEFORE any async work.
   const unlockAudio = () => {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!audioCtxRef.current && AudioCtx) {
+    // Reuse pre-unlocked context from user gesture if available
+    if (!audioCtxRef.current && window._vardanaAudioCtx && window._vardanaAudioCtx.state !== 'closed') {
+      audioCtxRef.current = window._vardanaAudioCtx;
+      gainRef.current = audioCtxRef.current.createGain();
+      gainRef.current.connect(audioCtxRef.current.destination);
+      window._vardanaAudioCtx = null;
+    } else if (!audioCtxRef.current && AudioCtx) {
       audioCtxRef.current = new AudioCtx();
       gainRef.current = audioCtxRef.current.createGain();
       gainRef.current.connect(audioCtxRef.current.destination);
@@ -4007,12 +4013,30 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
   const handleInitiate = (channel, timing) => {
     setShowOutreachModal(false);
     if (channel === "voice" && timing === "now") {
+      preUnlockAudio();
       setView("voiceCall");
     } else if (channel === "sms") {
       setView("smsPath");
     } else {
       // Scheduled: just show confirmation (simplified)
       alert(`Outreach scheduled via ${channel}.`);
+    }
+  };
+
+  // Pre-unlock audio on user gesture before voice call mounts
+  const preUnlockAudio = () => {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx) {
+      try {
+        const ctx = new AudioCtx();
+        const buf = ctx.createBuffer(1, 1, 22050);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.start(0);
+        // Store on window so VoiceCallDemo can reuse it
+        window._vardanaAudioCtx = ctx;
+      } catch {}
     }
   };
 
@@ -4096,6 +4120,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
           isScriptedDemo={isScriptedDemo}
           onOutreach={() => {
             if (isScriptedDemo) {
+              preUnlockAudio();
               setView("voiceCall");
             } else {
               setShowOutreachModal(true);
@@ -4112,7 +4137,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
       ) : (
         <RosterView
           onSelect={(p) => { setSelectedPatient(enrichPatient(p)); setView("patient"); setShowDetailBanner(isScriptedDemo); }}
-          onCallPatient={(p) => { setSelectedPatient(enrichPatient(p)); setView("voiceCall"); }}
+          onCallPatient={(p) => { preUnlockAudio(); setSelectedPatient(enrichPatient(p)); setView("voiceCall"); }}
           epicPatients={epicPatients} epicLoading={epicLoading} onFetchEpic={fetchEpicPatients} riskOverrides={riskOverrides}
           isScriptedDemo={isScriptedDemo}
           roster={activeRoster}
