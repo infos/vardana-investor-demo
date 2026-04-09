@@ -192,7 +192,7 @@ export default function DemoPage({ navigate }) {
         <DemoCard
           badge="CLINICAL OPS / HTN + T2DM"
           badgeColor={DT.accent}
-          title="Clinical Demo (Christine/Troy)"
+          title="Clinical Demo"
           description="End-to-end 90-day cardiometabolic management program walkthrough. Follow Marcus Williams from enrollment SMS through voice check-in, AI escalation, and care team response."
           bullets={[
             'Patient: Marcus Williams, 58M — HTN + T2DM + Hyperlipidemia',
