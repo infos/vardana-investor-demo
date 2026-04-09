@@ -535,7 +535,7 @@ function RosterView({ onSelect, onCallPatient, epicPatients = [], epicLoading, o
           const showPointer = isScriptedDemo && isPrimaryRow;
           return (
           <div key={p.id} style={{ position: "relative", display: "block", opacity: 1, transition: "all 0.3s ease" }}>
-          <button onClick={() => onSelect(p)} style={{ width: "100%", background: c.card, border: `1px solid ${p.alert ? "#FECACA" : c.border}`, borderRadius: c.radius, padding: "16px 20px", cursor: "pointer", fontFamily: c.font, textAlign: "left", boxShadow: isScriptedDemo && isPrimaryRow ? "0 0 0 2px rgba(245,158,11,0.4)" : c.shadow, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 16, borderLeft: p.alert ? `4px solid ${c.red}` : `4px solid transparent`, animation: isScriptedDemo && isPrimaryRow ? "amberBorderPulse 1.5s ease-in-out infinite" : "none" }}>
+          <div role="button" tabIndex={0} onClick={() => onSelect(p)} onKeyDown={(e) => { if (e.key === 'Enter') onSelect(p); }} style={{ width: "100%", background: c.card, border: `1px solid ${p.alert ? "#FECACA" : c.border}`, borderRadius: c.radius, padding: "16px 20px", cursor: "pointer", fontFamily: c.font, textAlign: "left", boxShadow: isScriptedDemo && isPrimaryRow ? "0 0 0 2px rgba(245,158,11,0.4)" : c.shadow, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 16, borderLeft: p.alert ? `4px solid ${c.red}` : `4px solid transparent`, animation: isScriptedDemo && isPrimaryRow ? "amberBorderPulse 1.5s ease-in-out infinite" : "none" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>{p.name}</span>
@@ -563,7 +563,7 @@ function RosterView({ onSelect, onCallPatient, epicPatients = [], epicLoading, o
               </button>
             )}
             <span style={{ fontSize: 16, color: c.textLight }}>›</span>
-          </button>
+          </div>
           {showPointer && showPointerArrow && (
             <div style={{ position: "absolute", right: 56, top: "50%", transform: "translateY(-50%)", animation: "pointerBounce 0.6s ease infinite alternate", pointerEvents: "none", zIndex: 50 }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="#F59E0B"><path d="M4 0 L4 20 L8 16 L12 24 L14 22 L10 14 L16 14 Z"/></svg>
@@ -2361,7 +2361,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                 <div style={{ marginBottom: 10 }}>
                   <div style={sectionHead}>Current Vitals</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                    {/* Weight */}
+                    {/* Weight (if available) or Glucose as first cell */}
+                    {chartData.vitals.weight ? (
                     <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "6px 8px" }}>
                       <div style={{ fontSize: 8, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>Weight</div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.weight.status) }}>
@@ -2374,6 +2375,16 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                         </div>
                       )}
                     </div>
+                    ) : chartData.vitals.glucose ? (
+                    <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "6px 8px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>Glucose</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.glucose.status) }}>
+                        {chartData.vitals.glucose.value}
+                        <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>{chartData.vitals.glucose.unit}</span>
+                      </div>
+                      <div style={{ fontSize: 8, color: "#7A96B0", marginTop: 1 }}>{chartData.vitals.glucose.note}</div>
+                    </div>
+                    ) : null}
                     {/* BP */}
                     <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "6px 8px" }}>
                       <div style={{ fontSize: 8, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>Blood Pressure</div>
@@ -2390,8 +2401,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                         <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>bpm</span>
                       </div>
                     </div>
-                    {/* SpO2 or Glucose */}
-                    {chartData.vitals.glucose ? (
+                    {/* 4th cell: SpO2 (if weight was in 1st cell and glucose in this slot), or SpO2 fallback */}
+                    {chartData.vitals.weight && chartData.vitals.glucose ? (
                     <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "6px 8px" }}>
                       <div style={{ fontSize: 8, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>Glucose</div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.glucose.status) }}>
@@ -2399,7 +2410,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                         <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>{chartData.vitals.glucose.unit}</span>
                       </div>
                     </div>
-                    ) : (
+                    ) : chartData.vitals.spo2 ? (
                     <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "6px 8px" }}>
                       <div style={{ fontSize: 8, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>SpO2</div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.spo2.status) }}>
@@ -2407,7 +2418,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                         <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>%</span>
                       </div>
                     </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
