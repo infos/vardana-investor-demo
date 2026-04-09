@@ -3850,8 +3850,8 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
   const [wsAlerts, setWsAlerts] = useState([]);
   const [wsStatus, setWsStatus] = useState('disconnected'); // disconnected | connected | reconnecting
   const [activeSessions, setActiveSessions] = useState(3);
-  const wsRef = React.useRef(null);
-  const wsReconnectRef = React.useRef(null);
+  const wsRef = useRef(null);
+  const wsReconnectRef = useRef(null);
 
   // WebSocket connection to backend alert feed
   useEffect(() => {
