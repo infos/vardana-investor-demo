@@ -10,8 +10,9 @@ import ROICalculator from './ROICalculator.jsx'
 import AdminAnalytics from './AdminAnalytics.jsx'
 import CheckinPage from './CheckinPage.jsx'
 import ClinicalDemoPage from './demo/ClinicalDemoPage.jsx'
+import ClinicalDemoEntry from './demo/ClinicalDemoEntry.jsx'
 import { useAnalytics } from './useAnalytics'
-import { DEMO_BASE } from './demoPath'
+import { DEMO_BASE, CLINICAL_BASE } from './demoPath'
 
 function navigate(path) {
   window.history.pushState({}, '', path);
@@ -30,12 +31,30 @@ function Router() {
 
   const pathname = path.split('?')[0];
 
+  // Add noindex meta for demo/coordinator/checkin routes
+  useEffect(() => {
+    const noindexPaths = ['/demo', '/coordinator', '/patient', '/checkin'];
+    const shouldNoindex = noindexPaths.some(p => pathname.startsWith(p));
+    let meta = document.querySelector('meta[name="robots"]');
+    if (shouldNoindex) {
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = 'robots';
+        document.head.appendChild(meta);
+      }
+      meta.content = 'noindex, nofollow';
+    } else if (meta) {
+      meta.remove();
+    }
+  }, [pathname]);
+
   if (pathname === '/coordinator') return <App initialRole="coordinator" navigate={navigate} />;
   if (pathname === '/patient') return <App initialRole="patient" navigate={navigate} />;
   if (pathname === `${DEMO_BASE}/scripted`) return <ScriptedDemoPage navigate={navigate} />;
   if (pathname === `${DEMO_BASE}/recorded`) return <RecordedDemoPage navigate={navigate} />;
   if (pathname === `${DEMO_BASE}/live`) return <LiveDemoPage navigate={navigate} />;
   if (pathname === `${DEMO_BASE}/clinical`) return <ClinicalDemoPage navigate={navigate} />;
+  if (pathname === CLINICAL_BASE) return <ClinicalDemoEntry navigate={navigate} />;
   if (pathname === DEMO_BASE) return <DemoPage navigate={navigate} />;
   if (pathname === '/checkin') return <CheckinPage navigate={navigate} />;
   if (pathname === '/roi') return <ROICalculator />;

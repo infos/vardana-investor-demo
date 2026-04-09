@@ -8,6 +8,15 @@
           "value": "no-cache, must-revalidate"
         }
       ]
+    },
+    {
+      "source": "/(demo|coordinator|checkin)(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
     }
   ],
   "rewrites": [
