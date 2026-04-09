@@ -187,6 +187,27 @@ export default function DemoPage({ navigate }) {
         />
       </div>
 
+      {/* Clinical Demo Card — full width */}
+      <div style={{ marginBottom: 24 }}>
+        <DemoCard
+          badge="CLINICAL OPS / HTN + T2DM"
+          badgeColor={DT.accent}
+          title="Clinical Demo (Christine/Troy)"
+          description="End-to-end 90-day cardiometabolic management program walkthrough. Follow Marcus Williams from enrollment SMS through voice check-in, AI escalation, and care team response."
+          bullets={[
+            'Patient: Marcus Williams, 58M — HTN + T2DM + Hyperlipidemia',
+            'Enrollment → Portal → AI Voice Check-in → Escalation',
+            'Real-time clinical reasoning with ACC/AHA risk scoring',
+            'Coordinator dashboard with live WebSocket alerts',
+          ]}
+          bulletColor={DT.accent}
+          ctaLabel="Start Clinical Demo"
+          ctaBackground={DT.accent}
+          ctaColor="white"
+          onClick={() => navigate(`${DEMO_BASE}/clinical`)}
+        />
+      </div>
+
       <FhirFootnote />
     </DemoShell>
   );

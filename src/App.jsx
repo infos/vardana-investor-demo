@@ -286,6 +286,12 @@ const MARCUS_CLINICAL_DATA = {
     ],
     allergy: "Penicillin (rash)",
     coordinator: "David Park, RN",
+    program: "90-Day Cardiometabolic Management Program",
+    riskAssessments: [
+      { label: "ACC/AHA PCE", value: "17.3%", note: "10-year ASCVD risk" },
+      { label: "AHA/ACC 2017 HTN", value: "Stage 1", note: "BP 130-139/80-89" },
+      { label: "ADA 2024 CV Risk", value: "High", note: "T2DM + HTN + Hyperlipidemia" },
+    ],
   },
 };
 
@@ -1799,7 +1805,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="users" size={22} color="#A78BFA" /></div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "white" }}>{patient.name}, {patient.age}{isEpic ? (patient.epicData?.patient?.gender === 'male' ? 'M' : 'F') : (patient.gender || '')}{isEpic ? ` — ${(patient.epicData?.conditions || []).length} active conditions` : patient.id === 5 ? ` — HTN + T2DM · Day ${patient.day || '?'}/90` : ` — CHF · Day ${patient.day || '?'}/90`}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "white" }}>{patient.name}, {patient.age}{isEpic ? (patient.epicData?.patient?.gender === 'male' ? 'M' : 'F') : (patient.gender || '')}{isEpic ? ` — ${(patient.epicData?.conditions || []).length} active conditions` : (patient.id === 5 || patient.id === 101) ? ` — HTN + T2DM · Day ${patient.day || '?'}/90` : ` — CHF · Day ${patient.day || '?'}/90`}</div>
               <div style={{ fontSize: 12, color: "#64748B", marginTop: 3 }}>{isEpic ? 'Live Epic FHIR data · AI check-in with real patient context' : patient.id === 1 ? '2.3 lb weight gain. AI calls to assess. Decompensation detected → FHIR alert fires mid-call.' : `${patient.phase} phase · AI check-in with full clinical context`}</div>
             </div>
           </div>
@@ -2298,7 +2304,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         {/* ── Right: Patient Chart + FHIR + assessment ── (hidden on mobile) */}
         {!isMobileView && (
         (() => {
-          const chartData = PATIENT_CLINICAL_DATA[patient?.id];
+          const chartData = ACTIVE_CLINICAL[patient?.id];
           const statusColor = (s) => s === "good" ? "#34D399" : s === "borderline" ? "#F59E0B" : "#F87171";
           const sectionHead = { fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 };
           return (
@@ -2384,7 +2390,16 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                         <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>bpm</span>
                       </div>
                     </div>
-                    {/* SpO2 */}
+                    {/* SpO2 or Glucose */}
+                    {chartData.vitals.glucose ? (
+                    <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "6px 8px" }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>Glucose</div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.glucose.status) }}>
+                        {chartData.vitals.glucose.value}
+                        <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>{chartData.vitals.glucose.unit}</span>
+                      </div>
+                    </div>
+                    ) : (
                     <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "6px 8px" }}>
                       <div style={{ fontSize: 8, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>SpO2</div>
                       <div style={{ fontSize: 13, fontWeight: 800, color: statusColor(chartData.vitals.spo2.status) }}>
@@ -2392,6 +2407,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                         <span style={{ fontSize: 8, fontWeight: 600, marginLeft: 2 }}>%</span>
                       </div>
                     </div>
+                    )}
                   </div>
                 </div>
 
@@ -2406,6 +2422,22 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
                           <span style={{ color: "#4A6380", fontWeight: 600, minWidth: 55 }}>{lab.name}</span>
                           <span style={{ color: "#1E3A5F", fontWeight: 500, flex: 1 }}>{lab.value}</span>
                           <span style={{ color: "#7A96B0", fontSize: 9 }}>{lab.date}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Risk Assessments (Marcus) */}
+                {chartData.riskAssessments && (
+                  <div style={{ marginTop: 10 }}>
+                    <div style={sectionHead}>Risk Assessment</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {chartData.riskAssessments.map((ra, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", fontSize: 10, gap: 6 }}>
+                          <span style={{ color: "#4A6380", fontWeight: 600, minWidth: 90 }}>{ra.label}</span>
+                          <span style={{ color: "#1E3A5F", fontWeight: 700 }}>{ra.value}</span>
+                          <span style={{ color: "#7A96B0", fontSize: 9, marginLeft: "auto" }}>{ra.note}</span>
                         </div>
                       ))}
                     </div>
@@ -3815,6 +3847,63 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
   const [riskOverrides, setRiskOverrides] = useState({}); // { patientId: { score, level } }
   const [epicPatients, setEpicPatients] = useState([]);
   const [epicLoading, setEpicLoading] = useState(false);
+  const [wsAlerts, setWsAlerts] = useState([]);
+  const [wsStatus, setWsStatus] = useState('disconnected'); // disconnected | connected | reconnecting
+  const [activeSessions, setActiveSessions] = useState(3);
+  const wsRef = React.useRef(null);
+  const wsReconnectRef = React.useRef(null);
+
+  // WebSocket connection to backend alert feed
+  useEffect(() => {
+    let cancelled = false;
+    const connect = () => {
+      if (cancelled) return;
+      try {
+        setWsStatus('reconnecting');
+        const ws = new WebSocket('ws://3.89.228.45:8765/ws');
+        wsRef.current = ws;
+        ws.onopen = () => { if (!cancelled) setWsStatus('connected'); };
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'coordinator_alert') {
+              setWsAlerts(prev => [{ id: Date.now(), ...msg.data, timestamp: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+            } else if (msg.type === 'session_update') {
+              setActiveSessions(msg.data?.active_count ?? activeSessions);
+            }
+          } catch {}
+        };
+        ws.onclose = () => {
+          if (!cancelled) {
+            setWsStatus('reconnecting');
+            wsReconnectRef.current = setTimeout(connect, 3000);
+          }
+        };
+        ws.onerror = () => { ws.close(); };
+      } catch {
+        if (!cancelled) wsReconnectRef.current = setTimeout(connect, 3000);
+      }
+    };
+    connect();
+    return () => {
+      cancelled = true;
+      if (wsRef.current) wsRef.current.close();
+      if (wsReconnectRef.current) clearTimeout(wsReconnectRef.current);
+    };
+  }, []);
+
+  const simulateAlert = () => {
+    const alert = {
+      id: Date.now(),
+      patient: 'Marcus Williams',
+      type: 'chest_pain',
+      severity: 'P1',
+      message: 'Patient reports chest tightness during check-in. BP 162/101. Recommending immediate evaluation.',
+      risk: 84,
+      timestamp: new Date().toLocaleTimeString(),
+    };
+    setWsAlerts(prev => [alert, ...prev].slice(0, 10));
+  };
 
   // Scripted demo: user clicks Sarah Chen on roster, then clicks Contact Patient to start call
 
@@ -3928,6 +4017,41 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
         }
       `}</style>
       <Header patientSelected={view === "patient"} onBack={() => setView("roster")} onSwitchRole={onSwitchRole} coordinatorName={isMarcusDemo ? "David Park" : "Rachel Kim"} coordinatorInitials={isMarcusDemo ? "DP" : "RK"} />
+      {/* WebSocket status + active sessions bar */}
+      <div style={{ background: "#0F172A", padding: "6px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 11, fontFamily: c.font, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: wsStatus === 'connected' ? '#34D399' : wsStatus === 'reconnecting' ? '#F59E0B' : '#EF4444' }} />
+          <span style={{ color: "rgba(255,255,255,0.5)" }}>{wsStatus === 'connected' ? 'Connected' : wsStatus === 'reconnecting' ? 'Reconnecting...' : 'Disconnected'}</span>
+          <span style={{ color: "rgba(255,255,255,0.3)", margin: "0 4px" }}>|</span>
+          <span style={{ color: "rgba(255,255,255,0.5)" }}>{activeSessions} active session{activeSessions !== 1 ? 's' : ''}</span>
+        </div>
+        <button onClick={simulateAlert} style={{ background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", color: "#F59E0B", borderRadius: 6, padding: "3px 10px", cursor: "pointer", fontSize: 10, fontWeight: 700, fontFamily: c.font }}>Simulate Alert</button>
+      </div>
+      {/* WebSocket alert feed */}
+      {wsAlerts.length > 0 && view === "roster" && (
+        <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 24px 0" }}>
+          {wsAlerts.slice(0, 3).map((alert, i) => (
+            <div key={alert.id} style={{
+              background: alert.severity === 'P1' ? '#FEF2F2' : '#FFFBEB',
+              border: `1px solid ${alert.severity === 'P1' ? '#FECACA' : '#FDE68A'}`,
+              borderLeft: `4px solid ${alert.severity === 'P1' ? '#EF4444' : '#F59E0B'}`,
+              borderRadius: 8, padding: "12px 16px", marginBottom: 8,
+              animation: 'slideIn 0.3s ease-out',
+            }}>
+              <style>{`@keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: alert.severity === 'P1' ? '#DC2626' : '#D97706', background: alert.severity === 'P1' ? '#FEE2E2' : '#FEF3C7', padding: "2px 6px", borderRadius: 4 }}>{alert.severity}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: c.text }}>{alert.patient}</span>
+                </div>
+                <span style={{ fontSize: 10, color: c.textLight }}>{alert.timestamp}</span>
+              </div>
+              <div style={{ fontSize: 12, color: c.textMed, lineHeight: 1.5 }}>{alert.message}</div>
+              {alert.risk && <div style={{ fontSize: 10, color: '#DC2626', fontWeight: 700, marginTop: 4 }}>Risk Score: {alert.risk}</div>}
+            </div>
+          ))}
+        </div>
+      )}
       {view === "patient" && selectedPatient ? (
         <PatientDetail
           patient={selectedPatient}
