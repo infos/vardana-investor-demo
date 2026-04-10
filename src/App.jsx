@@ -527,7 +527,7 @@ function RosterView({ onSelect, onCallPatient, epicPatients = [], epicLoading, o
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {[...roster].sort((a, b) => (b.alert ? 1 : 0) - (a.alert ? 1 : 0) || b.risk - a.risk).map(p => {
+        {[...roster].sort((a, b) => (b.id === primaryPatientId ? 1 : 0) - (a.id === primaryPatientId ? 1 : 0) || (b.alert ? 1 : 0) - (a.alert ? 1 : 0) || b.risk - a.risk).map(p => {
           const ro = riskOverrides[p.id];
           const displayRisk = ro ? ro.score : p.risk;
           const displayLevel = ro ? ro.level : p.riskLevel;
@@ -1371,7 +1371,10 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     const canStream = typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported('audio/mpeg');
 
     try {
-      if (canStream) {
+      // First utterance uses blob+WebAudio path (more reliable with autoplay policy)
+      // Subsequent utterances use streaming if supported
+      const useBlob = allowBrowserFallback || !canStream;
+      if (!useBlob) {
         let res;
         try {
           res = await fetch("/api/elevenlabs-tts", {
