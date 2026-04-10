@@ -1609,21 +1609,40 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       history.push({ role: "user", content: userText });
       setConversationHistory([...history]);
 
-      // Get AI response — stream text into transcript for instant feedback
+      // Get AI response — stream text into transcript for instant feedback.
+      // Pipeline kickoff: when first sentence boundary detected during streaming,
+      // fire a Cartesia blob fetch for that sentence in parallel with Claude.
+      // Uses the blob+WebAudio path (not MediaSource) to avoid back-to-back race.
       setIsThinking(true);
       let aiData;
       let streamedText = '';
       let streamIdx = null;
+      let firstSegmentText = '';
+      let firstSegmentBlobPromise = null; // Promise<blobUrl | null>
+      // Sentence boundary: period/?/! followed by whitespace+capital letter (avoids Dr. Smith)
+      const SENTENCE_BOUNDARY = /[.!?](?=\s+[A-Z]|\s*$)/;
       try {
         aiData = await sendToAPIStreaming(history, turn, maxTurns, (chunk) => {
           if (streamIdx === null) {
-            // First chunk — stop "thinking" indicator and add streaming transcript entry
             setIsThinking(false);
             setTranscript(p => { streamIdx = p.length; return [...p, { speaker: "AI", text: chunk }]; });
             streamedText = chunk;
           } else {
             streamedText += chunk;
             setTranscript(p => p.map((t, i) => i === streamIdx ? { ...t, text: streamedText } : t));
+          }
+          // Fire first segment TTS as soon as we have a sentence boundary (≥30 chars)
+          if (!firstSegmentBlobPromise && streamedText.length >= 30) {
+            const match = streamedText.match(SENTENCE_BOUNDARY);
+            if (match && match.index >= 25) {
+              firstSegmentText = streamedText.slice(0, match.index + 1).trim();
+              // Kill mic so AI speech doesn't bleed into recognition
+              if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
+              setIsListening(false);
+              setActiveSpeaker("AI");
+              // Fetch blob URL in parallel with Claude continuing to stream
+              firstSegmentBlobPromise = fetchAudio(firstSegmentText, "AI").catch(() => null);
+            }
           }
         });
       } catch (err) {
@@ -1646,10 +1665,51 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       history.push({ role: "assistant", content: aiData.reply });
       setConversationHistory([...history]);
 
-      // Speak response — single-segment path (reverted from pipeline due to
-      // double MediaSource instance race). MIN_PLAY_BYTES bump from 12288 →
-      // 24576 in playStreamingResponse still handles the first-word clipping.
-      const ttsOk = await speakAI(aiData.reply);
+      // Speak response — pipeline path if first segment was fired, else single speakAI
+      let ttsOk = true;
+      if (firstSegmentBlobPromise) {
+        const fullText = aiData.reply || streamedText;
+        // Compute remaining text only if firstSegmentText appears at the start of reply
+        let remaining = '';
+        if (fullText.startsWith(firstSegmentText)) {
+          remaining = fullText.slice(firstSegmentText.length).trim();
+        } else {
+          // Reply was cleaned/rewritten by metadata stripper — find best match
+          const idx = fullText.indexOf(firstSegmentText);
+          if (idx === 0) remaining = fullText.slice(firstSegmentText.length).trim();
+          // else: firstSegmentText not in reply, skip second segment (first sentence conveys the main message)
+        }
+        // Fire second segment fetch in parallel so it downloads while first plays
+        const secondSegmentBlobPromise = remaining
+          ? fetchAudio(remaining, "AI").catch(() => null)
+          : null;
+        try {
+          const firstUrl = await firstSegmentBlobPromise;
+          if (firstUrl) {
+            await playAudioUrl(firstUrl);
+            // Play second segment if it fetched successfully
+            if (secondSegmentBlobPromise) {
+              const secondUrl = await secondSegmentBlobPromise;
+              if (secondUrl) {
+                await playAudioUrl(secondUrl);
+              }
+              // If second failed, we still spoke the main message via first segment — don't trigger failsafe
+            }
+          } else {
+            // First segment fetch failed — fall back to single speakAI call (has its own catch)
+            ttsOk = await speakAI(aiData.reply);
+          }
+        } catch {
+          // Any playback error — fall back to single speakAI call
+          ttsOk = await speakAI(aiData.reply);
+        }
+        // Echo guard + clear speaker
+        await new Promise(r => setTimeout(r, 800));
+        setActiveSpeaker(null);
+      } else {
+        // No sentence boundary found during streaming — standard path
+        ttsOk = await speakAI(aiData.reply);
+      }
       if (cancelRef.current) return;
 
       // If TTS failed mid-call, play failsafe exit and end immediately
