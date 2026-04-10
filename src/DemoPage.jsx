@@ -2,7 +2,6 @@ import React from 'react';
 import { DT } from './demo/tokens';
 import { DemoShell, VardanaLogo, FhirFootnote } from './demo/DemoShell';
 import { useIsMobile } from './demo/useIsMobile';
-import { DEMO_BASE } from './demoPath';
 
 function DemoCard({ badge, badgeColor, title, description, bullets, bulletColor, ctaLabel, ctaBackground, ctaColor, onClick }) {
   return (
@@ -140,7 +139,7 @@ export default function DemoPage({ navigate }) {
           Choose Your Demo Experience
         </h1>
         <p style={{ fontSize: 14, color: DT.text.muted, margin: 0, fontFamily: DT.font.body }}>
-          Multi-condition demo: CHF, hypertension, diabetes, and beyond
+          Marcus Williams, 58M, HTN + T2DM, Day 22 of 90
         </p>
       </div>
 
@@ -155,35 +154,35 @@ export default function DemoPage({ navigate }) {
           badge="INTERACTIVE"
           badgeColor={DT.jade.default}
           title="Live Demo"
-          description="Explore the platform yourself. Navigate the coordinator view, patient portal, and AI reasoning at your own pace."
+          description="Interactive AI voice call with Marcus Williams. Speak as the patient — the AI concierge responds in real-time with clinical reasoning."
           bullets={[
-            'Coordinator dashboard: Sarah flagged red',
-            'Evidence chain + AI clinical reasoning',
-            'Patient portal, recovery journey view',
-            'Initiate voice or SMS outreach',
+            'Coordinator dashboard: Marcus flagged for BP crisis',
+            'HTN + T2DM evidence chain + AI reasoning',
+            'Live voice call with microphone input',
+            'Risk score escalation + P2 alert fires',
           ]}
           bulletColor={DT.jade.default}
           ctaLabel="Start Live Demo"
           ctaBackground={DT.jade.default}
           ctaColor="white"
-          onClick={() => navigate(`${DEMO_BASE}/live`)}
+          onClick={() => navigate('/coordinator?demo=live&patient=marcus')}
         />
         <DemoCard
           badge="~90 SECONDS / NO MIC"
           badgeColor={DT.amber.default}
           title="Recorded Demo"
-          description="Watch a pre-rendered AI voice call with Sarah Chen. Decompensation detected mid-call. FHIR alert fires in real time."
+          description="Watch a pre-rendered AI voice call with Marcus Williams. BP crisis detected mid-call. FHIR alert fires in real time."
           bullets={[
-            'Guided walkthrough: About Vardana + scenario',
-            'Coordinator roster: Sarah flagged',
-            'Live AI voice call, automated, no mic needed',
-            'Risk score escalates 68 > 84, P1 alert fires',
+            'Coordinator roster: Marcus flagged',
+            'Scripted AI voice call, no mic needed',
+            'Risk score escalates 53 → 73, P2 alert fires',
+            'Coordinator notified — David Park, RN',
           ]}
           bulletColor={DT.amber.default}
           ctaLabel="Watch Recorded Demo"
           ctaBackground={DT.amber.default}
           ctaColor={DT.bg.page}
-          onClick={() => navigate(`${DEMO_BASE}/recorded`)}
+          onClick={() => navigate('/coordinator?demo=scripted&patient=marcus')}
         />
       </div>
 
