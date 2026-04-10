@@ -491,10 +491,11 @@ function Header({ onBack, patientSelected, onSwitchRole, coordinatorName = "Rach
 }
 
 // ── Roster View ──
-function RosterView({ onSelect, onCallPatient, epicPatients = [], epicLoading, onFetchEpic, riskOverrides = {}, guidanceBanner, isScriptedDemo = false, roster = ROSTER, primaryPatientId = 1 }) {
+function RosterView({ onSelect, onCallPatient, onBack, epicPatients = [], epicLoading, onFetchEpic, riskOverrides = {}, guidanceBanner, isScriptedDemo = false, roster = ROSTER, primaryPatientId = 1 }) {
   const isMobile = useIsMobile();
   const alertCount = roster.filter(p => p.alert).length;
   const [showPointerArrow, setShowPointerArrow] = useState(false);
+  const autoClickedRef = useRef(false);
 
   // In scripted mode, show pointer after 1.5s (amber pulse shows immediately, pointer appears later)
   useEffect(() => {
@@ -503,8 +504,26 @@ function RosterView({ onSelect, onCallPatient, epicPatients = [], epicLoading, o
     return () => clearTimeout(timer);
   }, [isScriptedDemo]);
 
+  // In scripted mode, auto-click Call Patient after 4s if user hasn't clicked
+  useEffect(() => {
+    if (!isScriptedDemo || autoClickedRef.current) return;
+    const timer = setTimeout(() => {
+      if (autoClickedRef.current) return;
+      autoClickedRef.current = true;
+      const primary = roster.find(p => p.id === primaryPatientId);
+      if (primary && onCallPatient) onCallPatient(primary);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [isScriptedDemo, roster, primaryPatientId, onCallPatient]);
+
   return (
     <div style={{ maxWidth: 960, margin: "0 auto", padding: isMobile ? 14 : 24 }}>
+      {/* Back button in scripted mode */}
+      {isScriptedDemo && onBack && (
+        <button onClick={onBack} style={{ background: "none", border: "none", color: c.textLight, fontSize: 13, cursor: "pointer", padding: "4px 0", fontFamily: c.font, display: "flex", alignItems: "center", gap: 4, marginBottom: 16 }}>
+          &larr; Back to demo
+        </button>
+      )}
       {guidanceBanner}
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "baseline", marginBottom: 20, gap: isMobile ? 4 : 0 }}>
         <div>
@@ -1085,8 +1104,17 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   const [preloadReady, setPreloadReady] = useState(false);
 
   // Pre-fetch all audio segments on mount for scripted demo (parallel with stagger)
+  // Skip if already pre-rendered from roster view
   useEffect(() => {
-    if (!autoStartScripted || preloadedUrlsRef.current) return;
+    if (!autoStartScripted) return;
+    if (window._vardanaPreloadedUrls) {
+      preloadedUrlsRef.current = window._vardanaPreloadedUrls;
+      window._vardanaPreloadedUrls = null;
+      setPreloadProgress(100);
+      setPreloadReady(true);
+      return;
+    }
+    if (preloadedUrlsRef.current) return;
     let cancelled = false;
     (async () => {
       try {
@@ -4030,6 +4058,35 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
     }
   };
 
+  // Pre-render TTS audio in background while roster is showing (scripted demo)
+  useEffect(() => {
+    if (!isScriptedDemo || window._vardanaPreloadedUrls) return;
+    const transcript = isMarcusDemo ? MARCUS_VOICE_TRANSCRIPT : VOICE_TRANSCRIPT;
+    let cancelled = false;
+    (async () => {
+      try {
+        const urls = await Promise.all(
+          transcript.map((line, i) =>
+            new Promise(resolve => setTimeout(resolve, i * 50))
+              .then(() => {
+                if (cancelled) return null;
+                return fetch("/api/tts", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ text: line.text, speaker: line.speaker }),
+                }).then(r => r.ok ? r.blob().then(b => URL.createObjectURL(b)) : null);
+              })
+              .catch(() => null)
+          )
+        );
+        if (!cancelled && urls.every(u => u)) {
+          window._vardanaPreloadedUrls = urls;
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [isScriptedDemo, isMarcusDemo]);
+
   // Pre-unlock audio on user gesture before voice call mounts
   const preUnlockAudio = () => {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -4145,6 +4202,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
         <RosterView
           onSelect={(p) => { setSelectedPatient(enrichPatient(p)); setView("patient"); setShowDetailBanner(isScriptedDemo); }}
           onCallPatient={(p) => { preUnlockAudio(); setSelectedPatient(enrichPatient(p)); setView("voiceCall"); }}
+          onBack={isScriptedDemo ? onSwitchRole : undefined}
           epicPatients={epicPatients} epicLoading={epicLoading} onFetchEpic={fetchEpicPatients} riskOverrides={riskOverrides}
           isScriptedDemo={isScriptedDemo}
           roster={activeRoster}
