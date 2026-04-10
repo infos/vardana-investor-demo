@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { navigateToVoiceSetup, takeScreenshot, isTtsAvailable } from '../helpers/test-utils';
 
-// Scripted demo tests require ElevenLabs TTS API to generate audio.
-// Tests skip gracefully when TTS keys are not configured locally.
+// Scripted demo tests require Cartesia TTS API to generate audio.
+// Tests skip gracefully when CARTESIA_API_KEY is not configured locally.
 
 test.describe('Scripted Voice Demo (Sarah Chen)', () => {
   test.beforeEach(async ({ page }) => {

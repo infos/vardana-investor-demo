@@ -62,13 +62,13 @@ export async function navigateToVoiceSetup(page: Page, patientName: string) {
   await waitForCallScreen(page);
 }
 
-/** Check if TTS API is available (ElevenLabs/Cartesia keys configured).
- *  Returns true if TTS works, false if 503 (keys missing). */
+/** Check if TTS API is available (Cartesia key configured).
+ *  Returns true if TTS works, false if 503 (key missing). */
 let _ttsChecked: boolean | null = null;
 export async function isTtsAvailable(baseURL: string): Promise<boolean> {
   if (_ttsChecked !== null) return _ttsChecked;
   try {
-    const res = await fetch(`${baseURL}/api/elevenlabs-tts`, {
+    const res = await fetch(`${baseURL}/api/cartesia-tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: 'test', speaker: 'AI' }),

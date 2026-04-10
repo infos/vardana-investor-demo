@@ -1411,18 +1411,18 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     setIsListening(false);
     setActiveSpeaker("AI");
 
-    // Use MediaSource streaming on supported browsers — audio starts on first chunk (~200-400ms).
+    // Use MediaSource streaming on Chrome/Firefox — audio starts on first chunk (~200-400ms).
     // Safari/iOS don't support MediaSource for audio/mpeg, so they fall back to the blob path.
+    // This fallback is REQUIRED for iOS — see commit 9b63624 (Web Audio API for Safari
+    // autoplay policy) and 83efb69 (MSE streaming with Safari fallback).
     const canStream = typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported('audio/mpeg');
 
     try {
-      // First utterance uses blob+WebAudio path (more reliable with autoplay policy)
-      // Subsequent utterances use streaming if supported
-      const useBlob = allowBrowserFallback || !canStream;
-      if (!useBlob) {
+      if (canStream) {
+        // Chrome/Firefox path: MediaSource streaming, plays bytes as they arrive
         let res;
         try {
-          res = await fetch("/api/elevenlabs-tts", {
+          res = await fetch("/api/cartesia-tts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ text, speaker: "AI" }),
@@ -1437,6 +1437,7 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
         }
         await playStreamingResponse(res);
       } else {
+        // Safari/iOS path: blob + Web Audio API (required for autoplay gesture chain)
         const url = await fetchAudio(text, "AI");
         await playAudioUrl(url);
       }
@@ -1445,7 +1446,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       await new Promise(r => setTimeout(r, 800));
       setActiveSpeaker(null);
       return true;
-    } catch {
+    } catch (err) {
+      console.error('[speakAI] TTS failed:', err);
       // Only use browser TTS at the very start of a call (greeting) — never mid-call
       if (allowBrowserFallback) {
         const synth = window.speechSynthesis;
@@ -1465,17 +1467,6 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   };
 
   // Play the pre-cached failsafe message and end the call gracefully
-  // Minimal streaming TTS helper — fetches and plays via MediaSource.
-  // No speaker-state management, no echo guard (caller handles those).
-  // Used by the live conversation loop to pipeline Claude → Cartesia segment-by-segment.
-  const streamTTSFetch = (text) => {
-    return fetch("/api/elevenlabs-tts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, speaker: "AI" }),
-    }).then(res => res.ok ? res : Promise.reject(new Error(`HTTP ${res.status}`)));
-  };
-
   const playFailsafeAndEnd = async () => {
     const pfName = patient?.name?.split(' ')[0] || 'there';
     const pfCoord = ACTIVE_CLINICAL[patient?.id]?.coordinator || PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
@@ -1610,17 +1601,12 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       setConversationHistory([...history]);
 
       // Get AI response — stream text into transcript for instant feedback.
-      // Pipeline kickoff: when first sentence boundary detected during streaming,
-      // fire a Cartesia blob fetch for that sentence in parallel with Claude.
-      // Uses the blob+WebAudio path (not MediaSource) to avoid back-to-back race.
+      // Single TTS call per turn via speakAI, which uses MediaSource streaming
+      // on Chrome/Firefox and falls back to blob+WebAudio on Safari/iOS.
       setIsThinking(true);
       let aiData;
       let streamedText = '';
       let streamIdx = null;
-      let firstSegmentText = '';
-      let firstSegmentBlobPromise = null; // Promise<blobUrl | null>
-      // Sentence boundary: period/?/! followed by whitespace+capital letter (avoids Dr. Smith)
-      const SENTENCE_BOUNDARY = /[.!?](?=\s+[A-Z]|\s*$)/;
       try {
         aiData = await sendToAPIStreaming(history, turn, maxTurns, (chunk) => {
           if (streamIdx === null) {
@@ -1631,22 +1617,10 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
             streamedText += chunk;
             setTranscript(p => p.map((t, i) => i === streamIdx ? { ...t, text: streamedText } : t));
           }
-          // Fire first segment TTS as soon as we have a sentence boundary (≥30 chars)
-          if (!firstSegmentBlobPromise && streamedText.length >= 30) {
-            const match = streamedText.match(SENTENCE_BOUNDARY);
-            if (match && match.index >= 25) {
-              firstSegmentText = streamedText.slice(0, match.index + 1).trim();
-              // Kill mic so AI speech doesn't bleed into recognition
-              if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
-              setIsListening(false);
-              setActiveSpeaker("AI");
-              // Fetch blob URL in parallel with Claude continuing to stream
-              firstSegmentBlobPromise = fetchAudio(firstSegmentText, "AI").catch(() => null);
-            }
-          }
         });
       } catch (err) {
         setIsThinking(false);
+        console.error('[voice-chat] stream failed:', err);
         await playFailsafeAndEnd();
         return;
       }
@@ -1665,51 +1639,8 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       history.push({ role: "assistant", content: aiData.reply });
       setConversationHistory([...history]);
 
-      // Speak response — pipeline path if first segment was fired, else single speakAI
-      let ttsOk = true;
-      if (firstSegmentBlobPromise) {
-        const fullText = aiData.reply || streamedText;
-        // Compute remaining text only if firstSegmentText appears at the start of reply
-        let remaining = '';
-        if (fullText.startsWith(firstSegmentText)) {
-          remaining = fullText.slice(firstSegmentText.length).trim();
-        } else {
-          // Reply was cleaned/rewritten by metadata stripper — find best match
-          const idx = fullText.indexOf(firstSegmentText);
-          if (idx === 0) remaining = fullText.slice(firstSegmentText.length).trim();
-          // else: firstSegmentText not in reply, skip second segment (first sentence conveys the main message)
-        }
-        // Fire second segment fetch in parallel so it downloads while first plays
-        const secondSegmentBlobPromise = remaining
-          ? fetchAudio(remaining, "AI").catch(() => null)
-          : null;
-        try {
-          const firstUrl = await firstSegmentBlobPromise;
-          if (firstUrl) {
-            await playAudioUrl(firstUrl);
-            // Play second segment if it fetched successfully
-            if (secondSegmentBlobPromise) {
-              const secondUrl = await secondSegmentBlobPromise;
-              if (secondUrl) {
-                await playAudioUrl(secondUrl);
-              }
-              // If second failed, we still spoke the main message via first segment — don't trigger failsafe
-            }
-          } else {
-            // First segment fetch failed — fall back to single speakAI call (has its own catch)
-            ttsOk = await speakAI(aiData.reply);
-          }
-        } catch {
-          // Any playback error — fall back to single speakAI call
-          ttsOk = await speakAI(aiData.reply);
-        }
-        // Echo guard + clear speaker
-        await new Promise(r => setTimeout(r, 800));
-        setActiveSpeaker(null);
-      } else {
-        // No sentence boundary found during streaming — standard path
-        ttsOk = await speakAI(aiData.reply);
-      }
+      // Speak response — single Cartesia call via speakAI
+      const ttsOk = await speakAI(aiData.reply);
       if (cancelRef.current) return;
 
       // If TTS failed mid-call, play failsafe exit and end immediately

@@ -16,7 +16,7 @@ Deployed on Vercel at **vardana.ai**.
 - **Routing:** Custom pushState router in `src/main.jsx` (no React Router)
 - **Backend:** Vercel serverless functions (`api/*.js`)
 - **AI:** Claude via AWS Bedrock (default: `anthropic.claude-sonnet-4-6-20250514`), fallback to direct Anthropic API (`claude-haiku-4-5-20251001`) — `api/voice-chat.js`
-- **TTS:** ElevenLabs primary (`eleven_turbo_v2_5`), Cartesia Sonic fallback — routed through `api/tts.js`
+- **TTS:** Cartesia Sonic — `api/cartesia-tts.js` (streaming, live demo) and `api/tts.js` (blob, scripted demo)
 - **Charts:** Recharts (weight, BP, glucose trend lines)
 - **Analytics:** Custom `useAnalytics` hook + `api/analytics.js` + `api/track.js`
 
@@ -24,8 +24,8 @@ Deployed on Vercel at **vardana.ai**.
 
 ```
 ├── api/
-│   ├── tts.js                # TTS proxy — ElevenLabs primary, Cartesia fallback
-│   ├── elevenlabs-tts.js     # Legacy TTS endpoint (ElevenLabs + Cartesia)
+│   ├── tts.js                # Cartesia TTS — blob (full buffer) for scripted demo preload
+│   ├── cartesia-tts.js       # Cartesia TTS — streaming for live demo low-latency playback
 │   ├── voice-chat.js         # Claude Haiku live-conversation endpoint
 │   ├── epic-fhir.js          # Epic FHIR R4 sandbox proxy
 │   ├── medplum-fhir.js       # Medplum FHIR proxy
@@ -114,8 +114,8 @@ When `?demo=scripted` is set, `autoStartScripted` is true and state starts at `l
 - TTS fetched on-demand per AI response
 - Voice input via Web Speech API (SpeechRecognition)
 
-### Healthcare Pronunciation (`api/tts.js`)
-Text normalizer applied only to Cartesia (ElevenLabs handles pronunciation natively):
+### Healthcare Pronunciation (`api/tts.js` + `api/cartesia-tts.js`)
+Text normalizer applied to all Cartesia calls:
 - BP readings: `158/98` → `158 over 98`
 - Units: `mg/dL` → `milligrams per deciliter`
 - Abbreviations: `CHF`, `HTN`, `T2DM`, `BP`, `HFrEF`, `NYHA` → expanded
@@ -149,15 +149,13 @@ Mute toggle controls `gainRef.current.gain.value` (not `audio.muted`).
 
 | Variable | Purpose |
 |----------|---------|
-| `TTS_API_KEY` / `ELEVENLABS_API_KEY` | ElevenLabs TTS (primary) |
-| `CARTESIA_API_KEY` | Cartesia Sonic TTS (fallback) |
+| `CARTESIA_API_KEY` | Cartesia Sonic TTS (sole TTS provider) |
 | `ANTHROPIC_API_KEY` | Claude API key (fallback when `USE_BEDROCK=false`) |
 | `AWS_ACCESS_KEY_ID` | AWS credentials for Bedrock |
 | `AWS_SECRET_ACCESS_KEY` | AWS credentials for Bedrock |
 | `USE_BEDROCK` | `true` (default) or `false` to use direct Anthropic API |
 | `AWS_BEDROCK_REGION` | Bedrock region (default: `us-east-1`) |
 | `BEDROCK_MODEL_ID` | Bedrock model (default: `anthropic.claude-sonnet-4-6-20250514`) |
-| `MARCUS_VOICE_ID` | Optional ElevenLabs voice override for Marcus |
 | `EPIC_CLIENT_ID` | Epic FHIR sandbox client ID |
 
 ## Build & Deploy

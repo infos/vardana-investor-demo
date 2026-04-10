@@ -44,7 +44,8 @@ async function loadHandler(name) {
 
 await Promise.all([
   loadHandler('voice-chat'),
-  loadHandler('elevenlabs-tts'),
+  loadHandler('cartesia-tts'),
+  loadHandler('tts'),
   loadHandler('medplum-fhir'),
   loadHandler('epic-fhir'),
 ]);

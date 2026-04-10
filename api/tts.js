@@ -1,4 +1,6 @@
-// TTS API — Voice synthesis with primary + fallback providers
+// TTS API — Cartesia Sonic (blob endpoint, full buffer returned)
+// Used by: scripted/recorded demo preload, failsafe pre-cache
+// For live streaming playback, see api/cartesia-tts.js
 
 // ── Healthcare text normalizer for TTS pronunciation ──
 function normalizeForTTS(text) {
@@ -42,51 +44,15 @@ function normalizeForTTS(text) {
 
   return t;
 }
-const TTS_API_KEY = (process.env.TTS_API_KEY || process.env.ELEVENLABS_API_KEY || '').trim();
+
 const CARTESIA_KEY = (process.env.CARTESIA_API_KEY || '').trim();
 
-// Voice IDs — override Marcus via MARCUS_VOICE_ID env var for custom recordings
-const TTS_VOICES = {
-  AI: '0fbdXLXuDBZXm2IHek4L',
-  Sarah: 'RGb96Dcl0k5eVje8EBch',
-  Marcus: process.env.MARCUS_VOICE_ID || '9N8nIBnvZ0Hbs6qhIqpt',
-};
-
-// Cartesia fallback voices
+// Canonical Cartesia voice IDs — used by both /api/tts (blob) and /api/cartesia-tts (stream)
 const CARTESIA_VOICES = {
   AI: 'f9836c6e-a0bd-460e-9d3c-f7299fa60f94',
   Sarah: 'e07c00bc-4134-4eae-9ea4-1a55fb45746b',
   Marcus: 'a5136bf9-224c-4d76-b823-52bd5efcffcc',
 };
-
-async function primaryTTS(text, speaker) {
-  const voiceId = TTS_VOICES[speaker] || TTS_VOICES.AI;
-  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-    method: 'POST',
-    headers: {
-      'xi-api-key': TTS_API_KEY,
-      'Content-Type': 'application/json',
-      'Accept': 'audio/mpeg',
-    },
-    body: JSON.stringify({
-      text,
-      model_id: 'eleven_turbo_v2_5',
-      voice_settings: {
-        stability: speaker === 'AI' ? 0.82 : 0.78,
-        similarity_boost: 0.75,
-        style: speaker === 'AI' ? 0.05 : 0.10,
-        use_speaker_boost: true,
-        speed: speaker === 'AI' ? 0.78 : (speaker === 'Marcus' ? 0.80 : 0.65),
-      },
-    }),
-  });
-  if (!res.ok) {
-    let detail = '';
-    try { const j = await res.json(); detail = j?.detail?.message || j?.detail || ''; } catch {}
-    throw new Error(`[TTS] Primary provider ${res.status}${detail ? ': ' + detail : ''}`);
-  }
-  return Buffer.from(await res.arrayBuffer());
-}
 
 async function cartesiaTTS(text, speaker) {
   const res = await fetch('https://api.cartesia.ai/tts/bytes', {
@@ -110,7 +76,7 @@ async function cartesiaTTS(text, speaker) {
       },
       language: 'en',
       generation_config: {
-        speed: speaker === 'AI' ? 0.72 : (speaker === 'Marcus' ? 0.80 : 0.65),
+        speed: speaker === 'AI' ? 0.78 : (speaker === 'Marcus' ? 0.80 : 0.65),
         emotion: 'calm',
       },
     }),
@@ -134,53 +100,20 @@ export default async function handler(req, res) {
   const { text, speaker } = req.body || {};
   if (!text) return res.status(400).json({ error: 'text required' });
 
+  if (!CARTESIA_KEY) {
+    return res.status(503).json({ error: 'CARTESIA_API_KEY not configured' });
+  }
+
   // Normalize medical terms and numbers for better TTS pronunciation
   const normalizedText = normalizeForTTS(text);
 
   try {
-    let audioBuf;
-    let ttsProvider = 'none';
-
-    let primaryError = '';
-    let fallbackError = '';
-
-    // Primary voice synthesis provider (ElevenLabs handles pronunciation well, use original text)
-    if (TTS_API_KEY) {
-      try {
-        audioBuf = await primaryTTS(text, speaker || 'AI');
-        ttsProvider = 'primary';
-      } catch (e) {
-        primaryError = e.message;
-        console.error('[TTS] Primary failed, trying fallback:', e.message);
-      }
-    }
-
-    // Fallback: Cartesia Sonic (use normalized text for better pronunciation)
-    if (!audioBuf && CARTESIA_KEY) {
-      try {
-        audioBuf = await cartesiaTTS(normalizedText, speaker || 'AI');
-        ttsProvider = 'cartesia';
-      } catch (e) {
-        fallbackError = e.message;
-        console.error('[TTS] Fallback also failed:', e.message);
-      }
-    }
-
-    if (!audioBuf) {
-      const hasKeys = !!(TTS_API_KEY || CARTESIA_KEY);
-      const details = [primaryError && `primary: ${primaryError}`, fallbackError && `fallback: ${fallbackError}`].filter(Boolean).join('; ');
-      return res.status(503).json({
-        error: hasKeys
-          ? `TTS failed — ${details || 'unknown'}`
-          : 'All TTS providers unavailable. Set TTS_API_KEY or CARTESIA_API_KEY.',
-      });
-    }
-
+    const audioBuf = await cartesiaTTS(normalizedText, speaker || 'AI');
     res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Content-Length', audioBuf.byteLength);
-    res.setHeader('X-TTS-Provider', ttsProvider);
-    return res.status(200).send(audioBuf);
+    res.setHeader('X-TTS-Provider', 'cartesia');
+    res.status(200).send(audioBuf);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error('[TTS] Cartesia call failed:', err.message);
+    return res.status(503).json({ error: `TTS failed — ${err.message}` });
   }
 }

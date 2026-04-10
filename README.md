@@ -13,29 +13,25 @@ Opens at http://localhost:3000
 
 ## Voice Demo Setup
 
-The voice demo uses **ElevenLabs** for natural TTS.
+The voice demo uses **Cartesia Sonic** for natural TTS.
 
-1. Sign up free at https://elevenlabs.io (10,000 chars/month free)
-2. Go to: Profile icon → API Keys → Create API Key
-3. Paste the key into the setup screen when you click "Voice Call" in the demo
-
-### Character usage
-- Full demo run: ~800 characters
-- Free tier supports ~12 full runs per month
-- Paid: $0.30/1,000 chars = ~$0.24/run
+1. Sign up at https://cartesia.ai and create an API key
+2. Set `CARTESIA_API_KEY` in your environment (Vercel → Settings → Environment Variables, or `.env.local`)
+3. The streaming endpoint (`/api/cartesia-tts`) and blob endpoint (`/api/tts`) both call Cartesia
 
 ## Demo Flow
 
-1. **Roster** → Click Sarah Chen (flagged high-risk)
+1. **Roster** → Click Marcus Williams (flagged high-risk)
 2. **Patient Detail** → Review AI clinical assessment
 3. **Initiate Outreach** → Select Voice → Immediately
-4. **Paste ElevenLabs key** → Test Key → Generate Audio & Start Demo
-5. Watch: transcript builds, FHIR queries fire, risk score climbs 72→84, P1 alert generates
-6. Return to dashboard → Try SMS path to see app onboarding flow
+4. **Start Demo** → voice call begins, audio streams from Cartesia
+5. Watch: transcript builds, FHIR queries fire, risk score climbs, P2 alert generates
+6. Return to dashboard
 
 ## Tech
 
 - React 18 + Vite
 - Recharts (vitals charts)
-- ElevenLabs API (Rachel voice for AI, Charlotte for patient)
-- Web Speech API fallback (no key required, lower quality)
+- Cartesia Sonic TTS (streaming via MediaSource, blob fallback for Safari/iOS)
+- Web Speech API for patient-side speech recognition
+- Claude (via AWS Bedrock) for clinical conversation

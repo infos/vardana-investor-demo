@@ -1,15 +1,15 @@
 import { test, expect } from '@playwright/test';
 
-// TTS API depends on ELEVENLABS_API_KEY or CARTESIA_API_KEY.
-// When keys are missing, the endpoint returns 503. Tests skip gracefully in that case.
+// TTS API depends on CARTESIA_API_KEY.
+// When the key is missing, the endpoint returns 503. Tests skip gracefully in that case.
 
-test.describe('TTS API — /api/elevenlabs-tts', () => {
+test.describe('TTS API — /api/cartesia-tts', () => {
 
   /** Preflight: check if TTS API is available (keys configured) */
   let ttsAvailable = true;
 
   test('TTS endpoint is reachable (preflight)', async ({ request }) => {
-    const res = await request.post('/api/elevenlabs-tts', {
+    const res = await request.post('/api/cartesia-tts', {
       data: { text: 'test', speaker: 'AI' },
     });
     if (res.status() === 503) {
@@ -22,7 +22,7 @@ test.describe('TTS API — /api/elevenlabs-tts', () => {
 
   test('returns audio for AI speaker', async ({ request }) => {
     test.skip(!ttsAvailable, 'TTS API keys not configured');
-    const res = await request.post('/api/elevenlabs-tts', {
+    const res = await request.post('/api/cartesia-tts', {
       data: { text: 'Hello, this is a test.', speaker: 'AI' },
     });
     expect(res.status()).toBe(200);
@@ -33,7 +33,7 @@ test.describe('TTS API — /api/elevenlabs-tts', () => {
 
   test('returns audio for Patient speaker', async ({ request }) => {
     test.skip(!ttsAvailable, 'TTS API keys not configured');
-    const res = await request.post('/api/elevenlabs-tts', {
+    const res = await request.post('/api/cartesia-tts', {
       data: { text: 'I am feeling a little tired today.', speaker: 'Sarah' },
     });
     expect(res.status()).toBe(200);
@@ -44,7 +44,7 @@ test.describe('TTS API — /api/elevenlabs-tts', () => {
 
   test('returns valid MP3 data (check header bytes)', async ({ request }) => {
     test.skip(!ttsAvailable, 'TTS API keys not configured');
-    const res = await request.post('/api/elevenlabs-tts', {
+    const res = await request.post('/api/cartesia-tts', {
       data: { text: 'Testing audio format.', speaker: 'AI' },
     });
     expect(res.status()).toBe(200);
@@ -62,7 +62,7 @@ test.describe('TTS API — /api/elevenlabs-tts', () => {
   });
 
   test('handles empty text gracefully', async ({ request }) => {
-    const res = await request.post('/api/elevenlabs-tts', {
+    const res = await request.post('/api/cartesia-tts', {
       data: { text: '', speaker: 'AI' },
     });
     // Empty text should return 400 (text required)
@@ -72,7 +72,7 @@ test.describe('TTS API — /api/elevenlabs-tts', () => {
   });
 
   test('handles missing text field', async ({ request }) => {
-    const res = await request.post('/api/elevenlabs-tts', {
+    const res = await request.post('/api/cartesia-tts', {
       data: { speaker: 'AI' },
     });
     // Missing text should return 400
@@ -87,7 +87,7 @@ test.describe('TTS API — /api/elevenlabs-tts', () => {
       'Sarah, I want to let you know that your care coordinator Nurse Rachel Kim will be reaching out ' +
       'to follow up on the weight changes we discussed. In the meantime, please continue to weigh ' +
       'yourself each morning and keep track of your sodium intake.';
-    const res = await request.post('/api/elevenlabs-tts', {
+    const res = await request.post('/api/cartesia-tts', {
       data: { text: longText, speaker: 'AI' },
     });
     expect(res.status()).toBe(200);
@@ -98,7 +98,7 @@ test.describe('TTS API — /api/elevenlabs-tts', () => {
 
   test('defaults to AI voice when speaker not specified', async ({ request }) => {
     test.skip(!ttsAvailable, 'TTS API keys not configured');
-    const res = await request.post('/api/elevenlabs-tts', {
+    const res = await request.post('/api/cartesia-tts', {
       data: { text: 'Testing default speaker.' },
     });
     expect(res.status()).toBe(200);

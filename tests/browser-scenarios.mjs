@@ -86,7 +86,7 @@ async function runScenario(name, steps) {
     await page.route('**/*.gstatic.com/**', route => route.abort());
 
     // Mock TTS — return a tiny WAV (headless Chrome can decode this)
-    await page.route('**/api/elevenlabs-tts', async route => {
+    await page.route('**/api/cartesia-tts', async route => {
       // Minimal 44-byte WAV header + 0 data frames = instant silent audio
       const wav = Buffer.alloc(44);
       wav.write('RIFF', 0); wav.writeUInt32LE(36, 4); wav.write('WAVE', 8);
