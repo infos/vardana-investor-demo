@@ -1526,17 +1526,18 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       setConversationHistory([...history]);
 
       // AI acknowledges greeting and transitions to check-in
-      const negativePattern = /\b(not\s+(so\s+)?(good|great|well|fine)|bad|terrible|awful|horrible|rough|sick|worse|pain|hurt|struggling|miserable|don'?t\s+feel\s+(so\s+)?(good|great|well))\b/i;
+      // Broad pattern: catch explicit negatives, sleep/fatigue/pain, and ambivalent hedging
+      const negativePattern = /\b(not\s+(so\s+)?(good|great|well|fine)|bad|terrible|awful|horrible|rough|sick|worse|pain|hurt|struggling|miserable|don'?t\s+feel\s+(so\s+)?(good|great|well)|tired|fatigue|exhaust|sleep|slept|insomnia|can'?t\s+sleep|restless|swollen|swell|edema|dizzy|nausea|breath|chest|ache|weak|haven'?t\s+(been\s+)?(sleeping|feeling|eating)|a\s+(little|bit)\s+(tired|off|worse|rough))\b/i;
       const isNegative = negativePattern.test(greetReply);
       let verifiedMsg;
       if (patient?.id === 1) {
         verifiedMsg = isNegative
-          ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. Can you tell me more about how you're feeling?`
-          : `That's great to hear, ${firstName}. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. How are you feeling today?`;
+          ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. Can you tell me more about how you've been feeling?`
+          : `Good to hear, ${firstName}. I'm checking in because I noticed your weight has gone up a couple of pounds over the last two days. Have you noticed any ankle swelling or shortness of breath?`;
       } else {
         verifiedMsg = isNegative
           ? `I'm sorry to hear that, ${firstName}. I want to make sure we take good care of you. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing.`
-          : `That's great to hear, ${firstName}. This is your Day ${patient?.day || ""} check-in — let's go through how you've been doing. How are you feeling overall?`;
+          : `Good to hear, ${firstName}. This is your Day ${patient?.day || ""} check-in — let me pull up your recent readings and we can go through them together.`;
       }
       setTranscript(p => [...p, { speaker: "AI", text: verifiedMsg }]);
       history.push({ role: "assistant", content: verifiedMsg });
