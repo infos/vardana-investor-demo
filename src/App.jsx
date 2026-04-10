@@ -1286,7 +1286,25 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       return reject(new Error("ai-speaking"));
     }
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRec) return reject(new Error("Speech recognition not available"));
+    let settled = false;
+    const finish = (fn, val) => {
+      if (settled) return;
+      settled = true;
+      window._liveTextResolve = null;
+      try { if (recognitionRef.current) recognitionRef.current.abort(); } catch {}
+      setInterimText("");
+      setIsListening(false);
+      fn(val);
+    };
+    // Always allow typed input to resolve this listen, in parallel with mic
+    window._liveTextResolve = (text) => finish(resolve, text);
+
+    if (!SpeechRec) {
+      // No mic — wait purely on text input (no reject; user can still type)
+      setIsListening(true);
+      setActiveSpeaker("Patient");
+      return;
+    }
     const rec = new SpeechRec();
     rec.continuous = false;
     rec.interimResults = true;
@@ -1297,15 +1315,13 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
       const result = e.results[0];
       if (result.isFinal) {
         gotResult = true;
-        setInterimText("");
-        setIsListening(false);
-        resolve(result[0].transcript);
+        finish(resolve, result[0].transcript);
       } else {
         setInterimText(result[0].transcript);
       }
     };
-    rec.onerror = (e) => { setInterimText(""); setIsListening(false); reject(new Error(e.error)); };
-    rec.onend = () => { setInterimText(""); setIsListening(false); if (!gotResult) reject(new Error("no-speech")); };
+    rec.onerror = (e) => { if (!settled) finish(reject, new Error(e.error)); };
+    rec.onend = () => { if (!gotResult && !settled) finish(reject, new Error("no-speech")); };
     setIsListening(true);
     setActiveSpeaker("Patient");
     rec.start();
@@ -1704,14 +1720,11 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     const text = textInput.trim();
     if (!text) return;
     setTextInput("");
-    if (window._liveTextResolve) { window._liveTextResolve(text); window._liveTextResolve = null; }
-    else {
-      // If speech recognition is active, stop it and use text instead
-      if (recognitionRef.current) try { recognitionRef.current.abort(); } catch {}
-      setIsListening(false);
-      setActiveSpeaker(null);
-      // Resolve pending listen
-      setTranscript(p => [...p, { speaker: patient?.name?.split(' ')[0] || "Patient", text }]);
+    // _liveTextResolve is set by startListening() so typed input flows through
+    // the same conversation loop as voice — appends to transcript, calls Claude,
+    // plays Cartesia. No duplicate transcript-add here.
+    if (window._liveTextResolve) {
+      window._liveTextResolve(text);
     }
   };
 
