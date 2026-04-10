@@ -152,23 +152,6 @@ export default function DemoPage({ navigate }) {
         marginBottom: 24,
       }}>
         <DemoCard
-          badge="INTERACTIVE"
-          badgeColor={DT.jade.default}
-          title="Live Demo"
-          description="Interactive AI voice call with Marcus Williams. Speak as the patient — the AI concierge responds in real-time with clinical reasoning."
-          bullets={[
-            'Coordinator dashboard: Marcus flagged for BP crisis',
-            'HTN + T2DM evidence chain + AI reasoning',
-            'Live voice call with microphone input',
-            'Risk score escalation + P2 alert fires',
-          ]}
-          bulletColor={DT.jade.default}
-          ctaLabel="Start Live Demo"
-          ctaBackground={DT.jade.default}
-          ctaColor="white"
-          onClick={() => navigate(`/coordinator?demo=live&patient=marcus${RAW_TOKEN ? `&token=${RAW_TOKEN}` : ''}`)}
-        />
-        <DemoCard
           badge="~90 SECONDS / NO MIC"
           badgeColor={DT.amber.default}
           title="Recorded Demo"
@@ -184,6 +167,23 @@ export default function DemoPage({ navigate }) {
           ctaBackground={DT.amber.default}
           ctaColor={DT.bg.page}
           onClick={() => navigate(`/coordinator?demo=scripted&patient=marcus${RAW_TOKEN ? `&token=${RAW_TOKEN}` : ''}`)}
+        />
+        <DemoCard
+          badge="INTERACTIVE"
+          badgeColor={DT.jade.default}
+          title="Live Demo"
+          description="Interactive AI voice call with Marcus Williams. Speak as the patient — the AI concierge responds in real-time with clinical reasoning."
+          bullets={[
+            'Coordinator dashboard: Marcus flagged for BP crisis',
+            'HTN + T2DM evidence chain + AI reasoning',
+            'Live voice call with microphone input',
+            'Risk score escalation + P2 alert fires',
+          ]}
+          bulletColor={DT.jade.default}
+          ctaLabel="Start Live Demo"
+          ctaBackground={DT.jade.default}
+          ctaColor="white"
+          onClick={() => navigate(`/coordinator?demo=live&patient=marcus${RAW_TOKEN ? `&token=${RAW_TOKEN}` : ''}`)}
         />
       </div>
 
