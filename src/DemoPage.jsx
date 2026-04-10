@@ -2,6 +2,7 @@ import React from 'react';
 import { DT } from './demo/tokens';
 import { DemoShell, VardanaLogo, FhirFootnote } from './demo/DemoShell';
 import { useIsMobile } from './demo/useIsMobile';
+import { RAW_TOKEN } from './demoPath';
 
 function DemoCard({ badge, badgeColor, title, description, bullets, bulletColor, ctaLabel, ctaBackground, ctaColor, onClick }) {
   return (
@@ -165,7 +166,7 @@ export default function DemoPage({ navigate }) {
           ctaLabel="Start Live Demo"
           ctaBackground={DT.jade.default}
           ctaColor="white"
-          onClick={() => navigate('/coordinator?demo=live&patient=marcus')}
+          onClick={() => navigate(`/coordinator?demo=live&patient=marcus${RAW_TOKEN ? `&token=${RAW_TOKEN}` : ''}`)}
         />
         <DemoCard
           badge="~90 SECONDS / NO MIC"
@@ -182,7 +183,7 @@ export default function DemoPage({ navigate }) {
           ctaLabel="Watch Recorded Demo"
           ctaBackground={DT.amber.default}
           ctaColor={DT.bg.page}
-          onClick={() => navigate('/coordinator?demo=scripted&patient=marcus')}
+          onClick={() => navigate(`/coordinator?demo=scripted&patient=marcus${RAW_TOKEN ? `&token=${RAW_TOKEN}` : ''}`)}
         />
       </div>
 

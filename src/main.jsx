@@ -12,7 +12,7 @@ import CheckinPage from './CheckinPage.jsx'
 import ClinicalDemoPage from './demo/ClinicalDemoPage.jsx'
 import ClinicalDemoEntry from './demo/ClinicalDemoEntry.jsx'
 import { useAnalytics } from './useAnalytics'
-import { DEMO_BASE, CLINICAL_BASE } from './demoPath'
+import { DEMO_BASE, CLINICAL_BASE, isTokenValid, setDemoTokenCookie } from './demoPath'
 
 function navigate(path) {
   window.history.pushState({}, '', path);
@@ -47,6 +47,22 @@ function Router() {
       meta.remove();
     }
   }, [pathname]);
+
+  // Demo entry pages (/demo/{token}, /demo/clinical/{token}) set the session
+  // cookie so subsequent in-app navigation to /coordinator etc. inherits auth.
+  useEffect(() => {
+    if (pathname === DEMO_BASE || pathname === CLINICAL_BASE) {
+      setDemoTokenCookie();
+    }
+  }, [pathname]);
+
+  // Gated routes — require valid token (query param or session cookie).
+  // Unauthorized access renders HomePage silently (soft 404, doesn't
+  // advertise that the route exists).
+  const gatedRoutes = ['/coordinator', '/patient', '/checkin'];
+  if (gatedRoutes.includes(pathname) && !isTokenValid()) {
+    return <HomePage navigate={navigate} />;
+  }
 
   if (pathname === '/coordinator') return <App initialRole="coordinator" navigate={navigate} />;
   if (pathname === '/patient') return <App initialRole="patient" navigate={navigate} />;
