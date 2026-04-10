@@ -3944,63 +3944,6 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
   const [riskOverrides, setRiskOverrides] = useState({}); // { patientId: { score, level } }
   const [epicPatients, setEpicPatients] = useState([]);
   const [epicLoading, setEpicLoading] = useState(false);
-  const [wsAlerts, setWsAlerts] = useState([]);
-  const [wsStatus, setWsStatus] = useState('disconnected'); // disconnected | connected | reconnecting
-  const [activeSessions, setActiveSessions] = useState(3);
-  const wsRef = useRef(null);
-  const wsReconnectRef = useRef(null);
-
-  // WebSocket connection to backend alert feed
-  useEffect(() => {
-    let cancelled = false;
-    const connect = () => {
-      if (cancelled) return;
-      try {
-        setWsStatus('reconnecting');
-        const ws = new WebSocket('ws://3.89.228.45:8765/ws');
-        wsRef.current = ws;
-        ws.onopen = () => { if (!cancelled) setWsStatus('connected'); };
-        ws.onmessage = (event) => {
-          try {
-            const msg = JSON.parse(event.data);
-            if (msg.type === 'coordinator_alert') {
-              setWsAlerts(prev => [{ id: Date.now(), ...msg.data, timestamp: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
-            } else if (msg.type === 'session_update') {
-              setActiveSessions(msg.data?.active_count ?? activeSessions);
-            }
-          } catch {}
-        };
-        ws.onclose = () => {
-          if (!cancelled) {
-            setWsStatus('reconnecting');
-            wsReconnectRef.current = setTimeout(connect, 3000);
-          }
-        };
-        ws.onerror = () => { ws.close(); };
-      } catch {
-        if (!cancelled) wsReconnectRef.current = setTimeout(connect, 3000);
-      }
-    };
-    connect();
-    return () => {
-      cancelled = true;
-      if (wsRef.current) wsRef.current.close();
-      if (wsReconnectRef.current) clearTimeout(wsReconnectRef.current);
-    };
-  }, []);
-
-  const simulateAlert = () => {
-    const alert = {
-      id: Date.now(),
-      patient: 'Marcus Williams',
-      type: 'chest_pain',
-      severity: 'P1',
-      message: 'Patient reports chest tightness during check-in. BP 162/101. Recommending immediate evaluation.',
-      risk: 84,
-      timestamp: new Date().toLocaleTimeString(),
-    };
-    setWsAlerts(prev => [alert, ...prev].slice(0, 10));
-  };
 
   // Scripted demo: user clicks Sarah Chen on roster, then clicks Contact Patient to start call
 
@@ -4164,41 +4107,6 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
         }
       `}</style>
       <Header patientSelected={view === "patient"} onBack={() => setView("roster")} onSwitchRole={onSwitchRole} coordinatorName={isMarcusDemo ? "David Park" : "Rachel Kim"} coordinatorInitials={isMarcusDemo ? "DP" : "RK"} />
-      {/* WebSocket status + active sessions bar */}
-      <div style={{ background: "#0F172A", padding: "6px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 11, fontFamily: c.font, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: wsStatus === 'connected' ? '#34D399' : wsStatus === 'reconnecting' ? '#F59E0B' : '#EF4444' }} />
-          <span style={{ color: "rgba(255,255,255,0.5)" }}>{wsStatus === 'connected' ? 'Connected' : wsStatus === 'reconnecting' ? 'Reconnecting...' : 'Disconnected'}</span>
-          <span style={{ color: "rgba(255,255,255,0.3)", margin: "0 4px" }}>|</span>
-          <span style={{ color: "rgba(255,255,255,0.5)" }}>{activeSessions} active session{activeSessions !== 1 ? 's' : ''}</span>
-        </div>
-        <button onClick={simulateAlert} style={{ background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", color: "#F59E0B", borderRadius: 6, padding: "3px 10px", cursor: "pointer", fontSize: 10, fontWeight: 700, fontFamily: c.font }}>Simulate Alert</button>
-      </div>
-      {/* WebSocket alert feed */}
-      {wsAlerts.length > 0 && view === "roster" && (
-        <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 24px 0" }}>
-          {wsAlerts.slice(0, 3).map((alert, i) => (
-            <div key={alert.id} style={{
-              background: alert.severity === 'P1' ? '#FEF2F2' : '#FFFBEB',
-              border: `1px solid ${alert.severity === 'P1' ? '#FECACA' : '#FDE68A'}`,
-              borderLeft: `4px solid ${alert.severity === 'P1' ? '#EF4444' : '#F59E0B'}`,
-              borderRadius: 8, padding: "12px 16px", marginBottom: 8,
-              animation: 'slideIn 0.3s ease-out',
-            }}>
-              <style>{`@keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: alert.severity === 'P1' ? '#DC2626' : '#D97706', background: alert.severity === 'P1' ? '#FEE2E2' : '#FEF3C7', padding: "2px 6px", borderRadius: 4 }}>{alert.severity}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: c.text }}>{alert.patient}</span>
-                </div>
-                <span style={{ fontSize: 10, color: c.textLight }}>{alert.timestamp}</span>
-              </div>
-              <div style={{ fontSize: 12, color: c.textMed, lineHeight: 1.5 }}>{alert.message}</div>
-              {alert.risk && <div style={{ fontSize: 10, color: '#DC2626', fontWeight: 700, marginTop: 4 }}>Risk Score: {alert.risk}</div>}
-            </div>
-          ))}
-        </div>
-      )}
       {view === "patient" && selectedPatient ? (
         <PatientDetail
           patient={selectedPatient}

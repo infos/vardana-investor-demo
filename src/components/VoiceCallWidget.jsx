@@ -18,8 +18,6 @@ const DEMO_TIMELINE = [
   { t: 150,  type: 'end' },
 ];
 
-const EC2_BASE = 'http://3.89.228.45:8765';
-
 function playAlertPing() {
   try {
     const ctx = new AudioContext();
@@ -262,15 +260,11 @@ export default function VoiceCallWidget({
   const [alert, setAlert] = useState(null);
   const [fhirCount, setFhirCount] = useState(0);
 
-  const roomRef = useRef(null);
-  const wsRef = useRef(null);
   const timersRef = useRef([]);
   const elapsedRef = useRef(null);
   const startTimeRef = useRef(null);
   const cancelledRef = useRef(false);
 
-  const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
-  const useDemoMode = isProduction || sessionToken === 'demo';
   const sessionId = useRef(`sess-${Math.random().toString(36).slice(2, 10)}`).current;
 
   const cleanup = useCallback(() => {
@@ -278,14 +272,6 @@ export default function VoiceCallWidget({
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
     if (elapsedRef.current) clearInterval(elapsedRef.current);
-    if (roomRef.current) {
-      try { roomRef.current.disconnect(); } catch {}
-      roomRef.current = null;
-    }
-    if (wsRef.current) {
-      try { wsRef.current.close(); } catch {}
-      wsRef.current = null;
-    }
   }, []);
 
   // Elapsed timer
@@ -298,9 +284,8 @@ export default function VoiceCallWidget({
     return () => { if (elapsedRef.current) clearInterval(elapsedRef.current); };
   }, [status]);
 
-  // ── Demo fallback mode ──
+  // ── Demo timeline playback (pre-recorded session) ──
   useEffect(() => {
-    if (!useDemoMode) return;
     cancelledRef.current = false;
 
     // Brief connecting state
@@ -345,74 +330,7 @@ export default function VoiceCallWidget({
     timersRef.current.push(connectTimer);
 
     return cleanup;
-  }, [useDemoMode, onComplete, onAlert, cleanup, sessionId]);
-
-  // ── Live mode (localhost only) ──
-  useEffect(() => {
-    if (useDemoMode) return;
-    cancelledRef.current = false;
-
-    const startLiveSession = async () => {
-      try {
-        const res = await fetch(`${EC2_BASE}/session/start`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ patient_id: patientId }),
-        });
-
-        if (!res.ok) throw new Error('Session start failed');
-        const data = await res.json();
-
-        // Connect LiveKit
-        const { Room, RoomEvent, Track } = await import('livekit-client');
-        const room = new Room();
-        roomRef.current = room;
-
-        room.on(RoomEvent.TrackSubscribed, (track) => {
-          if (track.kind === Track.Kind.Audio) {
-            const el = track.attach();
-            el.autoplay = true;
-            document.body.appendChild(el);
-          }
-        });
-
-        room.on(RoomEvent.ParticipantConnected, () => {
-          setStatus('active');
-        });
-
-        await room.connect(data.livekit_url, data.patient_token);
-        await room.localParticipant.setMicrophoneEnabled(true);
-        setStatus('active');
-
-        // WebSocket for alerts
-        try {
-          const ws = new WebSocket(`ws://3.89.228.45:8765/ws`);
-          wsRef.current = ws;
-          ws.onmessage = (event) => {
-            try {
-              const msg = JSON.parse(event.data);
-              if (msg.type === 'coordinator_alert') {
-                setAlert(msg.data);
-                playAlertPing();
-                if (onAlert) onAlert(msg.data);
-              } else if (msg.type === 'transcript_update') {
-                setTranscript(prev => [...prev, { speaker: msg.data.speaker, text: msg.data.text }]);
-                setIsSpeaking(msg.data.speaker === 'Vardana');
-              }
-            } catch {}
-          };
-        } catch {}
-
-      } catch {
-        // Fallback to demo mode — re-mount will trigger demo useEffect
-        // This is handled by the parent checking useDemoMode
-        console.warn('Live session failed, falling back to demo mode');
-      }
-    };
-
-    startLiveSession();
-    return cleanup;
-  }, [useDemoMode, patientId, onAlert, cleanup]);
+  }, [onComplete, onAlert, cleanup, sessionId]);
 
   const handleEnd = () => {
     cleanup();
@@ -436,7 +354,7 @@ export default function VoiceCallWidget({
         alert={alert}
         fhirCount={fhirCount}
         sessionId={sessionId}
-        isDemo={useDemoMode}
+        isDemo={true}
       />
     );
   }
@@ -448,7 +366,7 @@ export default function VoiceCallWidget({
       status={status}
       isSpeaking={isSpeaking}
       onEnd={handleEnd}
-      isDemo={useDemoMode}
+      isDemo={true}
     />
   );
 }

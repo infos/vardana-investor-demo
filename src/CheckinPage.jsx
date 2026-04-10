@@ -155,16 +155,9 @@ export default function CheckinPage({ navigate }) {
       setTimeout(() => { setData(MOCK_DATA); setLoading(false); }, 500);
       return;
     }
-    const token = new URLSearchParams(window.location.search).get('token');
-    if (!token) { setLoading(false); return; }
-    const payload = decodeJWT(token);
-    if (!payload?.patient_id) { setLoading(false); return; }
-    fetch(`https://3.89.228.45:8765/api/patient/summary`, {
-      headers: { 'Authorization': `Bearer ${token}` },
-    })
-      .then(r => r.json())
-      .then(d => { setData(d); setLoading(false); })
-      .catch(() => { setData(MOCK_DATA); setLoading(false); });
+    // Non-demo token: fall back to mock data (no production JWT flow exists)
+    setData(MOCK_DATA);
+    setLoading(false);
   }, []);
 
   const startCall = () => {
@@ -275,16 +268,7 @@ export default function CheckinPage({ navigate }) {
             )}
             {showScheduler && (
               <SchedulePicker
-                onSchedule={(dt) => {
-                  if (!isDemo) {
-                    const token = new URLSearchParams(window.location.search).get('token');
-                    fetch('https://3.89.228.45:8765/session/schedule', {
-                      method: 'POST',
-                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                      body: JSON.stringify(dt),
-                    }).catch(() => {});
-                  }
-                }}
+                onSchedule={() => { /* no-op: demo mode has no real scheduling backend */ }}
                 onCancel={() => setShowScheduler(false)}
               />
             )}

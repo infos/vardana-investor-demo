@@ -1,5 +1,38 @@
 # Build Log — Vardana Investor Demo
 
+## 2026-04-10 — Pipecat/LiveKit/EC2 removal
+
+Removed all Pipecat-era voice experiment code that had accumulated in the
+production Vite repo from prior merges. The production demo was attempting
+to open `ws://3.89.228.45:8765/ws` on every coordinator page load, causing
+mixed-content errors (HTTPS page → ws:// endpoint), a console flood visible
+in DevTools, and a persistent "Disconnected" lie in the coordinator header.
+
+Deleted:
+- `src/App.jsx` — WebSocket state, reconnect loop, `simulateAlert`, status bar
+  UI, alert feed UI (all tied to the EC2 WS endpoint)
+- `src/CheckinPage.jsx` — `fetch('https://3.89.228.45:8765/api/patient/summary')`
+  and `fetch('https://3.89.228.45:8765/session/schedule')` — dead code, real
+  JWT flow never existed in prod
+- `src/components/VoiceCallWidget.jsx` — `EC2_BASE`, LiveKit room connect,
+  `setMicrophoneEnabled`, WebSocket alert listener, entire "live mode" branch
+- `package.json` — `livekit-client` dependency (also removes ~507KB chunk
+  from bundle output)
+
+Kept: the demo timeline playback inside `VoiceCallWidget` (pre-recorded
+Marcus session used by ClinicalDemoPage step 4).
+
+**Lesson / process change:** The production Vite repo needs a stricter
+contract about what ships. Going forward, all voice framework experimentation
+(Pipecat, LiveKit, WebRTC transports, custom STT/TTS orchestration) happens
+in a separate experimental repo on a feature branch. Merging any of that
+work into the production repo requires an explicit dependency review — what
+new network endpoints, what new native dependencies, what failure modes. The
+Cartesia/MSE pipeline in the production Vite repo is the current voice
+architecture for pre-pilot demos. Pipecat is a Q3 problem, not an April one.
+
+---
+
 **Repository:** `infos/vardana-investor-demo` on GitHub
 **Branch:** `claude/review-changes-mmn0c8pifc1z30xo-BeVMz`
 **Last updated:** 2026-03-17
