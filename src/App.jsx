@@ -1107,9 +1107,10 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
   // Skip if already pre-rendered from roster view
   useEffect(() => {
     if (!autoStartScripted) return;
-    if (window._vardanaPreloadedUrls) {
+    if (window._vardanaPreloadedUrls && window._vardanaPreloadedPatient === (isMarcusDemo ? 'marcus' : 'sarah')) {
       preloadedUrlsRef.current = window._vardanaPreloadedUrls;
       window._vardanaPreloadedUrls = null;
+      window._vardanaPreloadedPatient = null;
       setPreloadProgress(100);
       setPreloadReady(true);
       return;
@@ -4061,7 +4062,9 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
 
   // Pre-render TTS audio in background while roster is showing (scripted demo)
   useEffect(() => {
-    if (!isScriptedDemo || window._vardanaPreloadedUrls) return;
+    if (!isScriptedDemo) return;
+    const patientKey = isMarcusDemo ? 'marcus' : 'sarah';
+    if (window._vardanaPreloadedUrls && window._vardanaPreloadedPatient === patientKey) return;
     const transcript = isMarcusDemo ? MARCUS_VOICE_TRANSCRIPT : VOICE_TRANSCRIPT;
     let cancelled = false;
     (async () => {
@@ -4082,6 +4085,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
         );
         if (!cancelled && urls.every(u => u)) {
           window._vardanaPreloadedUrls = urls;
+          window._vardanaPreloadedPatient = patientKey;
         }
       } catch {}
     })();
