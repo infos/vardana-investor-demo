@@ -1371,10 +1371,9 @@ function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoSta
     const canStream = typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported('audio/mpeg');
 
     try {
-      // First utterance uses blob+WebAudio path (more reliable with autoplay policy)
-      // Subsequent utterances use streaming if supported
-      const useBlob = allowBrowserFallback || !canStream;
-      if (!useBlob) {
+      // Streaming path starts audio on first chunk (~300ms). Blob path waits for full download.
+      // AudioContext is pre-unlocked via preUnlockAudio() during user gesture, so streaming is safe.
+      if (canStream) {
         let res;
         try {
           res = await fetch("/api/elevenlabs-tts", {
