@@ -1,48 +1,47 @@
-import React, { useState } from 'react';
-import { DemoShell, BackButton } from './DemoShell';
-import AboutSlide from './AboutSlide';
-import ScenarioSlide from './ScenarioSlide';
 import { DEMO_BASE } from '../demoPath';
 
 export default function RecordedDemoPage({ navigate }) {
-  const searchParams = new URLSearchParams(window.location.search);
-  const patientParam = searchParams.get('patient');
-  const conditionParam = searchParams.get('condition') || '';
-  // patient param takes priority, then condition, then default sarah
-  const defaultPatient = patientParam === 'marcus' ? 'marcus'
-    : patientParam === 'sarah' ? 'sarah'
-    : conditionParam.toLowerCase().startsWith('hyp') ? 'marcus'
-    : 'sarah';
-  const [step, setStep] = useState('about');
-  const [selectedPatient, setSelectedPatient] = useState(defaultPatient);
-
-  const isMarcus = selectedPatient === 'marcus';
-  const coordinatorHref = isMarcus
-    ? '/coordinator?demo=scripted&patient=marcus'
-    : '/coordinator?demo=scripted';
-  const patientHref = isMarcus ? '/patient?patient=marcus' : '/patient';
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   return (
-    <DemoShell>
-      <BackButton onClick={() => step === 'about' ? navigate(DEMO_BASE) : setStep('about')} />
-      {step === 'about' ? (
-        <AboutSlide
-          onBack={() => navigate(DEMO_BASE)}
-          onSkip={() => navigate(coordinatorHref)}
-          onNext={() => setStep('scenario')}
+    <div style={{ minHeight: '100vh', background: '#0C1420' }}>
+      {/* Back link */}
+      <div style={{ padding: '20px 24px' }}>
+        <span
+          onClick={() => navigate(DEMO_BASE)}
+          style={{ fontSize: 13, color: '#556882', textDecoration: 'none', cursor: 'pointer' }}
+        >
+          &larr; Back
+        </span>
+      </div>
+
+      <div
+        style={{
+          width: '100%',
+          maxHeight: 'calc(100vh - 80px)',
+          aspectRatio: '16 / 9',
+          background: '#000',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <video
+          src="/recorded-demo.mp4"
+          controls
+          autoPlay={!isMobile}
+          playsInline
+          preload="auto"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            background: '#000',
+          }}
         />
-      ) : (
-        <ScenarioSlide
-          onBack={() => setStep('about')}
-          onEnter={(patient) => navigate(patient === 'marcus'
-            ? '/coordinator?demo=scripted&patient=marcus'
-            : '/coordinator?demo=scripted'
-          )}
-          onPatientSelect={(patient) => setSelectedPatient(patient)}
-          enterLabel="Enter Demo &#8594;"
-          defaultPatient={defaultPatient}
-        />
-      )}
-    </DemoShell>
+      </div>
+    </div>
   );
 }
