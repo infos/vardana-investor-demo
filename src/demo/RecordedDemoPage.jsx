@@ -1,7 +1,27 @@
+import { useRef, useEffect } from 'react';
 import { DEMO_BASE } from '../demoPath';
 
 export default function RecordedDemoPage({ navigate }) {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const videoRef = useRef(null);
+
+  // Disable any embedded subtitle/caption tracks that browsers auto-enable
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const disableTracks = () => {
+      for (let i = 0; i < v.textTracks.length; i++) {
+        v.textTracks[i].mode = 'disabled';
+      }
+    };
+    disableTracks();
+    v.textTracks.addEventListener?.('addtrack', disableTracks);
+    v.addEventListener('loadedmetadata', disableTracks);
+    return () => {
+      v.textTracks.removeEventListener?.('addtrack', disableTracks);
+      v.removeEventListener('loadedmetadata', disableTracks);
+    };
+  }, []);
 
   return (
     <div style={{ minHeight: '100vh', background: '#0C1420' }}>
@@ -26,6 +46,7 @@ export default function RecordedDemoPage({ navigate }) {
         }}
       >
         <video
+          ref={videoRef}
           src="/recorded-demo.mp4"
           controls
           autoPlay={!isMobile}
