@@ -697,7 +697,7 @@ function OutreachModal({ patient, onClose, onInitiate }) {
 }
 
 // ── Voice Call Demo ──
-function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoStartLive = false, onExitDemo = null, isMarcusDemo = false }) {
+export function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, autoStartLive = false, onExitDemo = null, isMarcusDemo = false }) {
   const isMobileView = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState("transcript"); // transcript | chart (mobile only)
   // ── state ──
