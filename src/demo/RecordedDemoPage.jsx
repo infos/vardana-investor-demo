@@ -5,21 +5,36 @@ export default function RecordedDemoPage({ navigate }) {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const videoRef = useRef(null);
 
-  // Disable any embedded subtitle/caption tracks that browsers auto-enable
+  // Subtitles only show during specific windows: 0–20s and 1:33–1:56 (93–116s).
+  // Outside those windows, tracks are set to 'disabled' so cues don't render.
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    const disableTracks = () => {
+
+    const SUBTITLE_WINDOWS = [
+      [0, 20],
+      [93, 116],
+    ];
+    const inWindow = (t) => SUBTITLE_WINDOWS.some(([s, e]) => t >= s && t <= e);
+
+    const applyMode = () => {
+      const shouldShow = inWindow(v.currentTime);
       for (let i = 0; i < v.textTracks.length; i++) {
-        v.textTracks[i].mode = 'disabled';
+        v.textTracks[i].mode = shouldShow ? 'showing' : 'disabled';
       }
     };
-    disableTracks();
-    v.textTracks.addEventListener?.('addtrack', disableTracks);
-    v.addEventListener('loadedmetadata', disableTracks);
+
+    applyMode();
+    v.addEventListener('loadedmetadata', applyMode);
+    v.addEventListener('timeupdate', applyMode);
+    v.addEventListener('seeked', applyMode);
+    v.textTracks.addEventListener?.('addtrack', applyMode);
+
     return () => {
-      v.textTracks.removeEventListener?.('addtrack', disableTracks);
-      v.removeEventListener('loadedmetadata', disableTracks);
+      v.removeEventListener('loadedmetadata', applyMode);
+      v.removeEventListener('timeupdate', applyMode);
+      v.removeEventListener('seeked', applyMode);
+      v.textTracks.removeEventListener?.('addtrack', applyMode);
     };
   }, []);
 
