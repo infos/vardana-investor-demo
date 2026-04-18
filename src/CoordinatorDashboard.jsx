@@ -106,6 +106,88 @@ function identifierMatchesMarcus(summary) {
   return name.includes("marcus") && name.includes("williams");
 }
 
+// Normalize a local FHIR transaction Bundle into the same shape as /api/medplum-fhir?action=patient
+function normalizeBundle(bundle) {
+  const entries = bundle?.entry || [];
+  const get = (rt) => entries.map(e => e.resource).filter(r => r?.resourceType === rt);
+  const patient = get("Patient")[0];
+  const conditions = get("Condition").map(c => ({
+    text: c.code?.coding?.[0]?.display || c.code?.text,
+    code: c.code?.coding?.[0]?.code,
+    status: c.clinicalStatus?.coding?.[0]?.code,
+    onset: c.onsetDateTime,
+  }));
+  const medications = get("MedicationRequest").map(m => ({
+    name: m.medicationCodeableConcept?.text || m.medicationCodeableConcept?.coding?.[0]?.display,
+    dosage: m.dosageInstruction?.[0]?.text,
+    status: m.status,
+  }));
+  const observations = get("Observation");
+  const weights = [];
+  const bloodPressures = [];
+  const labs = [];
+  for (const obs of observations) {
+    const code = obs.code?.coding?.[0]?.code;
+    const cat = obs.category?.[0]?.coding?.[0]?.code;
+    if (code === "29463-7" && obs.valueQuantity) {
+      weights.push({ value: obs.valueQuantity.value, unit: obs.valueQuantity.unit, date: obs.effectiveDateTime });
+    } else if (code === "85354-9" && obs.component) {
+      const sys = obs.component.find(c => c.code?.coding?.[0]?.code === "8480-6");
+      const dia = obs.component.find(c => c.code?.coding?.[0]?.code === "8462-4");
+      if (sys && dia) bloodPressures.push({ systolic: sys.valueQuantity?.value, diastolic: dia.valueQuantity?.value, date: obs.effectiveDateTime });
+    } else if (cat === "laboratory" || obs.valueQuantity) {
+      labs.push({
+        name: obs.code?.coding?.[0]?.display || obs.code?.text,
+        value: obs.valueQuantity?.value,
+        unit: obs.valueQuantity?.unit,
+        date: obs.effectiveDateTime,
+      });
+    }
+  }
+  weights.sort((a, b) => new Date(b.date) - new Date(a.date));
+  bloodPressures.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const allergies = get("AllergyIntolerance").map(a => ({
+    substance: a.code?.text || a.code?.coding?.[0]?.display,
+    status: a.clinicalStatus?.coding?.[0]?.code,
+    reaction: a.reaction?.[0]?.manifestation?.[0]?.text,
+  }));
+  const cp = get("CarePlan")[0];
+  return {
+    source: "local-bundle",
+    patient: {
+      id: patient?.id,
+      name: `${patient?.name?.[0]?.given?.[0] || ""} ${patient?.name?.[0]?.family || ""}`.trim(),
+      gender: patient?.gender,
+      birthDate: patient?.birthDate,
+      phone: patient?.telecom?.find(t => t.system === "phone")?.value,
+      email: patient?.telecom?.find(t => t.system === "email")?.value,
+      generalPractitioner: patient?.generalPractitioner?.[0]?.display,
+    },
+    conditions,
+    medications,
+    labs,
+    allergies,
+    vitals: { weights, bloodPressures },
+    latestWeight: weights[0] || null,
+    latestBP: bloodPressures[0] || null,
+    carePlan: cp ? { title: cp.title || "Care plan", description: cp.description || "" } : null,
+  };
+}
+
+const LOCAL_MARCUS_ID = "local-marcus";
+const LOCAL_MARCUS_ROSTER = {
+  id: LOCAL_MARCUS_ID,
+  name: "Marcus Williams",
+  initials: "MW",
+  meta: "HTN · T2DM · HLD",
+  risk: "high",
+  alert: true,
+  bg: "#3B2F1E",
+  fg: "#E2D5B8",
+  summary: null,
+  local: true,
+};
+
 // Roster card colors cycle
 const CARD_COLORS = [
   { bg: "#3B2F1E", fg: "#E2D5B8" }, { bg: "#1B3A2A", fg: "#9FE1CB" },
@@ -358,7 +440,15 @@ export default function CoordinatorDashboard() {
         if (!res.ok) throw new Error(`Roster fetch failed: ${res.status}`);
         const data = await res.json();
         if (cancelled) return;
-        const items = (data.patients || []).map((p, i) => ({
+        // Dedupe by patient id (Medplum sometimes returns duplicate Sarah Chens)
+        const seen = new Set();
+        const uniq = [];
+        for (const p of (data.patients || [])) {
+          if (seen.has(p.id)) continue;
+          seen.add(p.id);
+          uniq.push(p);
+        }
+        let items = uniq.map((p, i) => ({
           id: p.id,
           name: p.name || "Unknown",
           initials: initialsFromName(p.name),
@@ -369,9 +459,15 @@ export default function CoordinatorDashboard() {
           fg: CARD_COLORS[i % CARD_COLORS.length].fg,
           summary: p,
         }));
+        // Ensure Marcus is in the roster. If Medplum doesn't have him, fall
+        // back to the local bundle so the demo keeps working.
+        const marcusFromMedplum = items.find(identifierMatchesMarcus);
+        if (!marcusFromMedplum) {
+          items = [LOCAL_MARCUS_ROSTER, ...items];
+        }
         setRoster(items);
-        // Auto-select: prefer Marcus if present, else first patient
-        const marcus = items.find(identifierMatchesMarcus);
+        // Auto-select Marcus
+        const marcus = items.find(identifierMatchesMarcus) || items.find(i => i.id === LOCAL_MARCUS_ID);
         setSelectedPatientId((marcus || items[0])?.id || null);
       } catch (err) {
         if (!cancelled) setRosterError(err.message);
@@ -389,6 +485,15 @@ export default function CoordinatorDashboard() {
     setPatientLoading(true);
     (async () => {
       try {
+        // Local Marcus fallback — load bundle from /public/data
+        if (selectedPatientId === LOCAL_MARCUS_ID) {
+          const res = await fetch("/data/marcus-williams-bundle.json");
+          if (!res.ok) throw new Error(`Local Marcus bundle fetch failed: ${res.status}`);
+          const bundle = await res.json();
+          if (cancelled) return;
+          setPatientData(normalizeBundle(bundle));
+          return;
+        }
         const res = await fetch(`/api/medplum-fhir?action=patient&patientId=${encodeURIComponent(selectedPatientId)}`);
         if (!res.ok) throw new Error(`Patient fetch failed: ${res.status}`);
         const data = await res.json();
@@ -410,7 +515,9 @@ export default function CoordinatorDashboard() {
   }, [selectedPatientId, roster]);
 
   const selectedRosterItem = useMemo(() => roster.find(r => r.id === selectedPatientId), [roster, selectedPatientId]);
-  const isMarcusSelected = selectedRosterItem ? identifierMatchesMarcus(selectedRosterItem.summary) : false;
+  const isMarcusSelected = selectedRosterItem
+    ? (selectedRosterItem.id === LOCAL_MARCUS_ID || identifierMatchesMarcus(selectedRosterItem.summary))
+    : false;
 
   // Live call overlay — launches VoiceCallDemo in live mode
   // Currently the live call only has Marcus-specific clinical context, so
@@ -491,19 +598,19 @@ export default function CoordinatorDashboard() {
             </div>
           </div>
           <div style={{ flex: 1 }} />
-          <button
-            onClick={() => { if (patientForCall) setCallOpen(true); }}
-            disabled={!patientForCall}
-            title={patientForCall ? "Start live AI voice call" : "Live call demo is wired for Marcus Williams only"}
-            style={{
-              padding: "6px 12px", borderRadius: 6, fontSize: 11, ...css.mono,
-              background: patientForCall ? S.navy : "#CBD5CB",
-              color: patientForCall ? S.navyText : S.textLight,
-              border: "none", cursor: patientForCall ? "pointer" : "not-allowed",
-            }}
-          >
-            Initiate call
-          </button>
+          {patientForCall && (
+            <button
+              onClick={() => setCallOpen(true)}
+              title="Start live AI voice call with Marcus"
+              style={{
+                padding: "6px 12px", borderRadius: 6, fontSize: 11, ...css.mono,
+                background: S.navy, color: S.navyText,
+                border: "none", cursor: "pointer",
+              }}
+            >
+              Initiate call
+            </button>
+          )}
         </div>
 
         {/* Patient header */}
