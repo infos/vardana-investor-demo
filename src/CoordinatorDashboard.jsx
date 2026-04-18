@@ -526,6 +526,64 @@ export default function CoordinatorDashboard() {
     ? { id: 101, name: "Marcus Williams", age: 58, gender: "M" }
     : null;
 
+  // Safari gating — Safari desktop does not implement Web Speech API
+  // SpeechRecognition, and requires audio unlock + mic permission inside a
+  // user gesture. Prime both here, in the click handler, before mounting
+  // VoiceCallDemo (whose useEffect-driven auto-start is NOT a gesture).
+  const [callError, setCallError] = useState("");
+  const handleInitiateCall = async () => {
+    setCallError("");
+    const ua = navigator.userAgent;
+    const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(ua);
+    const hasSR = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+    // 1. Unlock AudioContext in-gesture so Safari allows Cartesia playback
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx && (!window._vardanaAudioCtx || window._vardanaAudioCtx.state === "closed")) {
+        const ctx = new AudioCtx();
+        if (ctx.state === "suspended") await ctx.resume();
+        // Play a 1-sample silent buffer to fully unlock on iOS Safari
+        const buf = ctx.createBuffer(1, 1, 22050);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.start(0);
+        window._vardanaAudioCtx = ctx;
+      } else if (window._vardanaAudioCtx?.state === "suspended") {
+        await window._vardanaAudioCtx.resume();
+      }
+    } catch (e) {
+      console.warn("[CoordinatorDashboard] AudioContext unlock failed:", e);
+    }
+
+    // 2. Request mic permission in-gesture so Safari shows the prompt
+    try {
+      if (navigator.mediaDevices?.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        });
+        // Release the stream immediately; VoiceCallDemo reacquires via SpeechRecognition.
+        stream.getTracks().forEach(t => t.stop());
+      }
+    } catch (e) {
+      setCallError("Microphone access was blocked. Enable mic permission for vardana.ai in your browser settings and try again.");
+      return;
+    }
+
+    // 3. Safari has no webkitSpeechRecognition on desktop — warn and bail
+    if (!hasSR) {
+      if (isSafari) {
+        setCallError("Safari does not support in-browser speech recognition. Open this demo in Chrome for the live AI voice call.");
+      } else {
+        setCallError("This browser does not support speech recognition. Try Chrome.");
+      }
+      return;
+    }
+
+    setCallOpen(true);
+  };
+
   const riskDot = (r) => ({ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: r === "high" ? S.red : r === "mod" ? S.amber : S.green, boxShadow: r === "high" ? "0 0 5px rgba(239,68,68,0.5)" : "none" });
 
   const tabContent = {
@@ -533,7 +591,7 @@ export default function CoordinatorDashboard() {
     risk: <RiskTab patientData={patientData} />,
     sessions: <SessionsTab />,
     pami: <PamiTab patientData={patientData} />,
-    outreach: <OutreachTab patientData={patientData} onInitiateCall={() => setCallOpen(true)} />,
+    outreach: <OutreachTab patientData={patientData} onInitiateCall={handleInitiateCall} />,
     experience: <ExperienceTab patientData={patientData} />,
   };
 
@@ -600,7 +658,7 @@ export default function CoordinatorDashboard() {
           <div style={{ flex: 1 }} />
           {patientForCall && (
             <button
-              onClick={() => setCallOpen(true)}
+              onClick={handleInitiateCall}
               title="Start live AI voice call with Marcus"
               style={{
                 padding: "6px 12px", borderRadius: 6, fontSize: 11, ...css.mono,
@@ -612,6 +670,13 @@ export default function CoordinatorDashboard() {
             </button>
           )}
         </div>
+
+        {callError && (
+          <div style={{ background: S.redBg, borderBottom: `1px solid #FECACA`, padding: "8px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 11, ...css.mono, color: S.redText, flex: 1 }}>{callError}</span>
+            <button onClick={() => setCallError("")} style={{ fontSize: 10, ...css.mono, background: "transparent", color: S.redText, border: `1px solid #FECACA`, padding: "2px 8px", borderRadius: 4, cursor: "pointer" }}>Dismiss</button>
+          </div>
+        )}
 
         {/* Patient header */}
         <div style={{ background: S.card, borderBottom: `1px solid ${S.border}`, padding: "14px 20px", flexShrink: 0 }}>
