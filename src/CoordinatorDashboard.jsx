@@ -611,7 +611,13 @@ export default function CoordinatorDashboard() {
         const marcus = items.find(identifierMatchesMarcus) || items.find(i => i.id === LOCAL_MARCUS_ID);
         setSelectedPatientId((marcus || items[0])?.id || null);
       } catch (err) {
-        if (!cancelled) setRosterError(err.message);
+        if (cancelled) return;
+        // Medplum unreachable (e.g. preview deploys without MEDPLUM_CLIENT_ID
+        // scoped to Preview). Surface the error for transparency but still
+        // seed the local Marcus fixture so the call flow stays demoable.
+        setRosterError(err.message);
+        setRoster([LOCAL_MARCUS_ROSTER]);
+        setSelectedPatientId(LOCAL_MARCUS_ID);
       } finally {
         if (!cancelled) setRosterLoading(false);
       }
