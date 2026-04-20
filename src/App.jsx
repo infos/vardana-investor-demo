@@ -290,7 +290,7 @@ const MARCUS_CLINICAL_DATA = {
     riskAssessments: [
       { label: "ACC/AHA PCE", value: "17.3%", note: "10-year ASCVD risk" },
       { label: "AHA/ACC 2017 HTN", value: "Stage 1", note: "BP 130-139/80-89" },
-      { label: "ADA 2024 CV Risk", value: "High", note: "T2DM + HTN + Hyperlipidemia" },
+      { label: "ADA 2026 CV Risk", value: "High", note: "T2DM + HTN + Hyperlipidemia" },
     ],
   },
 };
@@ -438,6 +438,18 @@ const Icon = ({ name, size = 16, color = "currentColor", strokeWidth = 1.5 }) =>
 };
 
 // ── Utility ──
+// Categorical tier derived from the internal 0–100 risk score. The numeric
+// score still drives alert thresholds and color logic internally, but is not
+// surfaced in any user-facing UI — demos reserve numeric precision for
+// validated clinical tools, not for the in-call AI's running estimate.
+// Thresholds mirror the escalation logic elsewhere in this file.
+function riskTierLabel(score) {
+  const n = Number(score) || 0;
+  if (n >= 80) return "URGENT";
+  if (n >= 45) return "HIGH";
+  if (n >= 20) return "MODERATE";
+  return "LOW";
+}
 function RiskBadge({ level, score }) {
   const colors = {
     high: { bg: c.redLight, text: c.red, border: "#FECACA" },
@@ -448,7 +460,7 @@ function RiskBadge({ level, score }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 6, fontSize: 12, fontWeight: 700, background: s.bg, color: s.text, border: `1px solid ${s.border}` }}>
       <span style={{ width: 6, height: 6, borderRadius: "50%", background: s.text }} />
-      <span style={{ fontFamily: DS.fontDisplay }}>{score}</span>/100
+      <span style={{ fontFamily: DS.fontDisplay }}>{riskTierLabel(score)}</span>
     </span>
   );
 }
@@ -652,7 +664,7 @@ function OutreachModal({ patient, onClose, onInitiate }) {
         <div style={{ background: DS.color.slate[950], padding: "18px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 16, fontWeight: 800, color: "white" }}>Contact Patient</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>{patient.name}{patient.day != null ? ` · Day ${patient.day}` : ""}{patient.risk != null ? ` · Risk ${patient.risk}/100` : ""}</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>{patient.name}{patient.day != null ? ` · Day ${patient.day}` : ""}{patient.risk != null ? ` · Risk tier: ${riskTierLabel(patient.risk)}` : ""}</div>
           </div>
           <button onClick={onClose} style={{ background: "rgba(255,255,255,0.12)", border: "none", color: "white", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
         </div>
@@ -2194,10 +2206,10 @@ export function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, 
             {/* Patient avatar small */}
             <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#1E3A5F", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "white", fontFamily: DS.fontDisplay, border: `2px solid ${activeSpeaker && activeSpeaker !== "AI" ? "#1E3A5F" : "#D1D9E0"}`, transition: "all 0.3s" }}>{patient.name.charAt(0)}</div>
           </div>
-          {/* Risk score compact + Alert indicator */}
+          {/* Risk tier compact + Alert indicator */}
           <div style={{ display: "flex", alignItems: "center", gap: 6, transform: alertZoom ? "scale(1.3)" : "scale(1)", transformOrigin: "center center", transition: "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)", background: alertZoom ? "rgba(220,38,38,0.1)" : "transparent", borderRadius: 8, padding: alertZoom ? "4px 8px" : 0 }}>
             <div style={{ fontSize: 9, fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>Risk</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: riskColor, fontVariantNumeric: "tabular-nums", transition: "all 0.9s" }}>{riskScore}</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: riskColor, letterSpacing: "0.04em", transition: "color 0.6s" }}>{riskTierLabel(riskScore)}</div>
             {alertGenerated && (
               <div style={{ fontSize: 9, fontWeight: 800, color: "#F87171", background: "rgba(220,38,38,0.15)", borderRadius: 4, padding: "2px 6px" }}>{isMarcusDemo ? "P2 ALERT" : "P1 ALERT"}</div>
             )}
@@ -2239,12 +2251,11 @@ export function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, 
           {/* Risk gauge + Alert — zoom container */}
           <div style={{ width: "100%", transform: alertZoom ? "scale(1.45)" : "scale(1)", transformOrigin: "center center", transition: "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)", zIndex: alertZoom ? 10 : 1, position: "relative" }}>
             {alertZoom && <div style={{ position: "absolute", inset: -12, borderRadius: 16, background: "rgba(220,38,38,0.08)", border: "2px solid rgba(220,38,38,0.3)", animation: "fhirPulse 1.5s ease infinite", pointerEvents: "none" }} />}
-            {/* Risk gauge */}
+            {/* Risk tier gauge — categorical label only; numeric score is internal */}
             <div style={{ background: "#EEF1F5", borderRadius: 12, padding: "14px 16px", width: "100%", textAlign: "center", marginTop: 4 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>{isMarcusDemo ? "BP Crisis Risk" : "Decompensation Risk"}</div>
-              <div style={{ fontSize: 42, fontWeight: 900, color: riskColor, fontVariantNumeric: "tabular-nums", lineHeight: 1, transition: "all 0.9s ease" }}>{riskScore}</div>
-              <div style={{ fontSize: 10, color: "#7A96B0", marginTop: 2 }}>/ 100</div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#7A96B0", marginTop: 6 }}>↑ Updated live during call</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>{isMarcusDemo ? "BP Crisis Risk" : "Decompensation Risk"}</div>
+              <div style={{ fontSize: 26, fontWeight: 900, color: riskColor, letterSpacing: "0.06em", lineHeight: 1, transition: "color 0.9s ease" }}>{riskTierLabel(riskScore)}</div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: "#7A96B0", marginTop: 8 }}>Tier updates live during call</div>
             </div>
 
             {/* Alert */}
@@ -2939,9 +2950,9 @@ function AIReasoningCard({ onOutreach, onBack, isScriptedDemo = false, isMarcus 
               <div style={{ fontSize: 13, color: c.textLight, marginTop: 4 }}>Generated {isMarcus ? "12" : "38"} min ago · Confidence: High</div>
             </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-            <span style={{ fontSize: 28, fontWeight: 400, color: DS.color.crimson[600], fontFamily: DS.fontDisplay, lineHeight: 1 }}>{riskScore}</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: DS.color.crimson[600] }}>/ 100</span>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+            <span style={{ fontSize: 22, fontWeight: 700, color: DS.color.crimson[600], fontFamily: DS.fontDisplay, lineHeight: 1, letterSpacing: "0.04em" }}>{riskTierLabel(riskScore)}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: DS.color.crimson[600], textTransform: "uppercase", letterSpacing: "0.06em" }}>Risk tier</span>
             <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: DS.radius.sm, background: DS.color.crimson[50], color: DS.color.crimson[600], border: `1px solid ${DS.color.crimson[100]}` }}>P2 — Urgent</span>
           </div>
         </div>
@@ -3423,7 +3434,7 @@ function RecentCallCard({ callData }) {
           {callData.alertGenerated && (
             <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: "rgba(220,38,38,0.2)", color: "#F87171", border: "1px solid rgba(220,38,38,0.3)" }}>Alert Generated</span>
           )}
-          <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: "rgba(14,165,233,0.15)", color: c.teal }}>Risk: {callData.riskScore}/100</span>
+          <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: "rgba(14,165,233,0.15)", color: c.teal }}>Risk tier: {riskTierLabel(callData.riskScore)}</span>
         </div>
       </div>
       <div style={{ padding: "16px 20px", borderBottom: `1px solid ${c.border}` }}>

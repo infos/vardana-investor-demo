@@ -277,7 +277,7 @@ function Step3() {
             {[
               ['ACC/AHA PCE', '17.3%', '10-year ASCVD'],
               ['AHA/ACC 2017 HTN', 'Stage 1', 'BP 130-139/80-89'],
-              ['ADA 2024 CV Risk', 'High', 'T2DM+HTN+HLD'],
+              ['ADA 2026 CV Risk', 'High', 'T2DM+HTN+HLD'],
             ].map(([label, value, note], i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, padding: '3px 0' }}>
                 <span style={{ color: DT.text.muted, minWidth: 100 }}>{label}</span>
