@@ -231,11 +231,55 @@ const CARD_COLORS = [
   { bg: "#2E1E3B", fg: "#C8A0E2" }, { bg: "#3B2920", fg: "#E6B89A" },
 ];
 
+// ── Post-call summary card ──
+// Pinned to the top of the Overview tab right after the coordinator hangs
+// up so the summary is visible without a tab switch. Dismissable; also
+// shows the Medplum persistence status (saving / saved / error).
+function PostCallSummary({ summary, status, onDismiss, onViewSessions }) {
+  if (!summary) return null;
+  const { patientName, duration, timestamp, riskLevel, alertGenerated, summary: summaryText, transcript } = summary;
+  const when = timestamp || new Date().toLocaleString();
+  const tier = (riskLevel || "").toUpperCase();
+  const transcriptText = Array.isArray(transcript)
+    ? transcript.map(t => `${t.speaker || "AI"}: ${t.text || ""}`).join("\n")
+    : (transcript || "");
+  let statusText = null;
+  let statusColor = S.textLight;
+  if (status === "saving") { statusText = "Saving to Medplum…"; statusColor = S.textMed; }
+  else if (status === "saved") { statusText = "Saved to Medplum."; statusColor = S.green; }
+  else if (typeof status === "string" && status.startsWith("error:")) { statusText = `Medplum write failed: ${status.slice(6)}`; statusColor = S.red; }
+  return (
+    <div style={{ background: S.card, border: `1px solid ${S.navy}`, borderLeft: `4px solid ${S.amber}`, borderRadius: 8, padding: 14, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
+        <span style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: S.amber, fontWeight: 700, ...css.mono }}>Call just ended</span>
+        <span style={{ fontSize: 11, ...css.mono, color: S.textLight }}>{when}{duration ? ` · ${duration}` : ""}</span>
+        <span style={{ flex: 1 }} />
+        {alertGenerated && <Badge color="red">Alert generated</Badge>}
+        {tier && <Badge color={tier === "CRITICAL" || tier === "HIGH" ? "red" : tier === "MODERATE" ? "amber" : "green"}>Risk tier: {tier}</Badge>}
+        <button onClick={onDismiss} style={{ fontSize: 11, ...css.mono, background: "transparent", color: S.textLight, border: "none", cursor: "pointer", padding: "0 4px" }}>×</button>
+      </div>
+      <div style={{ fontSize: 14, ...css.serif, color: S.text, marginBottom: 6 }}>{patientName}</div>
+      <div style={{ fontSize: 12, ...css.mono, color: S.textMed, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{summaryText || "Summary not available."}</div>
+      {transcriptText && (
+        <details style={{ marginTop: 10 }}>
+          <summary style={{ fontSize: 11, ...css.mono, color: S.navy, cursor: "pointer" }}>Show transcript</summary>
+          <pre style={{ fontSize: 11, ...css.mono, color: S.textMed, background: "#F6F4EC", padding: 10, borderRadius: 4, marginTop: 8, whiteSpace: "pre-wrap", lineHeight: 1.55, maxHeight: 260, overflowY: "auto" }}>{transcriptText}</pre>
+        </details>
+      )}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
+        {statusText && <span style={{ fontSize: 10, ...css.mono, color: statusColor }}>{statusText}</span>}
+        <span style={{ flex: 1 }} />
+        <button onClick={onViewSessions} style={{ fontSize: 11, ...css.mono, background: "transparent", color: S.navy, border: "none", cursor: "pointer", padding: 0 }}>View all sessions →</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Tab: Overview ──
-function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile }) {
+function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, medplumSessions, lastCallSummary, sessionLogStatus, onDismissLastCall }) {
   if (!patientData) return <EmptyState>No patient data loaded from Medplum.</EmptyState>;
   const { conditions = [], medications = [], vitals = {} } = patientData;
-  const recentSessions = getSessionsFor(patientData?.patient?.name || "").slice(0, 3);
+  const recentSessions = resolveSessions(medplumSessions, patientData?.patient?.name || "").slice(0, 3);
   const truncate = (s, n = 120) => (s && s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s || "");
   const pcePct = calcPCE(defaultPCEInputs(patientData));
   const pceTier = pceTierLabel(pcePct);
@@ -249,6 +293,7 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile }) {
   const wtBars = weights.length ? weights.map(w => Math.min(100, Math.max(20, (w.value || 80)))) : [72, 74, 73, 72, 72];
 
   return <div>
+    {lastCallSummary && <PostCallSummary summary={lastCallSummary} status={sessionLogStatus} onDismiss={onDismissLastCall} onViewSessions={onViewAllSessions} />}
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
       <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 6, padding: 10 }}>
         <CardTitle>Latest BP</CardTitle>
@@ -508,22 +553,49 @@ function fmtSessionDate(iso) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+// Merge Medplum-fetched sessions with the fixture set. Real sessions always
+// take precedence; fixtures only fill in when Medplum has nothing logged for
+// this patient yet (keeps scripted demos working until live sessions exist).
+function resolveSessions(medplumSessions, patientName) {
+  if (medplumSessions && medplumSessions.length) {
+    return medplumSessions.map(s => ({
+      id: s.id,
+      date: s.date,
+      duration: s.duration || "",
+      summary: s.summary || s.reason || "AI voice check-in",
+      transcript: s.transcript || "",
+      riskLevel: s.riskLevel || null,
+      alertGenerated: !!s.alertGenerated,
+      source: "medplum",
+    }));
+  }
+  return (getSessionsFor(patientName) || []).map(s => ({ ...s, source: "fixture" }));
+}
+
 // ── Tab: Sessions ──
-function SessionsTab({ patientData }) {
+function SessionsTab({ patientData, medplumSessions, loading }) {
   const name = patientData?.patient?.name || "";
-  const sessions = getSessionsFor(name);
-  if (!sessions.length) return <EmptyState>No sessions logged yet.</EmptyState>;
+  const sessions = resolveSessions(medplumSessions, name);
+  if (loading) return <EmptyState>Loading sessions from Medplum…</EmptyState>;
+  if (!sessions.length) return <EmptyState>No sessions logged yet. Complete an AI check-in to populate this list.</EmptyState>;
   return <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14 }}>
-    <CardTitle>Session history</CardTitle>
+    <CardTitle>Session history{sessions[0]?.source === "fixture" && " (sample)"}</CardTitle>
     {sessions.map((s, i) => (
       <div key={s.id} style={{ padding: "10px 0", borderBottom: i < sessions.length - 1 ? `1px solid #F0EEE8` : "none" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 4 }}>
           <span style={{ fontSize: 12, ...css.serif, color: S.text }}>{fmtSessionDate(s.date)}</span>
-          <Chip>{s.duration}</Chip>
+          {s.duration && <Chip>{s.duration}</Chip>}
+          {s.alertGenerated && <Badge color="red">Alert</Badge>}
           <span style={{ flex: 1 }} />
-          <span style={{ fontSize: 10, ...css.mono, color: S.textLight }}>AI voice check-in</span>
+          <span style={{ fontSize: 10, ...css.mono, color: S.textLight }}>AI voice check-in{s.source === "medplum" ? " · Medplum" : ""}</span>
         </div>
-        <div style={{ fontSize: 11, ...css.mono, color: S.textMed, lineHeight: 1.55 }}>{s.summary}</div>
+        <div style={{ fontSize: 11, ...css.mono, color: S.textMed, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{s.summary}</div>
+        {s.transcript && (
+          <details style={{ marginTop: 6 }}>
+            <summary style={{ fontSize: 10, ...css.mono, color: S.textLight, cursor: "pointer" }}>Show transcript</summary>
+            <pre style={{ fontSize: 10, ...css.mono, color: S.textMed, background: "#F6F4EC", padding: 8, borderRadius: 4, marginTop: 6, whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{s.transcript}</pre>
+          </details>
+        )}
       </div>
     ))}
   </div>;
@@ -571,6 +643,15 @@ export default function CoordinatorDashboard() {
   const [patientData, setPatientData] = useState(null);
   const [patientLoading, setPatientLoading] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
+
+  // ── Sessions (logged AI check-ins fetched from Medplum) ──
+  const [sessions, setSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  // Summary of the call that just ended — pinned to the top of the Overview
+  // tab so the coordinator can review it immediately after hanging up.
+  const [lastCallSummary, setLastCallSummary] = useState(null);
+  // Banner shown while the session is being persisted to Medplum.
+  const [sessionLogStatus, setSessionLogStatus] = useState(null); // "saving" | "saved" | "error:<msg>" | null
 
   // ── Fetch roster from Medplum on mount ──
   useEffect(() => {
@@ -661,6 +742,58 @@ export default function CoordinatorDashboard() {
     return () => { cancelled = true; };
   }, [selectedPatientId, roster]);
 
+  // ── Fetch logged sessions for the selected patient ──
+  // Refetches whenever the selected patient changes or a new session is
+  // logged (sessionLogStatus === "saved"). Local Marcus has no Medplum
+  // Patient resource yet, so we short-circuit to [] for him and rely on
+  // fixtures + the pinned lastCallSummary card for his demo session view.
+  useEffect(() => {
+    if (!selectedPatientId) return;
+    if (selectedPatientId === LOCAL_MARCUS_ID) { setSessions([]); return; }
+    let cancelled = false;
+    setSessionsLoading(true);
+    (async () => {
+      try {
+        const res = await fetch(`/api/medplum-fhir?action=sessions&patientId=${encodeURIComponent(selectedPatientId)}`);
+        if (!res.ok) throw new Error(`Sessions fetch failed: ${res.status}`);
+        const data = await res.json();
+        if (cancelled) return;
+        setSessions(data.sessions || []);
+      } catch {
+        if (!cancelled) setSessions([]);
+      } finally {
+        if (!cancelled) setSessionsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedPatientId, sessionLogStatus]);
+
+  // Called by VoiceCallDemo when the call ends. Persists the encounter to
+  // Medplum (when the patient has a real Medplum id) and flashes the summary
+  // onto the Overview tab so the coordinator sees it immediately.
+  const handleCallComplete = async (payload) => {
+    setCallOpen(false);
+    const name = patientData?.patient?.name || roster.find(r => r.id === selectedPatientId)?.name || "Patient";
+    setLastCallSummary({ ...payload, patientName: name, patientId: selectedPatientId });
+    // Don't POST for the local Marcus demo (no Medplum Patient resource).
+    if (!selectedPatientId || selectedPatientId === LOCAL_MARCUS_ID) return;
+    setSessionLogStatus("saving");
+    try {
+      const res = await fetch("/api/medplum-fhir?action=log-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: selectedPatientId, ...payload }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `Log session failed: ${res.status}`);
+      }
+      setSessionLogStatus("saved");
+    } catch (err) {
+      setSessionLogStatus(`error:${err.message}`);
+    }
+  };
+
   const selectedRosterItem = useMemo(() => roster.find(r => r.id === selectedPatientId), [roster, selectedPatientId]);
   const isMarcusSelected = selectedRosterItem
     ? (selectedRosterItem.id === LOCAL_MARCUS_ID || identifierMatchesMarcus(selectedRosterItem.summary))
@@ -734,9 +867,17 @@ export default function CoordinatorDashboard() {
   const riskDot = (r) => ({ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: r === "high" ? S.red : r === "mod" ? S.amber : S.green, boxShadow: r === "high" ? "0 0 5px rgba(239,68,68,0.5)" : "none" });
 
   const tabContent = {
-    overview: <OverviewTab patientData={patientData} onViewAllSessions={() => setActiveTab("sessions")} onViewRiskProfile={() => setActiveTab("risk")} />,
+    overview: <OverviewTab
+      patientData={patientData}
+      onViewAllSessions={() => setActiveTab("sessions")}
+      onViewRiskProfile={() => setActiveTab("risk")}
+      medplumSessions={sessions}
+      lastCallSummary={lastCallSummary}
+      sessionLogStatus={sessionLogStatus}
+      onDismissLastCall={() => { setLastCallSummary(null); setSessionLogStatus(null); }}
+    />,
     risk: <RiskTab patientData={patientData} />,
-    sessions: <SessionsTab patientData={patientData} />,
+    sessions: <SessionsTab patientData={patientData} medplumSessions={sessions} loading={sessionsLoading} />,
     pami: <PamiTab patientData={patientData} />,
     outreach: <OutreachTab patientData={patientData} onInitiateCall={handleInitiateCall} />,
   };
@@ -880,7 +1021,7 @@ export default function CoordinatorDashboard() {
               patient={patientForCall}
               autoStartLive={true}
               isMarcusDemo={true}
-              onComplete={() => setCallOpen(false)}
+              onComplete={handleCallComplete}
             />
           </div>
         </div>
