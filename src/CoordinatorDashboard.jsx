@@ -196,9 +196,11 @@ const CARD_COLORS = [
 ];
 
 // ── Tab: Overview ──
-function OverviewTab({ patientData }) {
+function OverviewTab({ patientData, onViewAllSessions }) {
   if (!patientData) return <EmptyState>No patient data loaded from Medplum.</EmptyState>;
   const { conditions = [], medications = [], vitals = {} } = patientData;
+  const recentSessions = getSessionsFor(patientData?.patient?.name || "").slice(0, 3);
+  const truncate = (s, n = 120) => (s && s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s || "");
   const latestBP = patientData.latestBP;
   const latestWeight = patientData.latestWeight;
   const bps = (vitals.bloodPressures || []).slice(0, 5).reverse();
@@ -246,6 +248,25 @@ function OverviewTab({ patientData }) {
         <CardTitle>Current medications</CardTitle>
         {medications.length === 0 && <EmptyState>No medications in Medplum.</EmptyState>}
         {medications.map((m, i) => <PRow key={i} label={m.name} value={m.dosage || m.status || ""} />)}
+      </div>
+    </div>
+    <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14, marginTop: 14 }}>
+      <CardTitle>Recent sessions</CardTitle>
+      {recentSessions.length === 0 && <EmptyState>No sessions logged yet.</EmptyState>}
+      {recentSessions.map((s, i) => (
+        <div key={s.id} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "8px 0", borderBottom: i < recentSessions.length - 1 ? `1px solid #F0EEE8` : "none", ...css.mono, fontSize: 11 }}>
+          <span style={{ flex: "0 0 120px", color: S.text }}>{fmtSessionDate(s.date)}</span>
+          <span style={{ flex: "0 0 70px", color: S.textLight }}>{s.duration}</span>
+          <span style={{ flex: 1, color: S.textMed, lineHeight: 1.5 }}>{truncate(s.summary)}</span>
+        </div>
+      ))}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+        <button
+          onClick={onViewAllSessions}
+          style={{ fontSize: 11, ...css.mono, color: S.navy, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+        >
+          View all sessions →
+        </button>
       </div>
     </div>
   </div>;
@@ -374,9 +395,70 @@ function PamiTab({ patientData }) {
   </div>;
 }
 
-// ── Tab: Sessions (placeholder — not in Medplum) ──
-function SessionsTab() {
-  return <EmptyState>Session history will appear here once voice check-ins are logged to Medplum Communication resources.</EmptyState>;
+// ── Session fixtures ──
+// Shared between OverviewTab's "Recent sessions" card and SessionsTab.
+// Keyed by patient name; falls back to a generic set when no match.
+// Replace with Medplum Communication / Encounter resources once those are seeded.
+const GENERIC_SESSIONS = [
+  { id: "s-gen-1", date: "2026-02-27", duration: "4m 12s", summary: "Weekly check-in. Vitals stable. Patient reports good medication adherence and no new symptoms." },
+  { id: "s-gen-2", date: "2026-02-20", duration: "5m 48s", summary: "Reviewed sodium intake and daily weight log. Reinforced warning signs. Care plan on track." },
+  { id: "s-gen-3", date: "2026-02-13", duration: "6m 05s", summary: "Post-discharge onboarding. Confirmed pharmacy, PCP contact, and 90-day journey expectations." },
+];
+const SESSION_FIXTURES = {
+  "Marcus Williams": [
+    { id: "s-mw-1", date: "2026-03-05", duration: "5m 22s", summary: "BP 158/98, 4-day worsening trend. Missed Lisinopril dose confirmed. Escalated P2 to David Park." },
+    { id: "s-mw-2", date: "2026-02-28", duration: "4m 08s", summary: "Routine HTN check-in. BP 142/88. Reinforced evening Lisinopril routine and home cuff technique." },
+    { id: "s-mw-3", date: "2026-02-22", duration: "3m 51s", summary: "Patient declined glucose-log review. No new symptoms. Agreed to resume weekly readings." },
+  ],
+  "Sarah Chen": [
+    { id: "s-sc-1", date: "2026-03-05", duration: "6m 14s", summary: "Weight +2.3 lb/48 hr, ankle swelling, orthopnea. P2 CHF decompensation risk — routed to Rachel Kim." },
+    { id: "s-sc-2", date: "2026-02-28", duration: "4m 36s", summary: "Stable HFrEF check-in. Weight 187.7 lb, BP 136/86. Medication adherence confirmed across all five." },
+    { id: "s-sc-3", date: "2026-02-21", duration: "5m 02s", summary: "Transitioned from Stabilize to Optimize phase. Reviewed Phase 2 goals and Furosemide timing." },
+  ],
+  "Robert Williams": [
+    { id: "s-rw-1", date: "2026-02-28", duration: "3m 44s", summary: "Day 52 check-in. NYHA II, Sacubitril/Valsartan well-tolerated. No AF-related symptoms this week." },
+    { id: "s-rw-2", date: "2026-02-21", duration: "4m 17s", summary: "Stable weight, BP 122/74. Patient asked about exercise tolerance — escalated to cardiology for guidance." },
+    { id: "s-rw-3", date: "2026-02-14", duration: "5m 30s", summary: "Reviewed Apixaban adherence and bleeding-risk warning signs. Patient articulated them back correctly." },
+  ],
+  "Maria Gonzalez": [
+    { id: "s-mg-1", date: "2026-02-28", duration: "7m 01s", summary: "Day 8 HFpEF follow-up in Spanish. Good response to diuretic; weight down 2.6 lb. Mood stable on sertraline." },
+    { id: "s-mg-2", date: "2026-02-24", duration: "5m 48s", summary: "BP 148/92 trending down. Reinforced sodium 1500 mg target and daily AM weight logging." },
+    { id: "s-mg-3", date: "2026-02-21", duration: "6m 22s", summary: "Post-discharge onboarding in Spanish. Confirmed pharmacy, PCP, and 90-day journey structure." },
+  ],
+  "James Thompson": [
+    { id: "s-jt-1", date: "2026-02-28", duration: "3m 12s", summary: "Day 83. Graduation prep. All metrics in target 21 days. Reviewed self-management plan for post-90." },
+    { id: "s-jt-2", date: "2026-02-21", duration: "4m 05s", summary: "Stable on Carvedilol 25 BID. BP 118/70. Discussed calcium/vitamin D adherence for osteoporosis." },
+    { id: "s-jt-3", date: "2026-02-14", duration: "3m 38s", summary: "Maintain phase check-in. No new symptoms. Confirmed next cardiology visit scheduled Mar 4." },
+  ],
+};
+function getSessionsFor(patientName) {
+  return SESSION_FIXTURES[patientName] || GENERIC_SESSIONS;
+}
+function fmtSessionDate(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+// ── Tab: Sessions ──
+function SessionsTab({ patientData }) {
+  const name = patientData?.patient?.name || "";
+  const sessions = getSessionsFor(name);
+  if (!sessions.length) return <EmptyState>No sessions logged yet.</EmptyState>;
+  return <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14 }}>
+    <CardTitle>Session history</CardTitle>
+    {sessions.map((s, i) => (
+      <div key={s.id} style={{ padding: "10px 0", borderBottom: i < sessions.length - 1 ? `1px solid #F0EEE8` : "none" }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 4 }}>
+          <span style={{ fontSize: 12, ...css.serif, color: S.text }}>{fmtSessionDate(s.date)}</span>
+          <Chip>{s.duration}</Chip>
+          <span style={{ flex: 1 }} />
+          <span style={{ fontSize: 10, ...css.mono, color: S.textLight }}>AI voice check-in</span>
+        </div>
+        <div style={{ fontSize: 11, ...css.mono, color: S.textMed, lineHeight: 1.55 }}>{s.summary}</div>
+      </div>
+    ))}
+  </div>;
 }
 
 // ── Tab: Outreach ──
@@ -403,14 +485,6 @@ function OutreachTab({ patientData, onInitiateCall }) {
   </div>;
 }
 
-// ── Tab: Experience (static demo) ──
-function ExperienceTab({ patientData }) {
-  const name = patientData?.patient?.name?.split(" ")[0] || "Patient";
-  return <div style={{ fontSize: 12, ...css.mono, color: S.textMed }}>
-    Patient-facing experience for {name}. SMS onboarding, welcome email, and voice check-in scripts would render here.
-  </div>;
-}
-
 // ── Main Dashboard ──
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -418,7 +492,6 @@ const TABS = [
   { id: "sessions", label: "Sessions" },
   { id: "pami", label: "PAMI" },
   { id: "outreach", label: "Outreach" },
-  { id: "experience", label: "Patient experience" },
 ];
 
 export default function CoordinatorDashboard() {
@@ -587,12 +660,11 @@ export default function CoordinatorDashboard() {
   const riskDot = (r) => ({ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: r === "high" ? S.red : r === "mod" ? S.amber : S.green, boxShadow: r === "high" ? "0 0 5px rgba(239,68,68,0.5)" : "none" });
 
   const tabContent = {
-    overview: <OverviewTab patientData={patientData} />,
+    overview: <OverviewTab patientData={patientData} onViewAllSessions={() => setActiveTab("sessions")} />,
     risk: <RiskTab patientData={patientData} />,
-    sessions: <SessionsTab />,
+    sessions: <SessionsTab patientData={patientData} />,
     pami: <PamiTab patientData={patientData} />,
     outreach: <OutreachTab patientData={patientData} onInitiateCall={handleInitiateCall} />,
-    experience: <ExperienceTab patientData={patientData} />,
   };
 
   const patient = patientData?.patient;
@@ -661,9 +733,11 @@ export default function CoordinatorDashboard() {
               onClick={handleInitiateCall}
               title="Start live AI voice call with Marcus"
               style={{
-                padding: "6px 12px", borderRadius: 6, fontSize: 11, ...css.mono,
-                background: S.navy, color: S.navyText,
+                padding: "10px 20px", borderRadius: 6, fontSize: 13, ...css.mono,
+                background: S.amber, color: "#FFFFFF",
+                fontWeight: 700,
                 border: "none", cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(217, 119, 6, 0.25)",
               }}
             >
               Initiate call

@@ -223,7 +223,33 @@ export default async function handler(req, res) {
         };
       }));
 
-      return res.status(200).json({ source: 'medplum', patients: summaries });
+      // Dedupe at the query boundary. The Medplum tenant currently holds two
+      // Patient resources for Sarah Chen that share identifier VRD-2026-001
+      // but have different FHIR IDs, so UI-side id-keyed dedup misses them.
+      // Key on identifier first (falling back to name+birthDate), and keep
+      // whichever record has the freshest vitals. Suppressed IDs are surfaced
+      // in the response so the Medplum tenant can be cleaned up offline.
+      const freshness = (p) =>
+        new Date(p.latestBP?.date || p.latestWeight?.date || 0).getTime();
+      const bestByKey = new Map();
+      const suppressed = [];
+      for (const p of summaries) {
+        const key = p.identifier || `${p.name || ''}|${p.birthDate || ''}`;
+        const current = bestByKey.get(key);
+        if (!current) {
+          bestByKey.set(key, p);
+          continue;
+        }
+        if (freshness(p) > freshness(current)) {
+          suppressed.push({ id: current.id, name: current.name, reason: 'stale-duplicate' });
+          bestByKey.set(key, p);
+        } else {
+          suppressed.push({ id: p.id, name: p.name, reason: 'stale-duplicate' });
+        }
+      }
+      const deduped = Array.from(bestByKey.values());
+
+      return res.status(200).json({ source: 'medplum', patients: deduped, suppressed });
     }
 
     if (action === 'patient') {
