@@ -36,6 +36,29 @@ async function fhirGet(path, token) {
   return res.json();
 }
 
+// POST a new FHIR resource. Returns the created resource (with server-assigned id).
+async function fhirPost(resourceType, body, token) {
+  const res = await fetch(`${MEDPLUM_BASE_URL}/fhir/R4/${resourceType}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/fhir+json',
+      Accept: 'application/fhir+json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`FHIR POST ${resourceType} ${res.status}: ${detail.slice(0, 300)}`);
+  }
+  return res.json();
+}
+
+// Vardana tags for filtering AI check-in sessions out of other Communication /
+// Encounter resources in the tenant. Keep in sync with ui consumers.
+const VARDANA_SYSTEM = 'http://vardana.ai/sessions';
+const VARDANA_CODE_CHECKIN = 'ai-voice-checkin';
+
 // ── Extract helpers ──
 
 function extractLatestWeight(vitalsBundle) {
@@ -181,7 +204,7 @@ function formatAllergies(bundle) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -194,6 +217,104 @@ export default async function handler(req, res) {
 
   try {
     const token = await getAccessToken();
+
+    // ── Write: log an AI voice check-in as an Encounter + Communication pair ──
+    if (req.method === 'POST' && action === 'log-session') {
+      const body = req.body && typeof req.body === 'object' ? req.body : {};
+      const {
+        patientId: pid, transcript = [], summary = '',
+        duration = '', riskScore = null, riskLevel = null, alertGenerated = false,
+        timestamp,
+      } = body;
+      if (!pid) return res.status(400).json({ error: 'patientId required in body' });
+
+      const startIso = timestamp ? new Date(timestamp).toISOString() : new Date().toISOString();
+      const endIso = new Date().toISOString();
+
+      // Encounter — the "visit" record for the AI check-in.
+      const encounter = await fhirPost('Encounter', {
+        resourceType: 'Encounter',
+        status: 'finished',
+        class: { system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode', code: 'VR', display: 'virtual' },
+        type: [{
+          coding: [{ system: VARDANA_SYSTEM, code: VARDANA_CODE_CHECKIN, display: 'AI voice check-in' }],
+          text: 'AI voice check-in',
+        }],
+        subject: { reference: `Patient/${pid}` },
+        period: { start: startIso, end: endIso },
+        reasonCode: alertGenerated
+          ? [{ text: `Escalation generated${riskLevel ? ` · ${String(riskLevel).toUpperCase()}` : ''}` }]
+          : [{ text: 'Routine AI check-in' }],
+      }, token);
+
+      // Communication — carries the transcript + summary + metadata.
+      const transcriptText = Array.isArray(transcript)
+        ? transcript.map(t => `${t.speaker || 'AI'}: ${t.text || ''}`).filter(Boolean).join('\n')
+        : String(transcript || '');
+
+      const communication = await fhirPost('Communication', {
+        resourceType: 'Communication',
+        status: 'completed',
+        category: [{
+          coding: [{ system: VARDANA_SYSTEM, code: VARDANA_CODE_CHECKIN, display: 'AI voice check-in' }],
+          text: 'AI voice check-in',
+        }],
+        subject: { reference: `Patient/${pid}` },
+        encounter: { reference: `Encounter/${encounter.id}` },
+        sent: endIso,
+        payload: [
+          ...(summary ? [{ contentString: `SUMMARY: ${summary}` }] : []),
+          ...(transcriptText ? [{ contentString: `TRANSCRIPT:\n${transcriptText}` }] : []),
+          { contentString: `META: duration=${duration} · riskScore=${riskScore ?? 'n/a'} · riskLevel=${riskLevel ?? 'n/a'} · alert=${alertGenerated ? 'yes' : 'no'}` },
+        ],
+      }, token);
+
+      return res.status(201).json({
+        source: 'medplum',
+        encounterId: encounter.id,
+        communicationId: communication.id,
+      });
+    }
+
+    // ── Read: list past AI check-in sessions for a patient ──
+    if (action === 'sessions') {
+      if (!patientId) return res.status(400).json({ error: 'patientId query param required' });
+
+      const encBundle = await fhirGet(
+        `Encounter?subject=Patient/${patientId}&type=${encodeURIComponent(`${VARDANA_SYSTEM}|${VARDANA_CODE_CHECKIN}`)}&_sort=-date&_count=20`,
+        token
+      );
+      const encounters = (encBundle?.entry || []).map(e => e.resource).filter(Boolean);
+
+      const sessions = await Promise.all(encounters.map(async (enc) => {
+        const commBundle = await fhirGet(`Communication?encounter=Encounter/${enc.id}&_count=1`, token);
+        const comm = commBundle?.entry?.[0]?.resource;
+        const payloadParts = Object.fromEntries((comm?.payload || []).map(p => {
+          const s = p.contentString || '';
+          const idx = s.indexOf(':');
+          return idx > -1 ? [s.slice(0, idx).trim().toLowerCase(), s.slice(idx + 1).trim()] : ['raw', s];
+        }));
+        const meta = (payloadParts.meta || '').split('·').reduce((acc, kv) => {
+          const [k, v] = kv.split('=').map(x => (x || '').trim());
+          if (k) acc[k] = v;
+          return acc;
+        }, {});
+        return {
+          id: enc.id,
+          date: enc.period?.start,
+          end: enc.period?.end,
+          duration: meta.duration || '',
+          riskScore: meta.riskScore && meta.riskScore !== 'n/a' ? Number(meta.riskScore) : null,
+          riskLevel: meta.riskLevel && meta.riskLevel !== 'n/a' ? meta.riskLevel : null,
+          alertGenerated: meta.alert === 'yes',
+          summary: payloadParts.summary || '',
+          transcript: payloadParts.transcript || '',
+          reason: enc.reasonCode?.[0]?.text || '',
+        };
+      }));
+
+      return res.status(200).json({ source: 'medplum', sessions });
+    }
 
     if (action === 'roster') {
       // Fetch all Vardana patients by identifier system
@@ -279,7 +400,7 @@ export default async function handler(req, res) {
       });
     }
 
-    return res.status(400).json({ error: 'action must be "roster" or "patient"' });
+    return res.status(400).json({ error: 'action must be "roster", "patient", "sessions" (GET), or "log-session" (POST)' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
