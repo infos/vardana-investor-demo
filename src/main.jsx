@@ -11,6 +11,7 @@ import AdminAnalytics from './AdminAnalytics.jsx'
 import CheckinPage from './CheckinPage.jsx'
 import ClinicalDemoPage from './demo/ClinicalDemoPage.jsx'
 import ClinicalDemoEntry from './demo/ClinicalDemoEntry.jsx'
+import CoordinatorDashboard from './CoordinatorDashboard.jsx'
 import { useAnalytics } from './useAnalytics'
 import { DEMO_BASE, CLINICAL_BASE, isTokenValid, setDemoTokenCookie } from './demoPath'
 
@@ -64,7 +65,7 @@ function Router() {
     return <HomePage navigate={navigate} />;
   }
 
-  if (pathname === '/coordinator') return <App initialRole="coordinator" navigate={navigate} />;
+  if (pathname === '/coordinator') return <CoordinatorDashboard />;
   if (pathname === '/patient') return <App initialRole="patient" navigate={navigate} />;
   if (pathname === `${DEMO_BASE}/scripted`) return <ScriptedDemoPage navigate={navigate} />;
   if (pathname === `${DEMO_BASE}/recorded`) return <RecordedDemoPage navigate={navigate} />;
