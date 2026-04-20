@@ -31,7 +31,7 @@ function Badge({ children, color = "blue" }) {
   return <span style={{ fontSize: 9, ...css.mono, padding: "2px 5px", borderRadius: 3, background: c.bg, color: c.text }}>{children}</span>;
 }
 function GuidelineBadge({ children, type }) {
-  const colors = { acc: { bg: S.blueBg, text: S.blue, border: "#BFDBFE" }, ada: { bg: S.greenBg, text: S.greenText, border: "#BBF7D0" }, aha: { bg: S.redBg, text: S.redText, border: "#FECACA" }, le8: { bg: S.amberBg, text: S.amberText, border: "#FDE68A" } };
+  const colors = { acc: { bg: S.blueBg, text: S.blue, border: "#BFDBFE" }, ada: { bg: S.greenBg, text: S.greenText, border: "#BBF7D0" }, aha: { bg: S.redBg, text: S.redText, border: "#FECACA" } };
   const c = colors[type] || colors.acc;
   return <span style={{ fontSize: 9, ...css.mono, padding: "2px 6px", borderRadius: 3, background: c.bg, color: c.text, border: `1px solid ${c.border}` }}>{children}</span>;
 }
@@ -104,6 +104,42 @@ function inferConditionsSummary(conditions) {
 function identifierMatchesMarcus(summary) {
   const name = (summary.name || "").toLowerCase();
   return name.includes("marcus") && name.includes("williams");
+}
+
+// ── Shared PCE utilities ──
+// ACC/AHA Pooled Cohort Equations (2013, endorsed 2018). Used by both the
+// Risk tab (interactive calculator) and the Overview tab (headline tile).
+// Keep here so both call sites produce identical numbers.
+function calcPCE(inputs) {
+  const { age, tc, hdl, sbp, bptx, dm, smoke, group } = inputs;
+  const la = Math.log(age), lt = Math.log(tc), lh = Math.log(hdl), ls = Math.log(sbp);
+  let r = 0;
+  if (group === "wm") { const s = 12.344*la+11.853*lt-2.664*la*lt-7.990*lh+1.769*la*lh-1.766*lt*lh+(bptx?1.797:1.764)*ls+7.837*smoke-1.795*la*smoke+0.661*dm; r = 1-Math.pow(0.9144,Math.exp(s-61.18)); }
+  else if (group === "wf") { const s = -29.799*la+4.884*la*la+13.540*lt-3.114*la*lt-13.578*lh+3.149*la*lh+(bptx?2.019:1.957)*ls+7.574*smoke-1.665*la*smoke+0.661*dm; r = 1-Math.pow(0.9665,Math.exp(s-29.799)); }
+  else if (group === "am") { const s = 2.469*la+0.302*lt-0.307*lh+(bptx?1.916:1.809)*ls+0.549*smoke+0.645*dm; r = 1-Math.pow(0.8954,Math.exp(s-19.54)); }
+  else { const s = 17.1141*la+0.9396*lt-18.9196*lh+4.4748*la*lh+(bptx?29.2907:27.8197)*ls+(bptx?-6.4321:-6.0873)*la*ls+0.8738*smoke+0.8738*dm; r = 1-Math.pow(0.9533,Math.exp(s-86.61)); }
+  return Math.max(0.001, Math.min(0.99, r)) * 100;
+}
+function pceTierLabel(pct) {
+  if (pct < 5) return "Low (<5%)";
+  if (pct < 7.5) return "Borderline (5–7.5%)";
+  if (pct < 20) return "High (7.5–20%)";
+  return "Very high (>20%)";
+}
+function pceTierColors(pct) {
+  if (pct < 5) return { bg: S.greenBg, text: S.greenText, bar: S.green };
+  if (pct < 7.5) return { bg: S.amberBg, text: S.amberText, bar: S.amber };
+  return { bg: S.redBg, text: S.redText, bar: S.red };
+}
+function defaultPCEInputs(patientData) {
+  const latestBP = patientData?.latestBP;
+  const conditions = patientData?.conditions || [];
+  const hasDM = conditions.some(c => /diabetes|t2dm/i.test(c.text || ""));
+  return {
+    age: ageFromBirthDate(patientData?.patient?.birthDate) || 58,
+    tc: 195, hdl: 42, sbp: latestBP?.systolic || 138,
+    bptx: 1, dm: hasDM ? 1 : 0, smoke: 0, group: "wm",
+  };
 }
 
 // Normalize a local FHIR transaction Bundle into the same shape as /api/medplum-fhir?action=patient
@@ -196,11 +232,15 @@ const CARD_COLORS = [
 ];
 
 // ── Tab: Overview ──
-function OverviewTab({ patientData, onViewAllSessions }) {
+function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile }) {
   if (!patientData) return <EmptyState>No patient data loaded from Medplum.</EmptyState>;
   const { conditions = [], medications = [], vitals = {} } = patientData;
   const recentSessions = getSessionsFor(patientData?.patient?.name || "").slice(0, 3);
   const truncate = (s, n = 120) => (s && s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s || "");
+  const pcePct = calcPCE(defaultPCEInputs(patientData));
+  const pceTier = pceTierLabel(pcePct);
+  const pceColors = pceTierColors(pcePct);
+  const pceShort = pcePct >= 20 ? "Very high" : pcePct >= 7.5 ? "High risk tier" : pcePct >= 5 ? "Borderline" : "Low";
   const latestBP = patientData.latestBP;
   const latestWeight = patientData.latestWeight;
   const bps = (vitals.bloodPressures || []).slice(0, 5).reverse();
@@ -209,7 +249,7 @@ function OverviewTab({ patientData, onViewAllSessions }) {
   const wtBars = weights.length ? weights.map(w => Math.min(100, Math.max(20, (w.value || 80)))) : [72, 74, 73, 72, 72];
 
   return <div>
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
       <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 6, padding: 10 }}>
         <CardTitle>Latest BP</CardTitle>
         <div>
@@ -234,6 +274,22 @@ function OverviewTab({ patientData, onViewAllSessions }) {
         <div style={{ fontSize: 10, ...css.mono, color: S.textLight, marginTop: 4, lineHeight: 1.5 }}>
           {patientData.carePlan?.description?.slice(0, 80) || "No active care plan in Medplum."}
         </div>
+      </div>
+      <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 6, padding: 10, display: "flex", flexDirection: "column" }}>
+        <CardTitle>10-year ASCVD risk</CardTitle>
+        <div>
+          <span style={{ fontSize: 24, ...css.serif }}>{pcePct.toFixed(1)}</span>
+          <span style={{ fontSize: 11, color: S.textLight, ...css.mono }}>%</span>
+        </div>
+        <div style={{ fontSize: 11, ...css.mono, padding: "2px 6px", borderRadius: 4, background: pceColors.bg, color: pceColors.text, alignSelf: "flex-start", marginTop: 4 }}>{pceShort}</div>
+        <div style={{ fontSize: 10, ...css.mono, color: S.textLight, marginTop: 4 }}>Per ACC/AHA 2018 PCE</div>
+        <div style={{ flex: 1 }} />
+        <button
+          onClick={onViewRiskProfile}
+          style={{ fontSize: 10, ...css.mono, color: S.navy, background: "transparent", border: "none", cursor: "pointer", padding: 0, marginTop: 8, textAlign: "left" }}
+        >
+          View full risk profile →
+        </button>
       </div>
     </div>
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -277,11 +333,7 @@ function RiskTab({ patientData }) {
   const latestBP = patientData?.latestBP;
   const conditions = patientData?.conditions || [];
   const hasDM = conditions.some(c => /diabetes|t2dm/i.test(c.text || ""));
-  const [pceInputs, setPceInputs] = useState({
-    age: ageFromBirthDate(patientData?.patient?.birthDate) || 58,
-    tc: 195, hdl: 42, sbp: latestBP?.systolic || 138,
-    bptx: 1, dm: hasDM ? 1 : 0, smoke: 0, group: "wm",
-  });
+  const [pceInputs, setPceInputs] = useState(() => defaultPCEInputs(patientData));
   const [tips, setTips] = useState({});
 
   useEffect(() => {
@@ -293,19 +345,9 @@ function RiskTab({ patientData }) {
     }));
   }, [patientData, latestBP?.systolic, hasDM]);
 
-  function calcPCE(inputs) {
-    const { age, tc, hdl, sbp, bptx, dm, smoke, group } = inputs;
-    const la = Math.log(age), lt = Math.log(tc), lh = Math.log(hdl), ls = Math.log(sbp);
-    let r = 0;
-    if (group === "wm") { const s = 12.344*la+11.853*lt-2.664*la*lt-7.990*lh+1.769*la*lh-1.766*lt*lh+(bptx?1.797:1.764)*ls+7.837*smoke-1.795*la*smoke+0.661*dm; r = 1-Math.pow(0.9144,Math.exp(s-61.18)); }
-    else if (group === "wf") { const s = -29.799*la+4.884*la*la+13.540*lt-3.114*la*lt-13.578*lh+3.149*la*lh+(bptx?2.019:1.957)*ls+7.574*smoke-1.665*la*smoke+0.661*dm; r = 1-Math.pow(0.9665,Math.exp(s-29.799)); }
-    else if (group === "am") { const s = 2.469*la+0.302*lt-0.307*lh+(bptx?1.916:1.809)*ls+0.549*smoke+0.645*dm; r = 1-Math.pow(0.8954,Math.exp(s-19.54)); }
-    else { const s = 17.1141*la+0.9396*lt-18.9196*lh+4.4748*la*lh+(bptx?29.2907:27.8197)*ls+(bptx?-6.4321:-6.0873)*la*ls+0.8738*smoke+0.8738*dm; r = 1-Math.pow(0.9533,Math.exp(s-86.61)); }
-    return Math.max(0.001, Math.min(0.99, r)) * 100;
-  }
   const pct = calcPCE(pceInputs);
-  const tierLabel = pct < 5 ? "Low (<5%)" : pct < 7.5 ? "Borderline (5–7.5%)" : pct < 20 ? "High (7.5–20%)" : "Very high (>20%)";
-  const tierColors = pct < 5 ? { bg: S.greenBg, text: S.greenText, bar: S.green } : pct < 7.5 ? { bg: S.amberBg, text: S.amberText, bar: S.amber } : { bg: S.redBg, text: S.redText, bar: S.red };
+  const tierLabel = pceTierLabel(pct);
+  const tierColors = pceTierColors(pct);
   const toggleTip = (k) => setTips(t => ({ ...t, [k]: !t[k] }));
 
   const inp = (id, label, type = "number", opts) => (
@@ -348,6 +390,32 @@ function RiskTab({ patientData }) {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14, marginTop: 14 }}>
+      <CardTitle>In-call escalation triggers</CardTitle>
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1.4fr 1fr", gap: 10, padding: "8px 0", borderBottom: `1px solid ${S.border}`, fontSize: 10, ...css.mono, color: S.textLight, textTransform: "uppercase", letterSpacing: 0.8 }}>
+        <div>Trigger</div>
+        <div>State</div>
+        <div>Citation</div>
+      </div>
+      {[
+        { trigger: "SBP ≥140 or DBP ≥90, no symptoms", state: "Flag: BP above Stage 2", citation: "AHA/ACC 2017 HTN", citeType: "aha" },
+        { trigger: "SBP ≥180 or DBP ≥120", state: "Urgent: hypertensive crisis range", citation: "AHA/ACC 2017 HTN", citeType: "aha" },
+        { trigger: "Chest pain reported", state: "Emergency: ACS concern, 911 guidance", citation: "AHA/ACC ACS guidance", citeType: "aha" },
+        { trigger: "Glucose <70 mg/dL reported", state: "Urgent: hypoglycemia", citation: "ADA Standards of Care 2026", citeType: "ada" },
+        { trigger: "Glucose >240 mg/dL with symptoms", state: "Urgent: possible DKA/HHS", citation: "ADA Standards of Care 2026", citeType: "ada" },
+        { trigger: "Medication adherence gap ≥3 days", state: "Flag: adherence concern", citation: "ADA Standards of Care 2026", citeType: "ada" },
+      ].map((row, i, arr) => (
+        <div key={i} style={{ display: "grid", gridTemplateColumns: "1.4fr 1.4fr 1fr", gap: 10, alignItems: "center", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid #F0EEE8` : "none", ...css.mono, fontSize: 11 }}>
+          <div style={{ color: S.text }}>{row.trigger}</div>
+          <div style={{ color: S.textMed }}>{row.state}</div>
+          <div><GuidelineBadge type={row.citeType}>{row.citation}</GuidelineBadge></div>
+        </div>
+      ))}
+      <div style={{ fontSize: 10, ...css.mono, color: S.textLight, marginTop: 12, lineHeight: 1.55 }}>
+        Symptom-based escalation rules aligned to published guidelines. Informational only. All clinical decisions by the treating clinician.
       </div>
     </div>
   </div>;
@@ -660,7 +728,7 @@ export default function CoordinatorDashboard() {
   const riskDot = (r) => ({ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: r === "high" ? S.red : r === "mod" ? S.amber : S.green, boxShadow: r === "high" ? "0 0 5px rgba(239,68,68,0.5)" : "none" });
 
   const tabContent = {
-    overview: <OverviewTab patientData={patientData} onViewAllSessions={() => setActiveTab("sessions")} />,
+    overview: <OverviewTab patientData={patientData} onViewAllSessions={() => setActiveTab("sessions")} onViewRiskProfile={() => setActiveTab("risk")} />,
     risk: <RiskTab patientData={patientData} />,
     sessions: <SessionsTab patientData={patientData} />,
     pami: <PamiTab patientData={patientData} />,
