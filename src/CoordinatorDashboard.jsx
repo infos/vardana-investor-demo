@@ -1007,16 +1007,15 @@ export default function CoordinatorDashboard() {
         </div>
       </div>
 
-      {/* Live-call overlay */}
+      {/* Live-call overlay. VoiceCallDemo owns its own End Call → Return to
+          Dashboard flow, which routes through onComplete (generates summary,
+          fires handleCallComplete, persists to Medplum). We intentionally do
+          NOT render a wrapper-level Close button here — clicking it would
+          bypass onComplete and skip both the Medplum write and the post-call
+          summary card. One button, one path, always saves. */}
       {callOpen && patientForCall && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, overflow: "auto" }}>
           <div style={{ position: "relative", minHeight: "100vh", background: "#F8F9FB" }}>
-            <button
-              onClick={() => setCallOpen(false)}
-              style={{ position: "absolute", top: 12, right: 12, zIndex: 1001, padding: "6px 14px", fontSize: 12, ...css.mono, background: S.navy, color: S.navyText, border: "none", borderRadius: 6, cursor: "pointer" }}
-            >
-              Close call ×
-            </button>
             <VoiceCallDemo
               patient={patientForCall}
               autoStartLive={true}
