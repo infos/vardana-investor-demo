@@ -5,21 +5,33 @@ import { VoiceCallDemo } from "./App.jsx";
 const S = {
   bg: "#F0EEE8", card: "#FAFAF8", border: "#E5E1D8",
   navy: "#0D1B2A", navyText: "#E2D5B8",
-  text: "#1A1A1A", textMed: "#5C5C4A", textLight: "#8C8C7A",
+  // textLight darkened from #8C8C7A (≈3.3:1 on cream — fails WCAG AA) to
+  // #5C5C4A (≈6.8:1 — passes) so muted captions stay legible on clinical
+  // content. textMed already passed; left as-is.
+  text: "#1A1A1A", textMed: "#5C5C4A", textLight: "#5C5C4A",
+  // Sidebar (navy bg) slate token. Bumped from #475569 (≈2.4:1 on navy —
+  // fails) to #94A3B8 (≈6.1:1 — passes AA) so ALERTS/PATIENTS labels and
+  // patient meta rows read cleanly on the dark rail.
+  sidebarMuted: "#94A3B8",
   accent: "#E2D5B8", chip: "#EEEBD8",
   green: "#059669", greenBg: "#DCFCE7", greenText: "#14532D",
   amber: "#D97706", amberBg: "#FFFBEB", amberText: "#78350F",
   red: "#EF4444", redBg: "#FEE2E2", redText: "#7F1D1D",
   blue: "#1E3A8A", blueBg: "#EFF6FF",
 };
+// Font stack. DM Sans / DM Serif Display / IBM Plex Mono are loaded in
+// index.html already; we just weren't using them here. Sans becomes the
+// default for body copy and labels; mono is reserved for raw technical
+// content (transcripts, numeric inputs, and the Medplum source footer).
 const css = {
-  mono: { fontFamily: "monospace" },
-  serif: { fontFamily: "Georgia, serif" },
+  sans: { fontFamily: "'DM Sans', Inter, -apple-system, 'Segoe UI', system-ui, sans-serif" },
+  mono: { fontFamily: "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace" },
+  serif: { fontFamily: "'DM Serif Display', Georgia, serif" },
 };
 
 // ── Small presentational helpers ──
 function Chip({ children }) {
-  return <span style={{ fontSize: 10, ...css.mono, color: S.textMed, background: S.chip, padding: "2px 7px", borderRadius: 3 }}>{children}</span>;
+  return <span style={{ fontSize: 12, ...css.sans, color: S.textMed, background: S.chip, padding: "2px 7px", borderRadius: 3 }}>{children}</span>;
 }
 function Badge({ children, color = "blue" }) {
   const colors = {
@@ -28,25 +40,25 @@ function Badge({ children, color = "blue" }) {
     gray: { bg: "#F5F3ED", text: S.textMed },
   };
   const c = colors[color] || colors.blue;
-  return <span style={{ fontSize: 9, ...css.mono, padding: "2px 5px", borderRadius: 3, background: c.bg, color: c.text }}>{children}</span>;
+  return <span style={{ fontSize: 11, ...css.sans, padding: "2px 5px", borderRadius: 3, background: c.bg, color: c.text }}>{children}</span>;
 }
 function GuidelineBadge({ children, type }) {
   const colors = { acc: { bg: S.blueBg, text: S.blue, border: "#BFDBFE" }, ada: { bg: S.greenBg, text: S.greenText, border: "#BBF7D0" }, aha: { bg: S.redBg, text: S.redText, border: "#FECACA" } };
   const c = colors[type] || colors.acc;
-  return <span style={{ fontSize: 9, ...css.mono, padding: "2px 6px", borderRadius: 3, background: c.bg, color: c.text, border: `1px solid ${c.border}` }}>{children}</span>;
+  return <span style={{ fontSize: 11, ...css.sans, padding: "2px 6px", borderRadius: 3, background: c.bg, color: c.text, border: `1px solid ${c.border}` }}>{children}</span>;
 }
 function HelpBtn({ onClick }) {
-  return <button onClick={onClick} style={{ width: 18, height: 18, borderRadius: "50%", background: S.border, color: S.textMed, fontSize: 11, ...css.mono, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>?</button>;
+  return <button onClick={onClick} style={{ width: 18, height: 18, borderRadius: "50%", background: S.border, color: S.textMed, fontSize: 11, ...css.sans, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>?</button>;
 }
 function Tooltip({ visible, title, children }) {
   if (!visible) return null;
-  return <div style={{ background: S.navy, color: S.navyText, borderRadius: 6, padding: "10px 12px", fontSize: 10, ...css.mono, lineHeight: 1.6, marginBottom: 10 }}><div style={{ fontSize: 11, color: S.navyText, fontWeight: 700, marginBottom: 4 }}>{title}</div>{children}</div>;
+  return <div style={{ background: S.navy, color: S.navyText, borderRadius: 6, padding: "10px 12px", fontSize: 12, ...css.sans, lineHeight: 1.6, marginBottom: 10 }}><div style={{ fontSize: 11, color: S.navyText, fontWeight: 700, marginBottom: 4 }}>{title}</div>{children}</div>;
 }
 function CardTitle({ children }) {
-  return <div style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: S.textLight, ...css.mono, marginBottom: 10 }}>{children}</div>;
+  return <div style={{ fontSize: 12, letterSpacing: 1, textTransform: "uppercase", color: S.textLight, ...css.sans, marginBottom: 10 }}>{children}</div>;
 }
 function PRow({ label, value, badge, badgeColor }) {
-  return <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "7px 0", borderBottom: `1px solid #F0EEE8`, ...css.mono, fontSize: 11 }}>
+  return <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "7px 0", borderBottom: `1px solid #F0EEE8`, ...css.sans, fontSize: 11 }}>
     <span style={{ flex: "0 0 170px", color: S.text }}>{label}</span>
     <span style={{ color: S.textMed, flex: 1 }}>{value}</span>
     {badge && <Badge color={badgeColor}>{badge}</Badge>}
@@ -58,7 +70,7 @@ function MiniChart({ bars, accentColor }) {
   </div>;
 }
 function EmptyState({ children }) {
-  return <div style={{ fontSize: 11, ...css.mono, color: S.textLight, padding: "10px 0" }}>{children}</div>;
+  return <div style={{ fontSize: 11, ...css.sans, color: S.textLight, padding: "10px 0" }}>{children}</div>;
 }
 
 // ── Helpers ──
@@ -251,25 +263,25 @@ function PostCallSummary({ summary, status, onDismiss, onViewSessions }) {
   return (
     <div style={{ background: S.card, border: `1px solid ${S.navy}`, borderLeft: `4px solid ${S.amber}`, borderRadius: 8, padding: 14, marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
-        <span style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: S.amber, fontWeight: 700, ...css.mono }}>Call just ended</span>
-        <span style={{ fontSize: 11, ...css.mono, color: S.textLight }}>{when}{duration ? ` · ${duration}` : ""}</span>
+        <span style={{ fontSize: 12, letterSpacing: 1, textTransform: "uppercase", color: S.amber, fontWeight: 700, ...css.sans }}>Call just ended</span>
+        <span style={{ fontSize: 11, ...css.sans, color: S.textLight }}>{when}{duration ? ` · ${duration}` : ""}</span>
         <span style={{ flex: 1 }} />
         {alertGenerated && <Badge color="red">Alert generated</Badge>}
         {tier && <Badge color={tier === "CRITICAL" || tier === "HIGH" ? "red" : tier === "MODERATE" ? "amber" : "green"}>Risk tier: {tier}</Badge>}
-        <button onClick={onDismiss} style={{ fontSize: 11, ...css.mono, background: "transparent", color: S.textLight, border: "none", cursor: "pointer", padding: "0 4px" }}>×</button>
+        <button onClick={onDismiss} style={{ fontSize: 11, ...css.sans, background: "transparent", color: S.textLight, border: "none", cursor: "pointer", padding: "0 4px" }}>×</button>
       </div>
       <div style={{ fontSize: 14, ...css.serif, color: S.text, marginBottom: 6 }}>{patientName}</div>
-      <div style={{ fontSize: 12, ...css.mono, color: S.textMed, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{summaryText || "Summary not available."}</div>
+      <div style={{ fontSize: 12, ...css.sans, color: S.textMed, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{summaryText || "Summary not available."}</div>
       {transcriptText && (
         <details style={{ marginTop: 10 }}>
-          <summary style={{ fontSize: 11, ...css.mono, color: S.navy, cursor: "pointer" }}>Show transcript</summary>
+          <summary style={{ fontSize: 11, ...css.sans, color: S.navy, cursor: "pointer" }}>Show transcript</summary>
           <pre style={{ fontSize: 11, ...css.mono, color: S.textMed, background: "#F6F4EC", padding: 10, borderRadius: 4, marginTop: 8, whiteSpace: "pre-wrap", lineHeight: 1.55, maxHeight: 260, overflowY: "auto" }}>{transcriptText}</pre>
         </details>
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
-        {statusText && <span style={{ fontSize: 10, ...css.mono, color: statusColor }}>{statusText}</span>}
+        {statusText && <span style={{ fontSize: 12, ...css.sans, color: statusColor }}>{statusText}</span>}
         <span style={{ flex: 1 }} />
-        <button onClick={onViewSessions} style={{ fontSize: 11, ...css.mono, background: "transparent", color: S.navy, border: "none", cursor: "pointer", padding: 0 }}>View all sessions →</button>
+        <button onClick={onViewSessions} style={{ fontSize: 11, ...css.sans, background: "transparent", color: S.navy, border: "none", cursor: "pointer", padding: 0 }}>View all sessions →</button>
       </div>
     </div>
   );
@@ -299,24 +311,24 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, medplu
         <CardTitle>Latest BP</CardTitle>
         <div>
           <span style={{ fontSize: 24, ...css.serif }}>{latestBP ? `${latestBP.systolic}` : "—"}</span>
-          <span style={{ fontSize: 11, color: S.textLight, ...css.mono }}>{latestBP ? `/${latestBP.diastolic} mmHg` : ""}</span>
+          <span style={{ fontSize: 11, color: S.textLight, ...css.sans }}>{latestBP ? `/${latestBP.diastolic} mmHg` : ""}</span>
         </div>
-        <div style={{ fontSize: 10, ...css.mono, color: S.amber, marginTop: 2 }}>{latestBP ? fmtDate(latestBP.date) : "No data"}</div>
+        <div style={{ fontSize: 12, ...css.sans, color: S.amber, marginTop: 2 }}>{latestBP ? fmtDate(latestBP.date) : "No data"}</div>
         <MiniChart bars={bpBars} accentColor={S.amber} />
       </div>
       <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 6, padding: 10 }}>
         <CardTitle>Weight</CardTitle>
         <div>
           <span style={{ fontSize: 24, ...css.serif }}>{latestWeight ? latestWeight.value : "—"}</span>
-          <span style={{ fontSize: 11, color: S.textLight, ...css.mono }}>{latestWeight ? ` ${latestWeight.unit || "lb"}` : ""}</span>
+          <span style={{ fontSize: 11, color: S.textLight, ...css.sans }}>{latestWeight ? ` ${latestWeight.unit || "lb"}` : ""}</span>
         </div>
-        <div style={{ fontSize: 10, ...css.mono, color: S.textLight, marginTop: 2 }}>{latestWeight ? fmtDate(latestWeight.date) : "No data"}</div>
+        <div style={{ fontSize: 12, ...css.sans, color: S.textLight, marginTop: 2 }}>{latestWeight ? fmtDate(latestWeight.date) : "No data"}</div>
         <MiniChart bars={wtBars} accentColor="#8C8C7A" />
       </div>
       <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 6, padding: 10 }}>
         <CardTitle>Care plan</CardTitle>
         <div style={{ fontSize: 13, ...css.serif }}>{patientData.carePlan?.title || "—"}</div>
-        <div style={{ fontSize: 10, ...css.mono, color: S.textLight, marginTop: 4, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 12, ...css.sans, color: S.textLight, marginTop: 4, lineHeight: 1.5 }}>
           {patientData.carePlan?.description?.slice(0, 80) || "No active care plan in Medplum."}
         </div>
       </div>
@@ -324,14 +336,14 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, medplu
         <CardTitle>10-year ASCVD risk</CardTitle>
         <div>
           <span style={{ fontSize: 24, ...css.serif }}>{pcePct.toFixed(1)}</span>
-          <span style={{ fontSize: 11, color: S.textLight, ...css.mono }}>%</span>
+          <span style={{ fontSize: 11, color: S.textLight, ...css.sans }}>%</span>
         </div>
-        <div style={{ fontSize: 11, ...css.mono, padding: "2px 6px", borderRadius: 4, background: pceColors.bg, color: pceColors.text, alignSelf: "flex-start", marginTop: 4 }}>{pceShort}</div>
-        <div style={{ fontSize: 10, ...css.mono, color: S.textLight, marginTop: 4 }}>Per ACC/AHA 2018 PCE</div>
+        <div style={{ fontSize: 11, ...css.sans, padding: "2px 6px", borderRadius: 4, background: pceColors.bg, color: pceColors.text, alignSelf: "flex-start", marginTop: 4 }}>{pceShort}</div>
+        <div style={{ fontSize: 12, ...css.sans, color: S.textLight, marginTop: 4 }}>Per ACC/AHA 2018 PCE</div>
         <div style={{ flex: 1 }} />
         <button
           onClick={onViewRiskProfile}
-          style={{ fontSize: 10, ...css.mono, color: S.navy, background: "transparent", border: "none", cursor: "pointer", padding: 0, marginTop: 8, textAlign: "left" }}
+          style={{ fontSize: 12, ...css.sans, color: S.navy, background: "transparent", border: "none", cursor: "pointer", padding: 0, marginTop: 8, textAlign: "left" }}
         >
           View full risk profile →
         </button>
@@ -355,7 +367,7 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, medplu
       <CardTitle>Recent sessions</CardTitle>
       {recentSessions.length === 0 && <EmptyState>No sessions logged yet.</EmptyState>}
       {recentSessions.map((s, i) => (
-        <div key={s.id} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "8px 0", borderBottom: i < recentSessions.length - 1 ? `1px solid #F0EEE8` : "none", ...css.mono, fontSize: 11 }}>
+        <div key={s.id} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "8px 0", borderBottom: i < recentSessions.length - 1 ? `1px solid #F0EEE8` : "none", ...css.sans, fontSize: 11 }}>
           <span style={{ flex: "0 0 120px", color: S.text }}>{fmtSessionDate(s.date)}</span>
           <span style={{ flex: "0 0 70px", color: S.textLight }}>{s.duration}</span>
           <span style={{ flex: 1, color: S.textMed, lineHeight: 1.5 }}>{truncate(s.summary)}</span>
@@ -364,7 +376,7 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, medplu
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
         <button
           onClick={onViewAllSessions}
-          style={{ fontSize: 11, ...css.mono, color: S.navy, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+          style={{ fontSize: 11, ...css.sans, color: S.navy, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
         >
           View all sessions →
         </button>
@@ -397,19 +409,19 @@ function RiskTab({ patientData }) {
 
   const inp = (id, label, type = "number", opts) => (
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
-      <span style={{ fontSize: 11, ...css.mono, color: S.textMed, flex: "0 0 160px" }}>{label}</span>
+      <span style={{ fontSize: 11, ...css.sans, color: S.textMed, flex: "0 0 160px" }}>{label}</span>
       {type === "select"
-        ? <select value={pceInputs[id]} onChange={e => setPceInputs(p => ({ ...p, [id]: e.target.value }))} style={{ flex: "0 0 90px", border: `1px solid ${S.border}`, borderRadius: 5, padding: "4px 7px", fontSize: 11, ...css.mono }}>
+        ? <select value={pceInputs[id]} onChange={e => setPceInputs(p => ({ ...p, [id]: e.target.value }))} style={{ flex: "0 0 90px", border: `1px solid ${S.border}`, borderRadius: 5, padding: "4px 7px", fontSize: 12, ...css.mono }}>
             {opts.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
           </select>
-        : <input type="number" value={pceInputs[id]} onChange={e => setPceInputs(p => ({ ...p, [id]: parseFloat(e.target.value) || 0 }))} style={{ flex: "0 0 80px", border: `1px solid ${S.border}`, borderRadius: 5, padding: "4px 7px", fontSize: 11, ...css.mono }} />}
+        : <input type="number" value={pceInputs[id]} onChange={e => setPceInputs(p => ({ ...p, [id]: parseFloat(e.target.value) || 0 }))} style={{ flex: "0 0 80px", border: `1px solid ${S.border}`, borderRadius: 5, padding: "4px 7px", fontSize: 12, ...css.mono }} />}
     </div>
   );
 
   return <div>
     <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid #F0EEE8` }}>
-        <span style={{ fontSize: 12, ...css.mono, color: S.text, fontWeight: 700, flex: 1 }}>10-year ASCVD risk</span>
+        <span style={{ fontSize: 12, ...css.sans, color: S.text, fontWeight: 700, flex: 1 }}>10-year ASCVD risk</span>
         <GuidelineBadge type="acc">ACC/AHA 2018</GuidelineBadge>
         <HelpBtn onClick={() => toggleTip("pce")} />
       </div>
@@ -427,8 +439,8 @@ function RiskTab({ patientData }) {
         </div>
         <div style={{ flex: "0 0 150px", textAlign: "center", paddingTop: 6 }}>
           <div style={{ fontSize: 36, ...css.serif }}>{pct.toFixed(1)}%</div>
-          <div style={{ fontSize: 10, ...css.mono, color: S.textLight, marginBottom: 6 }}>10-yr ASCVD</div>
-          <div style={{ fontSize: 11, ...css.mono, padding: "4px 6px", borderRadius: 4, background: tierColors.bg, color: tierColors.text }}>{tierLabel}</div>
+          <div style={{ fontSize: 12, ...css.sans, color: S.textLight, marginBottom: 6 }}>10-yr ASCVD</div>
+          <div style={{ fontSize: 11, ...css.sans, padding: "4px 6px", borderRadius: 4, background: tierColors.bg, color: tierColors.text }}>{tierLabel}</div>
           <div style={{ marginTop: 10 }}>
             <div style={{ height: 7, background: S.border, borderRadius: 3, overflow: "hidden" }}>
               <div style={{ height: "100%", background: tierColors.bar, borderRadius: 3, width: `${Math.min(100, pct / 30 * 100).toFixed(1)}%`, transition: "width 0.4s" }} />
@@ -440,7 +452,7 @@ function RiskTab({ patientData }) {
 
     <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14, marginTop: 14 }}>
       <CardTitle>In-call escalation triggers</CardTitle>
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1.4fr 1fr", gap: 10, padding: "8px 0", borderBottom: `1px solid ${S.border}`, fontSize: 10, ...css.mono, color: S.textLight, textTransform: "uppercase", letterSpacing: 0.8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1.4fr 1fr", gap: 10, padding: "8px 0", borderBottom: `1px solid ${S.border}`, fontSize: 12, ...css.sans, color: S.textLight, textTransform: "uppercase", letterSpacing: 0.8 }}>
         <div>Trigger</div>
         <div>State</div>
         <div>Citation</div>
@@ -453,13 +465,13 @@ function RiskTab({ patientData }) {
         { trigger: "Glucose >240 mg/dL with symptoms", state: "Urgent: possible DKA/HHS", citation: "ADA Standards of Care 2026", citeType: "ada" },
         { trigger: "Medication adherence gap ≥3 days", state: "Flag: adherence concern", citation: "ADA Standards of Care 2026", citeType: "ada" },
       ].map((row, i, arr) => (
-        <div key={i} style={{ display: "grid", gridTemplateColumns: "1.4fr 1.4fr 1fr", gap: 10, alignItems: "center", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid #F0EEE8` : "none", ...css.mono, fontSize: 11 }}>
+        <div key={i} style={{ display: "grid", gridTemplateColumns: "1.4fr 1.4fr 1fr", gap: 10, alignItems: "center", padding: "9px 0", borderBottom: i < arr.length - 1 ? `1px solid #F0EEE8` : "none", ...css.sans, fontSize: 11 }}>
           <div style={{ color: S.text }}>{row.trigger}</div>
           <div style={{ color: S.textMed }}>{row.state}</div>
           <div><GuidelineBadge type={row.citeType}>{row.citation}</GuidelineBadge></div>
         </div>
       ))}
-      <div style={{ fontSize: 10, ...css.mono, color: S.textLight, marginTop: 12, lineHeight: 1.55 }}>
+      <div style={{ fontSize: 12, ...css.sans, color: S.textLight, marginTop: 12, lineHeight: 1.55 }}>
         Symptom-based escalation rules aligned to published guidelines. Informational only. All clinical decisions by the treating clinician.
       </div>
     </div>
@@ -486,7 +498,7 @@ function PamiTab({ patientData }) {
       <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14 }}>
         <div style={{ fontSize: 13, ...css.serif, marginBottom: 10, borderBottom: `1px solid ${S.border}`, paddingBottom: 6 }}>Recent labs</div>
         {labs.length === 0 && <EmptyState>No labs in Medplum.</EmptyState>}
-        {labs.slice(0, 8).map((l, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: i < Math.min(labs.length, 8) - 1 ? `1px solid #F0EEE8` : "none", ...css.mono, fontSize: 11 }}>
+        {labs.slice(0, 8).map((l, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: i < Math.min(labs.length, 8) - 1 ? `1px solid #F0EEE8` : "none", ...css.sans, fontSize: 11 }}>
           <span style={{ flex: "0 0 150px", color: S.text }}>{l.name}</span>
           <span style={{ flex: 1, color: S.textMed }}>{l.value}{l.unit ? ` ${l.unit}` : ""}{l.date ? ` · ${fmtDate(l.date)}` : ""}</span>
         </div>)}
@@ -498,10 +510,10 @@ function PamiTab({ patientData }) {
         {medications.length === 0 && <EmptyState>No medications in Medplum.</EmptyState>}
         {medications.map((m, i) => <div key={i} style={{ padding: "8px 0", borderBottom: i < medications.length - 1 ? `1px solid #F0EEE8` : "none" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 12, ...css.mono, flex: 1 }}>{m.name}</span>
+            <span style={{ fontSize: 12, ...css.sans, flex: 1 }}>{m.name}</span>
             <Badge color={m.status === "active" ? "blue" : "gray"}>{m.status || "—"}</Badge>
           </div>
-          {m.dosage && <div style={{ fontSize: 10, ...css.mono, color: S.textMed, marginTop: 2 }}>{m.dosage}</div>}
+          {m.dosage && <div style={{ fontSize: 12, ...css.sans, color: S.textMed, marginTop: 2 }}>{m.dosage}</div>}
         </div>)}
       </div>
     </div>
@@ -587,13 +599,13 @@ function SessionsTab({ patientData, medplumSessions, loading }) {
           {s.duration && <Chip>{s.duration}</Chip>}
           {s.alertGenerated && <Badge color="red">Alert</Badge>}
           <span style={{ flex: 1 }} />
-          <span style={{ fontSize: 10, ...css.mono, color: S.textLight }}>AI voice check-in{s.source === "medplum" ? " · Medplum" : ""}</span>
+          <span style={{ fontSize: 12, ...css.sans, color: S.textLight }}>AI voice check-in{s.source === "medplum" ? " · Medplum" : ""}</span>
         </div>
-        <div style={{ fontSize: 11, ...css.mono, color: S.textMed, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{s.summary}</div>
+        <div style={{ fontSize: 11, ...css.sans, color: S.textMed, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{s.summary}</div>
         {s.transcript && (
           <details style={{ marginTop: 6 }}>
-            <summary style={{ fontSize: 10, ...css.mono, color: S.textLight, cursor: "pointer" }}>Show transcript</summary>
-            <pre style={{ fontSize: 10, ...css.mono, color: S.textMed, background: "#F6F4EC", padding: 8, borderRadius: 4, marginTop: 6, whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{s.transcript}</pre>
+            <summary style={{ fontSize: 12, ...css.sans, color: S.textLight, cursor: "pointer" }}>Show transcript</summary>
+            <pre style={{ fontSize: 11, ...css.mono, color: S.textMed, background: "#F6F4EC", padding: 8, borderRadius: 4, marginTop: 6, whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{s.transcript}</pre>
           </details>
         )}
       </div>
@@ -613,13 +625,13 @@ function OutreachTab({ patientData, onInitiateCall }) {
         <div key={o.id} onClick={() => setSelected(selected === o.id ? null : o.id)} style={{ border: `1px solid ${selected === o.id ? S.navy : S.border}`, borderRadius: 8, padding: 12, cursor: "pointer", background: selected === o.id ? "#F5F3ED" : S.card, textAlign: "center", transition: "all 0.15s" }}>
           <div style={{ fontSize: 20, marginBottom: 6 }}>{o.icon}</div>
           <div style={{ fontSize: 12, ...css.serif }}>{o.name}</div>
-          <div style={{ fontSize: 10, color: S.textLight, ...css.mono }}>{o.desc}</div>
+          <div style={{ fontSize: 12, color: S.textLight, ...css.sans }}>{o.desc}</div>
         </div>))}
     </div>
     {selected === "call" && (
       <div style={{ border: `1px solid ${S.border}`, borderRadius: 8, padding: 14, background: S.card }}>
-        <div style={{ fontSize: 12, ...css.mono, color: S.textMed, marginBottom: 10 }}>Start a live AI voice check-in with {name} now.</div>
-        <button onClick={onInitiateCall} style={{ fontSize: 11, ...css.mono, padding: "7px 16px", background: S.navy, color: S.navyText, border: "none", borderRadius: 6, cursor: "pointer" }}>Initiate live call</button>
+        <div style={{ fontSize: 12, ...css.sans, color: S.textMed, marginBottom: 10 }}>Start a live AI voice check-in with {name} now.</div>
+        <button onClick={onInitiateCall} style={{ fontSize: 11, ...css.sans, padding: "7px 16px", background: S.navy, color: S.navyText, border: "none", borderRadius: 6, cursor: "pointer" }}>Initiate live call</button>
       </div>
     )}
   </div>;
@@ -894,41 +906,41 @@ export default function CoordinatorDashboard() {
       <div style={{ width: 260, background: S.navy, color: "#CBD5E1", display: "flex", flexDirection: "column", flexShrink: 0, overflowY: "auto" }}>
         <div style={{ padding: "18px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           <div style={{ fontSize: 17, ...css.serif, color: S.navyText }}>Vardana</div>
-          <div style={{ fontSize: 10, color: "#475569", letterSpacing: "1.5px", textTransform: "uppercase", marginTop: 2, ...css.mono }}>Care Console</div>
+          <div style={{ fontSize: 12, color: S.sidebarMuted, letterSpacing: "1.5px", textTransform: "uppercase", marginTop: 2, ...css.sans }}>Care Console</div>
         </div>
 
-        {rosterLoading && <div style={{ padding: 16, fontSize: 11, ...css.mono, color: "#475569" }}>Loading roster from Medplum…</div>}
-        {rosterError && <div style={{ padding: 16, fontSize: 11, ...css.mono, color: S.red }}>Roster error: {rosterError}</div>}
+        {rosterLoading && <div style={{ padding: 16, fontSize: 11, ...css.sans, color: S.sidebarMuted }}>Loading roster from Medplum…</div>}
+        {rosterError && <div style={{ padding: 16, fontSize: 11, ...css.sans, color: S.red }}>Roster error: {rosterError}</div>}
 
         {roster.filter(p => p.alert).length > 0 && (
-          <div style={{ padding: "10px 10px 4px", fontSize: 10, letterSpacing: "1.2px", textTransform: "uppercase", color: "#475569", ...css.mono }}>Alerts</div>
+          <div style={{ padding: "10px 10px 4px", fontSize: 12, letterSpacing: "1.2px", textTransform: "uppercase", color: S.sidebarMuted, ...css.sans }}>Alerts</div>
         )}
         {roster.filter(p => p.alert).map((p) => (
           <div key={p.id} onClick={() => setSelectedPatientId(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderLeft: `3px solid ${selectedPatientId === p.id ? S.navyText : "transparent"}`, background: selectedPatientId === p.id ? "rgba(226,213,184,0.12)" : "rgba(226,213,184,0.08)", cursor: "pointer" }}>
-            <div style={{ width: 30, height: 30, borderRadius: "50%", background: p.bg, color: p.fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, ...css.mono, flexShrink: 0 }}>{p.initials}</div>
+            <div style={{ width: 30, height: 30, borderRadius: "50%", background: p.bg, color: p.fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, ...css.sans, flexShrink: 0 }}>{p.initials}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, color: "#CBD5E1" }}>{p.name}</div>
-              <div style={{ fontSize: 10, color: "#475569", ...css.mono }}>{p.meta}</div>
+              <div style={{ fontSize: 12, color: S.sidebarMuted, ...css.sans }}>{p.meta}</div>
             </div>
-            <span style={{ background: S.red, color: "white", fontSize: 9, ...css.mono, padding: "1px 4px", borderRadius: 2 }}>1</span>
+            <span style={{ background: S.red, color: "white", fontSize: 11, ...css.sans, padding: "1px 4px", borderRadius: 2 }}>1</span>
             <div style={riskDot(p.risk)} />
           </div>))}
 
         {roster.filter(p => !p.alert).length > 0 && (
-          <div style={{ padding: "10px 10px 4px", marginTop: 6, fontSize: 10, letterSpacing: "1.2px", textTransform: "uppercase", color: "#475569", ...css.mono }}>Patients</div>
+          <div style={{ padding: "10px 10px 4px", marginTop: 6, fontSize: 12, letterSpacing: "1.2px", textTransform: "uppercase", color: S.sidebarMuted, ...css.sans }}>Patients</div>
         )}
         {roster.filter(p => !p.alert).map((p) => (
           <div key={p.id} onClick={() => setSelectedPatientId(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderLeft: `3px solid ${selectedPatientId === p.id ? S.navyText : "transparent"}`, background: selectedPatientId === p.id ? "rgba(226,213,184,0.08)" : "transparent", cursor: "pointer" }}>
-            <div style={{ width: 30, height: 30, borderRadius: "50%", background: p.bg, color: p.fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, ...css.mono, flexShrink: 0 }}>{p.initials}</div>
+            <div style={{ width: 30, height: 30, borderRadius: "50%", background: p.bg, color: p.fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, ...css.sans, flexShrink: 0 }}>{p.initials}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, color: "#CBD5E1" }}>{p.name}</div>
-              <div style={{ fontSize: 10, color: "#475569", ...css.mono }}>{p.meta}</div>
+              <div style={{ fontSize: 12, color: S.sidebarMuted, ...css.sans }}>{p.meta}</div>
             </div>
             <div style={riskDot(p.risk)} />
           </div>))}
 
         <div style={{ marginTop: "auto", borderTop: "1px solid rgba(255,255,255,0.06)", padding: 10 }}>
-          <div style={{ padding: "7px 10px", color: "#475569", fontSize: 11, ...css.mono }}>Source: Medplum FHIR R4</div>
+          <div style={{ padding: "7px 10px", color: S.sidebarMuted, fontSize: 11, ...css.mono }}>Source: Medplum FHIR R4</div>
         </div>
       </div>
 
@@ -938,7 +950,7 @@ export default function CoordinatorDashboard() {
         <div style={{ background: S.card, borderBottom: `1px solid ${S.border}`, padding: "0 20px", display: "flex", alignItems: "center", gap: 12, height: 52, flexShrink: 0 }}>
           <div>
             <div style={{ fontSize: 15, ...css.serif }}>{displayName}</div>
-            <div style={{ fontSize: 11, color: S.textLight, ...css.mono }}>
+            <div style={{ fontSize: 11, color: S.textLight, ...css.sans }}>
               {age != null ? `${age} yo · ` : ""}{gender}{mrn !== "—" ? ` · ${mrn}` : ""}
             </div>
           </div>
@@ -948,7 +960,7 @@ export default function CoordinatorDashboard() {
               onClick={handleInitiateCall}
               title="Start live AI voice call with Marcus"
               style={{
-                padding: "10px 20px", borderRadius: 6, fontSize: 13, ...css.mono,
+                padding: "10px 20px", borderRadius: 6, fontSize: 13, ...css.sans,
                 background: S.amber, color: "#FFFFFF",
                 fontWeight: 700,
                 border: "none", cursor: "pointer",
@@ -962,17 +974,17 @@ export default function CoordinatorDashboard() {
 
         {callError && (
           <div style={{ background: S.redBg, borderBottom: `1px solid #FECACA`, padding: "8px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 11, ...css.mono, color: S.redText, flex: 1 }}>{callError}</span>
-            <button onClick={() => setCallError("")} style={{ fontSize: 10, ...css.mono, background: "transparent", color: S.redText, border: `1px solid #FECACA`, padding: "2px 8px", borderRadius: 4, cursor: "pointer" }}>Dismiss</button>
+            <span style={{ fontSize: 11, ...css.sans, color: S.redText, flex: 1 }}>{callError}</span>
+            <button onClick={() => setCallError("")} style={{ fontSize: 12, ...css.sans, background: "transparent", color: S.redText, border: `1px solid #FECACA`, padding: "2px 8px", borderRadius: 4, cursor: "pointer" }}>Dismiss</button>
           </div>
         )}
 
         {/* Patient header */}
         <div style={{ background: S.card, borderBottom: `1px solid ${S.border}`, padding: "14px 20px", flexShrink: 0 }}>
-          {patientLoading && <div style={{ fontSize: 11, ...css.mono, color: S.textLight }}>Loading patient data from Medplum…</div>}
+          {patientLoading && <div style={{ fontSize: 11, ...css.sans, color: S.textLight }}>Loading patient data from Medplum…</div>}
           {!patientLoading && patient && (
             <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-              <div style={{ width: 48, height: 48, borderRadius: "50%", background: selectedRosterItem?.bg || "#3B2F1E", color: selectedRosterItem?.fg || S.navyText, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, ...css.mono, fontWeight: 700, flexShrink: 0 }}>{initialsFromName(displayName)}</div>
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: selectedRosterItem?.bg || "#3B2F1E", color: selectedRosterItem?.fg || S.navyText, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, ...css.sans, fontWeight: 700, flexShrink: 0 }}>{initialsFromName(displayName)}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 20, ...css.serif }}>{displayName}</div>
                 <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
@@ -986,17 +998,17 @@ export default function CoordinatorDashboard() {
             </div>
           )}
           {!patientLoading && !patient && !patientData?.error && (
-            <div style={{ fontSize: 11, ...css.mono, color: S.textLight }}>Select a patient from the roster.</div>
+            <div style={{ fontSize: 11, ...css.sans, color: S.textLight }}>Select a patient from the roster.</div>
           )}
           {patientData?.error && (
-            <div style={{ fontSize: 11, ...css.mono, color: S.red }}>Failed to load patient: {patientData.error}</div>
+            <div style={{ fontSize: 11, ...css.sans, color: S.red }}>Failed to load patient: {patientData.error}</div>
           )}
         </div>
 
         {/* Tabs */}
         <div style={{ background: S.card, borderBottom: `1px solid ${S.border}`, padding: "0 20px", display: "flex", flexShrink: 0, overflowX: "auto" }}>
           {TABS.map(t => (
-            <div key={t.id} onClick={() => setActiveTab(t.id)} style={{ padding: "10px 14px", fontSize: 11, ...css.mono, color: activeTab === t.id ? S.text : S.textLight, cursor: "pointer", borderBottom: `2px solid ${activeTab === t.id ? S.navy : "transparent"}`, transition: "all 0.15s", whiteSpace: "nowrap" }}>
+            <div key={t.id} onClick={() => setActiveTab(t.id)} style={{ padding: "10px 14px", fontSize: 11, ...css.sans, color: activeTab === t.id ? S.text : S.textLight, cursor: "pointer", borderBottom: `2px solid ${activeTab === t.id ? S.navy : "transparent"}`, transition: "all 0.15s", whiteSpace: "nowrap" }}>
               {t.label}
             </div>))}
         </div>
