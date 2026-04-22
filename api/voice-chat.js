@@ -3,8 +3,8 @@ const API_KEY = process.env.ANTHROPIC_API_KEY;
 // ── AWS Bedrock config ─────────────────────────────────────────────────────
 // Set USE_BEDROCK=false to fall back to direct Anthropic API
 const USE_BEDROCK = process.env.USE_BEDROCK !== 'false';
-const BEDROCK_REGION = process.env.AWS_BEDROCK_REGION || 'us-east-1';
-const BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID || 'anthropic.claude-sonnet-4-6-20250514';
+const BEDROCK_REGION = process.env.AWS_REGION || 'us-east-1';
+const BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID || 'us.anthropic.claude-sonnet-4-6';
 
 let bedrockClient = null;
 function getBedrockClient() {
