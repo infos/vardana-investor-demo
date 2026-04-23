@@ -459,8 +459,8 @@
         "subject": {"reference": "Patient/1de9768a-2459-4586-a888-d184a70479cc"},
         "startDate": "2026-04-01",
         "target": [
-          {"measure": {"coding": [{"system": "http://loinc.org", "code": "8480-6", "display": "Systolic blood pressure"}]}, "detailQuantity": {"value": 130, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}, "dueDate": "2026-05-30"},
-          {"measure": {"coding": [{"system": "http://loinc.org", "code": "8462-4", "display": "Diastolic blood pressure"}]}, "detailQuantity": {"value": 80, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}, "dueDate": "2026-05-30"}
+          {"measure": {"coding": [{"system": "http://loinc.org", "code": "8480-6", "display": "Systolic blood pressure"}]}, "detailQuantity": {"value": 130, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}, "dueDate": "2026-06-30"},
+          {"measure": {"coding": [{"system": "http://loinc.org", "code": "8462-4", "display": "Diastolic blood pressure"}]}, "detailQuantity": {"value": 80, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}, "dueDate": "2026-06-30"}
         ],
         "note": [{"text": "Per AHA/ACC 2017 Hypertension Guideline, target <130/80 for patients with HTN and diabetes."}]
       },
@@ -474,11 +474,11 @@
         "achievementStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-achievement", "code": "in-progress", "display": "In Progress"}]},
         "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-category", "code": "dietary", "display": "Glycemic control"}]}],
         "priority": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-priority", "code": "high-priority"}]},
-        "description": {"text": "Reduce HbA1c to <7.0% by Day 90 per ADA 2026 individualized glycemic target"},
+        "description": {"text": "Reduce HbA1c to <7.0% by Q2 review per ADA 2026 individualized glycemic target"},
         "subject": {"reference": "Patient/1de9768a-2459-4586-a888-d184a70479cc"},
         "startDate": "2026-04-01",
         "target": [
-          {"measure": {"coding": [{"system": "http://loinc.org", "code": "4548-4", "display": "Hemoglobin A1c"}]}, "detailQuantity": {"value": 7.0, "unit": "%", "system": "http://unitsofmeasure.org", "code": "%"}, "dueDate": "2026-06-30"}
+          {"measure": {"coding": [{"system": "http://loinc.org", "code": "4548-4", "display": "Hemoglobin A1c"}]}, "detailQuantity": {"value": 7.0, "unit": "%", "system": "http://unitsofmeasure.org", "code": "%"}, "dueDate": "2026-09-28"}
         ],
         "note": [{"text": "Per ADA 2026 Standards of Care Section 6, individualized A1C target for most non-pregnant adults with T2DM."}]
       },
@@ -492,11 +492,11 @@
         "achievementStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-achievement", "code": "in-progress", "display": "In Progress"}]},
         "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-category", "code": "dietary", "display": "Lipid control"}]}],
         "priority": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-priority", "code": "high-priority"}]},
-        "description": {"text": "Reduce LDL-C to <70 mg/dL by Day 90 per ACC/AHA 2018 for high-risk ASCVD (10-yr risk 24.5%)"},
+        "description": {"text": "Reduce LDL-C to <70 mg/dL by Q2 review per ACC/AHA 2018 for high-risk ASCVD (10-yr risk 24.5%)"},
         "subject": {"reference": "Patient/1de9768a-2459-4586-a888-d184a70479cc"},
         "startDate": "2026-04-01",
         "target": [
-          {"measure": {"coding": [{"system": "http://loinc.org", "code": "13457-7", "display": "LDL Cholesterol (calculated)"}]}, "detailQuantity": {"value": 70, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}, "dueDate": "2026-06-30"}
+          {"measure": {"coding": [{"system": "http://loinc.org", "code": "13457-7", "display": "LDL Cholesterol (calculated)"}]}, "detailQuantity": {"value": 70, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}, "dueDate": "2026-09-28"}
         ],
         "note": [{"text": "Per ACC/AHA 2018 Cholesterol Guideline, LDL-C <70 mg/dL for high-risk primary prevention with calculated 10-year ASCVD risk ≥20%."}]
       },
@@ -510,11 +510,11 @@
         "achievementStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-achievement", "code": "in-progress", "display": "In Progress"}]},
         "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-category", "code": "behavioral", "display": "Weight management"}]}],
         "priority": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-priority", "code": "medium-priority"}]},
-        "description": {"text": "Reduce body weight by 5% (from 96.8 kg to 91.9 kg) by Day 90 per ADA 2026 weight management for T2DM"},
+        "description": {"text": "Reduce body weight by 5% (from 96.8 kg to 91.9 kg) by Q3 review per ADA 2026 weight management for T2DM"},
         "subject": {"reference": "Patient/1de9768a-2459-4586-a888-d184a70479cc"},
         "startDate": "2026-04-01",
         "target": [
-          {"measure": {"coding": [{"system": "http://loinc.org", "code": "29463-7", "display": "Body weight"}]}, "detailQuantity": {"value": 91.9, "unit": "kg", "system": "http://unitsofmeasure.org", "code": "kg"}, "dueDate": "2026-06-30"}
+          {"measure": {"coding": [{"system": "http://loinc.org", "code": "29463-7", "display": "Body weight"}]}, "detailQuantity": {"value": 91.9, "unit": "kg", "system": "http://unitsofmeasure.org", "code": "kg"}, "dueDate": "2026-12-27"}
         ],
         "note": [{"text": "Per ADA 2026 Standards of Care Section 8, ≥5% weight loss for adults with T2DM and overweight/obesity improves glycemia, BP, and lipids."}]
       },
@@ -527,8 +527,8 @@
         "status": "active",
         "intent": "plan",
         "category": [{"coding": [{"system": "http://hl7.org/fhir/us/core/CodeSystem/careplan-category", "code": "assess-plan", "display": "Assessment and Plan of Treatment"}]}],
-        "title": "90-Day Cardiometabolic Management Program",
-        "description": "Integrated HTN, T2DM, hyperlipidemia, and weight management program with daily voice-first patient engagement, guideline-anchored escalation, and structured medication and lifestyle adherence tracking.",
+        "title": "Continuous Cardiometabolic Care",
+        "description": "Continuous cardiometabolic management for hypertension, type 2 diabetes, hyperlipidemia, and weight. Daily voice-first patient engagement, guideline-anchored escalation, ADA quarterly milestone reviews, and structured medication and lifestyle adherence tracking.",
         "subject": {"reference": "Patient/1de9768a-2459-4586-a888-d184a70479cc"},
         "period": {"start": "2026-04-01", "end": "2026-06-30"},
         "created": "2026-04-01",

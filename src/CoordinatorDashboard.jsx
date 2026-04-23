@@ -403,31 +403,40 @@ function dayOfProgram(startIso) {
   const ms = now - start;
   return Math.max(1, Math.floor(ms / 86400000) + 1);
 }
-function programLengthDays(period) {
-  const s = parseLocalDate(period?.start), e = parseLocalDate(period?.end);
-  if (!s || !e) return 90;
-  return Math.max(1, Math.round((e - s) / 86400000));
+// ADA quarterly milestone (Q1=90d, Q2=180d, Q3=270d, Q4=360d from program
+// start) — used to frame goal due dates as review checkpoints rather than
+// arbitrary fixed-program deadlines.
+function reviewMilestone(dueDateIso, startIso) {
+  const due = parseLocalDate(dueDateIso), start = parseLocalDate(startIso);
+  if (!due || !start) return null;
+  const days = Math.round((due - start) / 86400000);
+  const q = Math.round(days / 90);
+  return q >= 1 && q <= 4 ? `Q${q} review` : null;
 }
 // Short goal labels for the compact Overview list; falls back to full text
 // if no heuristic match. Keeps the tile scannable in 5 seconds.
-function shortGoalLabel(goal) {
+function shortGoalLabel(goal, programStart) {
   const desc = (goal.description || "").toLowerCase();
   const target = goal.targets?.[0];
   const due = target?.dueDate;
-  const dueStr = due ? `by ${fmtLocalDate(due)}` : "";
+  const milestone = reviewMilestone(due, programStart);
+  const dueStr = due
+    ? (milestone ? `${milestone} · ${fmtLocalDate(due)}` : fmtLocalDate(due))
+    : "";
+  const sep = dueStr ? " · " : "";
   if (desc.includes("bp") || /blood pressure/.test(desc)) {
     const sys = goal.targets?.find(t => /systolic/i.test(t.measure))?.value;
     const dia = goal.targets?.find(t => /diastolic/i.test(t.measure))?.value;
-    if (sys && dia) return `BP <${sys}/${dia} ${dueStr}`;
+    if (sys && dia) return `BP <${sys}/${dia}${sep}${dueStr}`;
   }
   if (/a1c|hemoglobin/.test(desc) && target?.value != null) {
-    return `A1C <${target.value}% ${dueStr}`;
+    return `A1C <${target.value}%${sep}${dueStr}`;
   }
   if (/ldl/.test(desc) && target?.value != null) {
-    return `LDL <${target.value} mg/dL ${dueStr}`;
+    return `LDL <${target.value} mg/dL${sep}${dueStr}`;
   }
   if (/weight/.test(desc) && target?.value != null) {
-    return `Weight ↓ to ${target.value} ${target.unit || "kg"} ${dueStr}`;
+    return `Weight ↓ to ${target.value} ${target.unit || "kg"}${sep}${dueStr}`;
   }
   return goal.description || "";
 }
@@ -477,7 +486,6 @@ function CarePlanOverviewCard({ carePlan, onViewFull }) {
     );
   }
   const day = dayOfProgram(carePlan.period?.start);
-  const total = programLengthDays(carePlan.period);
   const rows = summarizeAdherence(carePlan.activities);
   const goals = (carePlan.goals || []).slice(0, 4);
   return (
@@ -487,7 +495,7 @@ function CarePlanOverviewCard({ carePlan, onViewFull }) {
         <div style={{ flex: 1 }} />
         {day != null && (
           <span style={{ fontSize: 13, ...css.sans, color: S.textMed, background: S.chip, padding: "2px 7px", borderRadius: 3 }}>
-            Day {day} of {total}
+            Day {day} · Continuous Care
           </span>
         )}
       </div>
@@ -499,7 +507,7 @@ function CarePlanOverviewCard({ carePlan, onViewFull }) {
           {goals.map(g => (
             <div key={g.id} style={{ fontSize: 14, ...css.sans, color: S.text, padding: "4px 0", display: "flex", gap: 8 }}>
               <span style={{ color: S.textLight }}>•</span>
-              <span>{shortGoalLabel(g)}</span>
+              <span>{shortGoalLabel(g, carePlan.period?.start)}</span>
             </div>
           ))}
         </div>
@@ -536,7 +544,6 @@ function CarePlanTab({ patientData }) {
   const cp = patientData?.carePlan;
   if (!cp) return <EmptyState>No active care plan in Medplum.</EmptyState>;
   const day = dayOfProgram(cp.period?.start);
-  const total = programLengthDays(cp.period);
   const frequencyLabel = (timing) => {
     if (!timing) return "";
     const { frequency, period, periodUnit } = timing;
@@ -550,13 +557,13 @@ function CarePlanTab({ patientData }) {
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 4 }}>
         <div style={{ fontSize: 20, ...css.serif, color: S.text, flex: 1 }}>{cp.title}</div>
         {day != null && (
-          <span style={{ fontSize: 13, ...css.sans, color: S.textMed, background: S.chip, padding: "2px 7px", borderRadius: 3 }}>Day {day} of {total}</span>
+          <span style={{ fontSize: 13, ...css.sans, color: S.textMed, background: S.chip, padding: "2px 7px", borderRadius: 3 }}>Day {day} · Continuous Care</span>
         )}
       </div>
       {cp.description && <div style={{ fontSize: 14, ...css.sans, color: S.textMed, lineHeight: 1.5, marginBottom: 8 }}>{cp.description}</div>}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 13, ...css.sans, color: S.textLight }}>
         {cp.author && <span>Author: {cp.author}</span>}
-        {cp.period?.start && <span>Program: {fmtLocalDate(cp.period.start)} → {fmtLocalDate(cp.period.end)}</span>}
+        {cp.period?.start && <span>Started: {fmtLocalDate(cp.period.start)}</span>}
       </div>
     </div>
 
@@ -568,7 +575,7 @@ function CarePlanTab({ patientData }) {
         return (
           <div key={g.id} style={{ padding: "10px 0", borderBottom: `1px solid #F0EEE8`, ...css.sans }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
-              <div style={{ fontSize: 15, color: S.text, fontWeight: 700, flex: 1 }}>{shortGoalLabel(g)}</div>
+              <div style={{ fontSize: 15, color: S.text, fontWeight: 700, flex: 1 }}>{shortGoalLabel(g, cp.period?.start)}</div>
               {g.priority && <Badge color={g.priority === "high-priority" ? "red" : g.priority === "medium-priority" ? "amber" : "gray"}>
                 {g.priority === "high-priority" ? "High" : g.priority === "medium-priority" ? "Medium" : g.priority}
               </Badge>}
@@ -577,7 +584,14 @@ function CarePlanTab({ patientData }) {
             <div style={{ fontSize: 14, color: S.textMed, lineHeight: 1.5, marginBottom: 4 }}>{g.description}</div>
             {g.targets?.length > 0 && (
               <div style={{ fontSize: 13, color: S.textLight, marginBottom: 4 }}>
-                Target{g.targets.length > 1 ? "s" : ""}: {g.targets.map((t, i) => `${t.measure} ${t.value}${t.unit ? " " + t.unit : ""}${t.dueDate ? " by " + fmtLocalDate(t.dueDate) : ""}`).join(" · ")}
+                Target{g.targets.length > 1 ? "s" : ""}: {g.targets.map((t) => {
+                  const base = `${t.measure} ${t.value}${t.unit ? " " + t.unit : ""}`;
+                  if (!t.dueDate) return base;
+                  const milestone = reviewMilestone(t.dueDate, cp.period?.start);
+                  return milestone
+                    ? `${base} · ${milestone} · ${fmtLocalDate(t.dueDate)}`
+                    : `${base} by ${fmtLocalDate(t.dueDate)}`;
+                }).join(" · ")}
               </div>
             )}
             {g.note && <div style={{ fontSize: 13, color: S.textLight, fontStyle: "italic" }}>{g.note}</div>}
