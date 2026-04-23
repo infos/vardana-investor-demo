@@ -147,8 +147,8 @@ function calcPCE(inputs) {
 function pceTierLabel(pct) {
   if (pct < 5) return "Low (<5%)";
   if (pct < 7.5) return "Borderline (5–7.5%)";
-  if (pct < 20) return "High (7.5–20%)";
-  return "Very high (>20%)";
+  if (pct < 20) return "Intermediate (7.5–20%)";
+  return "High (≥20%)";
 }
 function pceTierColors(pct) {
   if (pct < 5) return { bg: S.greenBg, text: S.greenText, bar: S.green };
@@ -308,7 +308,7 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, medplu
   const pcePct = calcPCE(defaultPCEInputs(patientData));
   const pceTier = pceTierLabel(pcePct);
   const pceColors = pceTierColors(pcePct);
-  const pceShort = pcePct >= 20 ? "Very high" : pcePct >= 7.5 ? "High risk tier" : pcePct >= 5 ? "Borderline" : "Low";
+  const pceShort = pcePct >= 20 ? "High" : pcePct >= 7.5 ? "Intermediate" : pcePct >= 5 ? "Borderline" : "Low";
   const latestBP = patientData.latestBP;
   const latestWeight = patientData.latestWeight;
   const bps = (vitals.bloodPressures || []).slice(0, 5).reverse();
@@ -351,7 +351,7 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, medplu
           <span style={{ fontSize: 13, color: S.textLight, ...css.sans }}>%</span>
         </div>
         <div style={{ fontSize: 14, ...css.sans, padding: "2px 6px", borderRadius: 4, background: pceColors.bg, color: pceColors.text, alignSelf: "flex-start", marginTop: 4 }}>{pceShort}</div>
-        <div style={{ fontSize: 13, ...css.sans, color: S.textLight, marginTop: 4 }}>Per ACC/AHA 2018 PCE</div>
+        <div style={{ fontSize: 13, ...css.sans, color: S.textLight, marginTop: 4 }}>Per ACC/AHA PCE (2013)</div>
         <div style={{ flex: 1 }} />
         <button
           onClick={onViewRiskProfile}
@@ -434,10 +434,10 @@ function RiskTab({ patientData }) {
     <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid #F0EEE8` }}>
         <span style={{ fontSize: 18, ...css.sans, color: S.text, fontWeight: 700, flex: 1 }}>10-year ASCVD risk</span>
-        <GuidelineBadge type="acc">ACC/AHA 2018</GuidelineBadge>
+        <GuidelineBadge type="acc">ACC/AHA PCE (2013)</GuidelineBadge>
         <HelpBtn onClick={() => toggleTip("pce")} />
       </div>
-      <Tooltip visible={tips.pce} title="ACC/AHA Pooled Cohort Equations (2018)">Estimates 10-year risk of first atherosclerotic cardiovascular event. Inputs seeded from Medplum observations.</Tooltip>
+      <Tooltip visible={tips.pce} title="ACC/AHA Pooled Cohort Equations (2013)">Estimates 10-year risk of first atherosclerotic cardiovascular event. Inputs seeded from Medplum observations.</Tooltip>
       <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
         <div style={{ flex: 1 }}>
           {inp("age", "Age")}
@@ -470,8 +470,9 @@ function RiskTab({ patientData }) {
         <div>Citation</div>
       </div>
       {[
-        { trigger: "SBP ≥140 or DBP ≥90, no symptoms", state: "Flag: BP above Stage 2", citation: "AHA/ACC 2017 HTN", citeType: "aha" },
-        { trigger: "SBP ≥180 or DBP ≥120", state: "Urgent: hypertensive crisis range", citation: "AHA/ACC 2017 HTN", citeType: "aha" },
+        { trigger: "SBP ≥140 or DBP ≥90, no symptoms", state: "Flag: Stage 2 HTN", citation: "AHA/ACC 2017 HTN", citeType: "aha" },
+        { trigger: "SBP ≥180 or DBP ≥120, no end-organ symptoms", state: "Urgent: hypertensive urgency, same-day clinical evaluation", citation: "AHA/ACC 2017 HTN", citeType: "aha" },
+        { trigger: "SBP ≥180 or DBP ≥120 WITH end-organ symptoms (severe headache + vision changes, chest pain, neurologic deficit, dyspnea)", state: "Emergency: hypertensive emergency, 911 guidance", citation: "AHA/ACC 2017 HTN §11.2", citeType: "aha" },
         { trigger: "Chest pain reported", state: "Emergency: ACS concern, 911 guidance", citation: "AHA/ACC ACS guidance", citeType: "aha" },
         { trigger: "Glucose <70 mg/dL reported", state: "Urgent: hypoglycemia", citation: "ADA Standards of Care 2026", citeType: "ada" },
         { trigger: "Glucose >240 mg/dL with symptoms", state: "Urgent: possible DKA/HHS", citation: "ADA Standards of Care 2026", citeType: "ada" },
