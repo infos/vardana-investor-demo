@@ -87,17 +87,81 @@ function extractLatestBP(vitalsBundle) {
   return null;
 }
 
-function extractCarePlan(cpBundle) {
+const ADHERENCE_EXT_URL = 'https://vardana.ai/fhir/StructureDefinition/activity-adherence';
+function parseAdherence(activity) {
+  const ext = (activity?.extension || []).find(e => e.url === ADHERENCE_EXT_URL);
+  if (!ext) return null;
+  const sub = ext.extension || [];
+  const pick = (u) => sub.find(s => s.url === u);
+  const num = (u) => {
+    const v = pick(u);
+    if (!v) return null;
+    if (typeof v.valueDecimal === 'number') return v.valueDecimal;
+    if (typeof v.valueInteger === 'number') return v.valueInteger;
+    return null;
+  };
+  const str = (u) => {
+    const v = pick(u);
+    if (!v) return null;
+    return v.valueString || v.valueDate || null;
+  };
+  return {
+    percent: num('adherencePercent'),
+    actual: num('actualCount'),
+    expected: num('expectedCount'),
+    lastEventDate: str('lastEventDate'),
+    note: str('adherenceNote'),
+    weeklyMinutesActual: num('weeklyMinutesActual'),
+    weeklyMinutesTarget: num('weeklyMinutesTarget'),
+  };
+}
+function extractCarePlan(cpBundle, goalBundle) {
   const cp = cpBundle?.entry?.[0]?.resource;
   if (!cp) return null;
-  const activities = (cp.activity || []).map(a => ({
-    description: a.detail?.description || '',
-    status: a.detail?.status || 'unknown',
-  }));
+  const goalResources = (goalBundle?.entry || []).map(e => e.resource).filter(Boolean);
+  const goals = (cp.goal || [])
+    .map(ref => {
+      const id = (ref.reference || '').split('/').pop();
+      return goalResources.find(g => g.id === id);
+    })
+    .filter(Boolean)
+    .map(g => ({
+      id: g.id,
+      description: g.description?.text || '',
+      priority: g.priority?.coding?.[0]?.code || null,
+      category: g.category?.[0]?.coding?.[0]?.display || null,
+      startDate: g.startDate || null,
+      status: g.achievementStatus?.coding?.[0]?.display
+        || g.achievementStatus?.coding?.[0]?.code
+        || g.lifecycleStatus || '',
+      targets: (g.target || []).map(t => ({
+        measure: t.measure?.coding?.[0]?.display || '',
+        code: t.measure?.coding?.[0]?.code || '',
+        value: t.detailQuantity?.value ?? null,
+        unit: t.detailQuantity?.unit || '',
+        dueDate: t.dueDate || null,
+      })),
+      note: g.note?.[0]?.text || '',
+    }));
+  const activities = (cp.activity || []).map(a => {
+    const d = a.detail || {};
+    return {
+      kind: d.kind || '',
+      code: d.code?.text || d.productReference?.display || '',
+      status: d.status || 'unknown',
+      description: d.description || '',
+      timing: d.scheduledTiming?.repeat || null,
+      adherence: parseAdherence(a),
+    };
+  });
   return {
+    id: cp.id,
     title: cp.title,
     description: cp.description,
     period: cp.period,
+    created: cp.created || null,
+    author: cp.author?.display || cp.author?.reference || '',
+    goals,
     activities,
     note: cp.note?.[0]?.text || '',
   };
@@ -376,13 +440,14 @@ export default async function handler(req, res) {
     if (action === 'patient') {
       if (!patientId) return res.status(400).json({ error: 'patientId query param required' });
 
-      const [patient, conditions, meds, vitals, labs, carePlans, allergies] = await Promise.all([
+      const [patient, conditions, meds, vitals, labs, carePlans, goals, allergies] = await Promise.all([
         fhirGet(`Patient/${patientId}`, token),
         fhirGet(`Condition?patient=Patient/${patientId}&_count=20`, token),
         fhirGet(`MedicationRequest?patient=Patient/${patientId}&_count=20`, token),
         fhirGet(`Observation?patient=Patient/${patientId}&category=vital-signs&_sort=-date&_count=50`, token),
         fhirGet(`Observation?patient=Patient/${patientId}&category=laboratory&_count=20`, token),
         fhirGet(`CarePlan?patient=Patient/${patientId}&status=active`, token),
+        fhirGet(`Goal?patient=Patient/${patientId}&lifecycle-status=active&_count=20`, token),
         fhirGet(`AllergyIntolerance?patient=Patient/${patientId}`, token),
       ]);
 
@@ -395,7 +460,7 @@ export default async function handler(req, res) {
         medications: formatMedications(meds),
         vitals: formatVitals(vitals),
         labs: formatLabs(labs),
-        carePlan: extractCarePlan(carePlans),
+        carePlan: extractCarePlan(carePlans, goals),
         allergies: formatAllergies(allergies),
       });
     }

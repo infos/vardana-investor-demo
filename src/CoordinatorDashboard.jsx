@@ -212,6 +212,8 @@ function normalizeBundle(bundle) {
     reaction: a.reaction?.[0]?.manifestation?.[0]?.text,
   }));
   const cp = get("CarePlan")[0];
+  const goals = get("Goal");
+  const carePlan = cp ? buildCarePlanView(cp, goals) : null;
   return {
     source: "local-bundle",
     patient: {
@@ -230,7 +232,87 @@ function normalizeBundle(bundle) {
     vitals: { weights, bloodPressures },
     latestWeight: weights[0] || null,
     latestBP: bloodPressures[0] || null,
-    carePlan: cp ? { title: cp.title || "Care plan", description: cp.description || "" } : null,
+    carePlan,
+  };
+}
+
+// ── CarePlan view-model helpers ──
+// The custom extension URL used for per-activity adherence, namespaced under
+// vardana.ai so it will not collide with standard FHIR extensions. This is a
+// demo-speed shortcut; production should move to Observation-linked tracking.
+const ADHERENCE_EXT_URL = "https://vardana.ai/fhir/StructureDefinition/activity-adherence";
+function parseAdherence(activity) {
+  const ext = (activity?.extension || []).find(e => e.url === ADHERENCE_EXT_URL);
+  if (!ext) return null;
+  const sub = ext.extension || [];
+  const pick = (u) => sub.find(s => s.url === u);
+  const num = (u) => {
+    const v = pick(u);
+    if (!v) return null;
+    if (typeof v.valueDecimal === "number") return v.valueDecimal;
+    if (typeof v.valueInteger === "number") return v.valueInteger;
+    return null;
+  };
+  const str = (u) => {
+    const v = pick(u);
+    if (!v) return null;
+    return v.valueString || v.valueDate || null;
+  };
+  return {
+    percent: num("adherencePercent"),
+    actual: num("actualCount"),
+    expected: num("expectedCount"),
+    lastEventDate: str("lastEventDate"),
+    note: str("adherenceNote"),
+    weeklyMinutesActual: num("weeklyMinutesActual"),
+    weeklyMinutesTarget: num("weeklyMinutesTarget"),
+  };
+}
+function buildCarePlanView(cp, goalResources = []) {
+  const goals = (cp.goal || [])
+    .map(ref => {
+      const id = (ref.reference || "").split("/").pop();
+      return goalResources.find(g => g.id === id);
+    })
+    .filter(Boolean)
+    .map(g => ({
+      id: g.id,
+      description: g.description?.text || "",
+      priority: g.priority?.coding?.[0]?.code || null,
+      category: g.category?.[0]?.coding?.[0]?.display || null,
+      startDate: g.startDate || null,
+      status: g.achievementStatus?.coding?.[0]?.display
+        || g.achievementStatus?.coding?.[0]?.code
+        || g.lifecycleStatus || "",
+      targets: (g.target || []).map(t => ({
+        measure: t.measure?.coding?.[0]?.display || "",
+        code: t.measure?.coding?.[0]?.code || "",
+        value: t.detailQuantity?.value ?? null,
+        unit: t.detailQuantity?.unit || "",
+        dueDate: t.dueDate || null,
+      })),
+      note: g.note?.[0]?.text || "",
+    }));
+  const activities = (cp.activity || []).map(a => {
+    const d = a.detail || {};
+    return {
+      kind: d.kind || "",
+      code: d.code?.text || d.productReference?.display || "",
+      status: d.status || "unknown",
+      description: d.description || "",
+      timing: d.scheduledTiming?.repeat || null,
+      adherence: parseAdherence(a),
+    };
+  });
+  return {
+    id: cp.id,
+    title: cp.title || "Care plan",
+    description: cp.description || "",
+    period: cp.period || null,
+    created: cp.created || null,
+    author: cp.author?.display || cp.author?.reference || "",
+    goals,
+    activities,
   };
 }
 
@@ -299,8 +381,265 @@ function PostCallSummary({ summary, status, onDismiss, onViewSessions }) {
   );
 }
 
+// ── Care Plan helpers ──
+// Parse a YYYY-MM-DD string as local midnight (not UTC). Standard `new
+// Date("2026-04-01")` treats it as UTC midnight, which renders as the
+// previous day in negative-UTC timezones. We want date-only fields to
+// stay calendar-accurate regardless of tz.
+function parseLocalDate(iso) {
+  if (!iso) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) { const d = new Date(iso); return isNaN(d.getTime()) ? null : d; }
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+function fmtLocalDate(iso) {
+  const d = parseLocalDate(iso);
+  return d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
+}
+function dayOfProgram(startIso) {
+  const start = parseLocalDate(startIso);
+  if (!start) return null;
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const ms = now - start;
+  return Math.max(1, Math.floor(ms / 86400000) + 1);
+}
+// ADA quarterly milestone (Q1=90d, Q2=180d, Q3=270d, Q4=360d from program
+// start) — used to frame goal due dates as review checkpoints rather than
+// arbitrary fixed-program deadlines.
+function reviewMilestone(dueDateIso, startIso) {
+  const due = parseLocalDate(dueDateIso), start = parseLocalDate(startIso);
+  if (!due || !start) return null;
+  const days = Math.round((due - start) / 86400000);
+  const q = Math.round(days / 90);
+  return q >= 1 && q <= 4 ? `Q${q} review` : null;
+}
+// Short goal labels for the compact Overview list; falls back to full text
+// if no heuristic match. Keeps the tile scannable in 5 seconds.
+function shortGoalLabel(goal, programStart) {
+  const desc = (goal.description || "").toLowerCase();
+  const target = goal.targets?.[0];
+  const due = target?.dueDate;
+  const milestone = reviewMilestone(due, programStart);
+  const dueStr = due
+    ? (milestone ? `${milestone} · ${fmtLocalDate(due)}` : fmtLocalDate(due))
+    : "";
+  const sep = dueStr ? " · " : "";
+  if (desc.includes("bp") || /blood pressure/.test(desc)) {
+    const sys = goal.targets?.find(t => /systolic/i.test(t.measure))?.value;
+    const dia = goal.targets?.find(t => /diastolic/i.test(t.measure))?.value;
+    if (sys && dia) return `BP <${sys}/${dia}${sep}${dueStr}`;
+  }
+  if (/a1c|hemoglobin/.test(desc) && target?.value != null) {
+    return `A1C <${target.value}%${sep}${dueStr}`;
+  }
+  if (/ldl/.test(desc) && target?.value != null) {
+    return `LDL <${target.value} mg/dL${sep}${dueStr}`;
+  }
+  if (/weight/.test(desc) && target?.value != null) {
+    return `Weight ↓ to ${target.value} ${target.unit || "kg"}${sep}${dueStr}`;
+  }
+  return goal.description || "";
+}
+// Group activities into the 4-row adherence summary shown on the Overview
+// tile. Meds-other collapses Amlodipine/Metformin/Atorvastatin into one
+// row so the tile stays readable. Activity uses weeklyMinutesActual vs
+// Target when available.
+function summarizeAdherence(activities = []) {
+  const rows = [];
+  const find = (fn) => activities.find(fn);
+  const bp = find(a => /bp monitoring/i.test(a.code));
+  if (bp) rows.push({ label: "BP monitoring", percent: bp.adherence?.percent, note: null });
+  const lisinopril = find(a => /lisinopril/i.test(a.code));
+  if (lisinopril) rows.push({ label: "Lisinopril", percent: lisinopril.adherence?.percent, note: lisinopril.adherence?.note });
+  const otherMeds = activities.filter(a =>
+    a.kind === "MedicationRequest" && !/lisinopril/i.test(a.code) && a.adherence?.percent != null
+  );
+  if (otherMeds.length) {
+    const vals = otherMeds.map(a => a.adherence.percent).sort((a, b) => a - b);
+    const range = vals.length > 1 && vals[0] !== vals[vals.length - 1]
+      ? `${vals[0]}–${vals[vals.length - 1]}%`
+      : `${vals[0]}%`;
+    rows.push({ label: "Other meds", percent: vals[vals.length - 1], display: range });
+  }
+  const activity = find(a => /aerobic|activity/i.test(a.code));
+  if (activity?.adherence) {
+    const { weeklyMinutesActual, weeklyMinutesTarget, percent } = activity.adherence;
+    const label = weeklyMinutesActual != null && weeklyMinutesTarget != null
+      ? `Activity ${weeklyMinutesActual}/${weeklyMinutesTarget} min`
+      : "Activity";
+    rows.push({ label, percent });
+  }
+  return rows;
+}
+function adherenceBadgeColor(pct) {
+  if (pct == null) return { bg: "#F5F3ED", text: S.textMed };
+  if (pct >= 85) return { bg: S.greenBg, text: S.greenText };
+  return { bg: S.amberBg, text: S.amberText };
+}
+function CarePlanOverviewCard({ carePlan, onViewFull }) {
+  if (!carePlan) {
+    return (
+      <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14, marginBottom: 14 }}>
+        <CardTitle>Care plan</CardTitle>
+        <EmptyState>No active care plan in Medplum.</EmptyState>
+      </div>
+    );
+  }
+  const day = dayOfProgram(carePlan.period?.start);
+  const rows = summarizeAdherence(carePlan.activities);
+  const goals = (carePlan.goals || []).slice(0, 4);
+  return (
+    <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+        <CardTitle>Care plan</CardTitle>
+        <div style={{ flex: 1 }} />
+        {day != null && (
+          <span style={{ fontSize: 13, ...css.sans, color: S.textMed, background: S.chip, padding: "2px 7px", borderRadius: 3 }}>
+            Day {day} · Continuous Care
+          </span>
+        )}
+      </div>
+      <div style={{ fontSize: 18, ...css.serif, color: S.text, marginBottom: 12 }}>{carePlan.title}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+        <div>
+          <div style={{ fontSize: 13, ...css.sans, color: S.textLight, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Goals</div>
+          {goals.length === 0 && <EmptyState>No goals defined.</EmptyState>}
+          {goals.map(g => (
+            <div key={g.id} style={{ fontSize: 14, ...css.sans, color: S.text, padding: "4px 0", display: "flex", gap: 8 }}>
+              <span style={{ color: S.textLight }}>•</span>
+              <span>{shortGoalLabel(g, carePlan.period?.start)}</span>
+            </div>
+          ))}
+        </div>
+        <div>
+          <div style={{ fontSize: 13, ...css.sans, color: S.textLight, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Adherence this week</div>
+          {rows.length === 0 && <EmptyState>No adherence data.</EmptyState>}
+          {rows.map((r, i) => {
+            const pct = r.percent;
+            const colors = adherenceBadgeColor(pct);
+            const flag = pct != null && pct < 85 ? "⚠" : "✓";
+            return (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", fontSize: 14, ...css.sans }}>
+                <span style={{ color: S.text, flex: 1 }}>{r.label}</span>
+                <span style={{ padding: "2px 6px", borderRadius: 4, background: colors.bg, color: colors.text, fontWeight: 700, minWidth: 58, textAlign: "center" }}>
+                  {pct == null ? "—" : (r.display || `${pct}%`)}
+                </span>
+                <span style={{ color: pct != null && pct < 85 ? S.amber : S.green, width: 14, textAlign: "center" }}>{flag}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+        <button onClick={onViewFull} style={{ fontSize: 14, ...css.sans, color: S.navy, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
+          View full care plan →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Tab: Care Plan ──
+function CarePlanTab({ patientData }) {
+  const cp = patientData?.carePlan;
+  if (!cp) return <EmptyState>No active care plan in Medplum.</EmptyState>;
+  const day = dayOfProgram(cp.period?.start);
+  const frequencyLabel = (timing) => {
+    if (!timing) return "";
+    const { frequency, period, periodUnit } = timing;
+    if (!frequency || !periodUnit) return "";
+    const unit = periodUnit === "d" ? "day" : periodUnit === "wk" ? "week" : periodUnit === "mo" ? "month" : periodUnit;
+    const per = !period || period === 1 ? unit : `${period} ${unit}s`;
+    return frequency === 1 ? `${frequency}× per ${per}` : `${frequency}× per ${per}`;
+  };
+  return <div>
+    <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 4 }}>
+        <div style={{ fontSize: 20, ...css.serif, color: S.text, flex: 1 }}>{cp.title}</div>
+        {day != null && (
+          <span style={{ fontSize: 13, ...css.sans, color: S.textMed, background: S.chip, padding: "2px 7px", borderRadius: 3 }}>Day {day} · Continuous Care</span>
+        )}
+      </div>
+      {cp.description && <div style={{ fontSize: 14, ...css.sans, color: S.textMed, lineHeight: 1.5, marginBottom: 8 }}>{cp.description}</div>}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 13, ...css.sans, color: S.textLight }}>
+        {cp.author && <span>Author: {cp.author}</span>}
+        {cp.period?.start && <span>Started: {fmtLocalDate(cp.period.start)}</span>}
+      </div>
+    </div>
+
+    <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14, marginBottom: 14 }}>
+      <CardTitle>Goals ({cp.goals?.length || 0})</CardTitle>
+      {(cp.goals || []).length === 0 && <EmptyState>No goals defined.</EmptyState>}
+      {(cp.goals || []).map(g => {
+        const target = g.targets?.[0];
+        return (
+          <div key={g.id} style={{ padding: "10px 0", borderBottom: `1px solid #F0EEE8`, ...css.sans }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
+              <div style={{ fontSize: 15, color: S.text, fontWeight: 700, flex: 1 }}>{shortGoalLabel(g, cp.period?.start)}</div>
+              {g.priority && <Badge color={g.priority === "high-priority" ? "red" : g.priority === "medium-priority" ? "amber" : "gray"}>
+                {g.priority === "high-priority" ? "High" : g.priority === "medium-priority" ? "Medium" : g.priority}
+              </Badge>}
+              {g.status && <Badge color="blue">{g.status}</Badge>}
+            </div>
+            <div style={{ fontSize: 14, color: S.textMed, lineHeight: 1.5, marginBottom: 4 }}>{g.description}</div>
+            {g.targets?.length > 0 && (
+              <div style={{ fontSize: 13, color: S.textLight, marginBottom: 4 }}>
+                Target{g.targets.length > 1 ? "s" : ""}: {g.targets.map((t) => {
+                  const base = `${t.measure} ${t.value}${t.unit ? " " + t.unit : ""}`;
+                  if (!t.dueDate) return base;
+                  const milestone = reviewMilestone(t.dueDate, cp.period?.start);
+                  return milestone
+                    ? `${base} · ${milestone} · ${fmtLocalDate(t.dueDate)}`
+                    : `${base} by ${fmtLocalDate(t.dueDate)}`;
+                }).join(" · ")}
+              </div>
+            )}
+            {g.note && <div style={{ fontSize: 13, color: S.textLight, fontStyle: "italic" }}>{g.note}</div>}
+          </div>
+        );
+      })}
+    </div>
+
+    <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14 }}>
+      <CardTitle>Activities ({cp.activities?.length || 0})</CardTitle>
+      <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 0.8fr 1fr", gap: 10, padding: "8px 0", borderBottom: `1px solid ${S.border}`, fontSize: 13, ...css.sans, color: S.textLight, textTransform: "uppercase", letterSpacing: 0.8 }}>
+        <div>Activity</div>
+        <div>Schedule</div>
+        <div>Adherence</div>
+        <div>Progress</div>
+      </div>
+      {(cp.activities || []).map((a, i) => {
+        const pct = a.adherence?.percent;
+        const colors = adherenceBadgeColor(pct);
+        const progress = a.adherence?.actual != null && a.adherence?.expected != null
+          ? `${a.adherence.actual}/${a.adherence.expected}`
+          : a.adherence?.weeklyMinutesActual != null && a.adherence?.weeklyMinutesTarget != null
+            ? `${a.adherence.weeklyMinutesActual}/${a.adherence.weeklyMinutesTarget} min`
+            : "—";
+        return (
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 0.8fr 1fr", gap: 10, padding: "10px 0", borderBottom: i < cp.activities.length - 1 ? `1px solid #F0EEE8` : "none", fontSize: 14, ...css.sans, alignItems: "start" }}>
+            <div>
+              <div style={{ color: S.text, fontWeight: 700 }}>{a.code}</div>
+              {a.description && <div style={{ color: S.textLight, fontSize: 13, marginTop: 2, lineHeight: 1.4 }}>{a.description}</div>}
+              {a.adherence?.note && <div style={{ color: S.amberText, fontSize: 13, marginTop: 2, fontStyle: "italic" }}>{a.adherence.note}</div>}
+            </div>
+            <div style={{ color: S.textMed }}>{frequencyLabel(a.timing) || "As needed"}</div>
+            <div>
+              <span style={{ padding: "2px 6px", borderRadius: 4, background: colors.bg, color: colors.text, fontWeight: 700 }}>{pct == null ? "—" : `${pct}%`}</span>
+            </div>
+            <div style={{ color: S.textMed, fontSize: 13 }}>
+              <div>{progress}</div>
+              {a.adherence?.lastEventDate && <div style={{ color: S.textLight, marginTop: 2 }}>Last: {fmtLocalDate(a.adherence.lastEventDate)}</div>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>;
+}
+
 // ── Tab: Overview ──
-function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, medplumSessions, lastCallSummary, sessionLogStatus, onDismissLastCall }) {
+function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onViewCarePlan, medplumSessions, lastCallSummary, sessionLogStatus, onDismissLastCall }) {
   if (!patientData) return <EmptyState>No patient data loaded from Medplum.</EmptyState>;
   const { conditions = [], medications = [], vitals = {} } = patientData;
   const recentSessions = resolveSessions(medplumSessions, patientData?.patient?.name || "").slice(0, 3);
@@ -318,7 +657,7 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, medplu
 
   return <div>
     {lastCallSummary && <PostCallSummary summary={lastCallSummary} status={sessionLogStatus} onDismiss={onDismissLastCall} onViewSessions={onViewAllSessions} />}
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
       <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 6, padding: 10 }}>
         <CardTitle>Latest BP</CardTitle>
         <div>
@@ -337,13 +676,6 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, medplu
         <div style={{ fontSize: 13, ...css.sans, color: S.textLight, marginTop: 2 }}>{latestWeight ? fmtDate(latestWeight.date) : "No data"}</div>
         <MiniChart bars={wtBars} accentColor="#8C8C7A" />
       </div>
-      <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 6, padding: 10 }}>
-        <CardTitle>Care plan</CardTitle>
-        <div style={{ fontSize: 16, ...css.serif }}>{patientData.carePlan?.title || "—"}</div>
-        <div style={{ fontSize: 13, ...css.sans, color: S.textLight, marginTop: 4, lineHeight: 1.5 }}>
-          {patientData.carePlan?.description?.slice(0, 80) || "No active care plan in Medplum."}
-        </div>
-      </div>
       <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 6, padding: 10, display: "flex", flexDirection: "column" }}>
         <CardTitle>10-year ASCVD risk</CardTitle>
         <div>
@@ -361,6 +693,7 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, medplu
         </button>
       </div>
     </div>
+    <CarePlanOverviewCard carePlan={patientData.carePlan} onViewFull={onViewCarePlan} />
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
       <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14 }}>
         <CardTitle>Active conditions</CardTitle>
@@ -654,6 +987,7 @@ function OutreachTab({ patientData, onInitiateCall }) {
 // ── Main Dashboard ──
 const TABS = [
   { id: "overview", label: "Overview" },
+  { id: "care-plan", label: "Care plan" },
   { id: "risk", label: "Risk profile" },
   { id: "sessions", label: "Sessions" },
   { id: "pami", label: "PAMI" },
@@ -897,11 +1231,13 @@ export default function CoordinatorDashboard() {
       patientData={patientData}
       onViewAllSessions={() => setActiveTab("sessions")}
       onViewRiskProfile={() => setActiveTab("risk")}
+      onViewCarePlan={() => setActiveTab("care-plan")}
       medplumSessions={sessions}
       lastCallSummary={lastCallSummary}
       sessionLogStatus={sessionLogStatus}
       onDismissLastCall={() => { setLastCallSummary(null); setSessionLogStatus(null); }}
     />,
+    "care-plan": <CarePlanTab patientData={patientData} />,
     risk: <RiskTab patientData={patientData} />,
     sessions: <SessionsTab patientData={patientData} medplumSessions={sessions} loading={sessionsLoading} />,
     pami: <PamiTab patientData={patientData} />,

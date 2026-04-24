@@ -449,17 +449,186 @@
     },
     {
       "resource": {
+        "resourceType": "Goal",
+        "id": "marcus-goal-bp",
+        "lifecycleStatus": "active",
+        "achievementStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-achievement", "code": "in-progress", "display": "In Progress"}]},
+        "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-category", "code": "physiotherapy", "display": "Cardiovascular"}]}],
+        "priority": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-priority", "code": "high-priority"}]},
+        "description": {"text": "Achieve home BP <130/80 mmHg per AHA/ACC 2017 target for HTN with diabetes"},
+        "subject": {"reference": "Patient/1de9768a-2459-4586-a888-d184a70479cc"},
+        "startDate": "2026-04-01",
+        "target": [
+          {"measure": {"coding": [{"system": "http://loinc.org", "code": "8480-6", "display": "Systolic blood pressure"}]}, "detailQuantity": {"value": 130, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}, "dueDate": "2026-06-30"},
+          {"measure": {"coding": [{"system": "http://loinc.org", "code": "8462-4", "display": "Diastolic blood pressure"}]}, "detailQuantity": {"value": 80, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}, "dueDate": "2026-06-30"}
+        ],
+        "note": [{"text": "Per AHA/ACC 2017 Hypertension Guideline, target <130/80 for patients with HTN and diabetes."}]
+      },
+      "request": {"method": "PUT", "url": "Goal/marcus-goal-bp"}
+    },
+    {
+      "resource": {
+        "resourceType": "Goal",
+        "id": "marcus-goal-a1c",
+        "lifecycleStatus": "active",
+        "achievementStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-achievement", "code": "in-progress", "display": "In Progress"}]},
+        "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-category", "code": "dietary", "display": "Glycemic control"}]}],
+        "priority": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-priority", "code": "high-priority"}]},
+        "description": {"text": "Reduce HbA1c to <7.0% by Q2 review per ADA 2026 individualized glycemic target"},
+        "subject": {"reference": "Patient/1de9768a-2459-4586-a888-d184a70479cc"},
+        "startDate": "2026-04-01",
+        "target": [
+          {"measure": {"coding": [{"system": "http://loinc.org", "code": "4548-4", "display": "Hemoglobin A1c"}]}, "detailQuantity": {"value": 7.0, "unit": "%", "system": "http://unitsofmeasure.org", "code": "%"}, "dueDate": "2026-09-28"}
+        ],
+        "note": [{"text": "Per ADA 2026 Standards of Care Section 6, individualized A1C target for most non-pregnant adults with T2DM."}]
+      },
+      "request": {"method": "PUT", "url": "Goal/marcus-goal-a1c"}
+    },
+    {
+      "resource": {
+        "resourceType": "Goal",
+        "id": "marcus-goal-ldl",
+        "lifecycleStatus": "active",
+        "achievementStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-achievement", "code": "in-progress", "display": "In Progress"}]},
+        "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-category", "code": "dietary", "display": "Lipid control"}]}],
+        "priority": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-priority", "code": "high-priority"}]},
+        "description": {"text": "Reduce LDL-C to <70 mg/dL by Q2 review per ACC/AHA 2018 for high-risk ASCVD (10-yr risk 24.5%)"},
+        "subject": {"reference": "Patient/1de9768a-2459-4586-a888-d184a70479cc"},
+        "startDate": "2026-04-01",
+        "target": [
+          {"measure": {"coding": [{"system": "http://loinc.org", "code": "13457-7", "display": "LDL Cholesterol (calculated)"}]}, "detailQuantity": {"value": 70, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}, "dueDate": "2026-09-28"}
+        ],
+        "note": [{"text": "Per ACC/AHA 2018 Cholesterol Guideline, LDL-C <70 mg/dL for high-risk primary prevention with calculated 10-year ASCVD risk ≥20%."}]
+      },
+      "request": {"method": "PUT", "url": "Goal/marcus-goal-ldl"}
+    },
+    {
+      "resource": {
+        "resourceType": "Goal",
+        "id": "marcus-goal-weight",
+        "lifecycleStatus": "active",
+        "achievementStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-achievement", "code": "in-progress", "display": "In Progress"}]},
+        "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-category", "code": "behavioral", "display": "Weight management"}]}],
+        "priority": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/goal-priority", "code": "medium-priority"}]},
+        "description": {"text": "Reduce body weight by 5% (from 96.8 kg to 91.9 kg) by Q3 review per ADA 2026 weight management for T2DM"},
+        "subject": {"reference": "Patient/1de9768a-2459-4586-a888-d184a70479cc"},
+        "startDate": "2026-04-01",
+        "target": [
+          {"measure": {"coding": [{"system": "http://loinc.org", "code": "29463-7", "display": "Body weight"}]}, "detailQuantity": {"value": 91.9, "unit": "kg", "system": "http://unitsofmeasure.org", "code": "kg"}, "dueDate": "2026-12-27"}
+        ],
+        "note": [{"text": "Per ADA 2026 Standards of Care Section 8, ≥5% weight loss for adults with T2DM and overweight/obesity improves glycemia, BP, and lipids."}]
+      },
+      "request": {"method": "PUT", "url": "Goal/marcus-goal-weight"}
+    },
+    {
+      "resource": {
         "resourceType": "CarePlan",
         "id": "careplan-cardiometabolic-90d",
         "status": "active",
         "intent": "plan",
-        "title": "90-Day Hypertension + Diabetes Management Program",
+        "category": [{"coding": [{"system": "http://hl7.org/fhir/us/core/CodeSystem/careplan-category", "code": "assess-plan", "display": "Assessment and Plan of Treatment"}]}],
+        "title": "Continuous Cardiometabolic Care",
+        "description": "Continuous cardiometabolic management for hypertension, type 2 diabetes, hyperlipidemia, and weight. Daily voice-first patient engagement, guideline-anchored escalation, ADA quarterly milestone reviews, and structured medication and lifestyle adherence tracking.",
         "subject": {"reference": "Patient/1de9768a-2459-4586-a888-d184a70479cc"},
-        "period": {"start": "2026-02-25", "end": "2026-05-25"},
+        "period": {"start": "2026-04-01", "end": "2026-06-30"},
+        "created": "2026-04-01",
+        "author": {"display": "Dr. Angela Torres, Internal Medicine"},
+        "goal": [
+          {"reference": "Goal/marcus-goal-bp"},
+          {"reference": "Goal/marcus-goal-a1c"},
+          {"reference": "Goal/marcus-goal-ldl"},
+          {"reference": "Goal/marcus-goal-weight"}
+        ],
         "activity": [
-          {"detail": {"description": "Daily morning BP monitoring", "status": "in-progress"}},
-          {"detail": {"description": "Twice-daily glucose monitoring", "status": "in-progress"}},
-          {"detail": {"description": "Weekly coordinator check-in call", "status": "in-progress"}}
+          {
+            "detail": {"kind": "ServiceRequest", "code": {"text": "Home BP monitoring"}, "status": "in-progress", "scheduledTiming": {"repeat": {"frequency": 2, "period": 1, "periodUnit": "d"}}, "description": "Self-measured BP twice daily (morning before meds, evening). Target <130/80."},
+            "extension": [{"url": "https://vardana.ai/fhir/StructureDefinition/activity-adherence", "extension": [
+              {"url": "adherencePercent", "valueDecimal": 82},
+              {"url": "lastEventDate", "valueDate": "2026-04-22"},
+              {"url": "expectedCount", "valueInteger": 44},
+              {"url": "actualCount", "valueInteger": 36}
+            ]}]
+          },
+          {
+            "detail": {"kind": "MedicationRequest", "code": {"text": "Lisinopril 20mg daily AM"}, "status": "in-progress", "productReference": {"display": "Lisinopril 20 MG Oral Tablet"}, "scheduledTiming": {"repeat": {"frequency": 1, "period": 1, "periodUnit": "d"}}},
+            "extension": [{"url": "https://vardana.ai/fhir/StructureDefinition/activity-adherence", "extension": [
+              {"url": "adherencePercent", "valueDecimal": 82},
+              {"url": "lastEventDate", "valueDate": "2026-04-23"},
+              {"url": "expectedCount", "valueInteger": 22},
+              {"url": "actualCount", "valueInteger": 18},
+              {"url": "adherenceNote", "valueString": "Refill gap Days 19-21. Patient resumed Day 22."}
+            ]}]
+          },
+          {
+            "detail": {"kind": "MedicationRequest", "code": {"text": "Amlodipine 5mg daily AM"}, "status": "in-progress", "scheduledTiming": {"repeat": {"frequency": 1, "period": 1, "periodUnit": "d"}}},
+            "extension": [{"url": "https://vardana.ai/fhir/StructureDefinition/activity-adherence", "extension": [
+              {"url": "adherencePercent", "valueDecimal": 100},
+              {"url": "lastEventDate", "valueDate": "2026-04-23"},
+              {"url": "expectedCount", "valueInteger": 22},
+              {"url": "actualCount", "valueInteger": 22}
+            ]}]
+          },
+          {
+            "detail": {"kind": "MedicationRequest", "code": {"text": "Metformin 1000mg BID with meals"}, "status": "in-progress", "scheduledTiming": {"repeat": {"frequency": 2, "period": 1, "periodUnit": "d"}}},
+            "extension": [{"url": "https://vardana.ai/fhir/StructureDefinition/activity-adherence", "extension": [
+              {"url": "adherencePercent", "valueDecimal": 95},
+              {"url": "lastEventDate", "valueDate": "2026-04-23"},
+              {"url": "expectedCount", "valueInteger": 44},
+              {"url": "actualCount", "valueInteger": 42}
+            ]}]
+          },
+          {
+            "detail": {"kind": "MedicationRequest", "code": {"text": "Atorvastatin 40mg daily PM"}, "status": "in-progress", "scheduledTiming": {"repeat": {"frequency": 1, "period": 1, "periodUnit": "d"}}},
+            "extension": [{"url": "https://vardana.ai/fhir/StructureDefinition/activity-adherence", "extension": [
+              {"url": "adherencePercent", "valueDecimal": 91},
+              {"url": "lastEventDate", "valueDate": "2026-04-23"},
+              {"url": "expectedCount", "valueInteger": 22},
+              {"url": "actualCount", "valueInteger": 20}
+            ]}]
+          },
+          {
+            "detail": {"kind": "ServiceRequest", "code": {"text": "Fasting glucose self-monitoring"}, "status": "in-progress", "scheduledTiming": {"repeat": {"frequency": 1, "period": 1, "periodUnit": "d"}}, "description": "Daily fasting glucose. Per ADA 2026, individualized monitoring frequency for non-insulin T2DM."},
+            "extension": [{"url": "https://vardana.ai/fhir/StructureDefinition/activity-adherence", "extension": [
+              {"url": "adherencePercent", "valueDecimal": 77},
+              {"url": "lastEventDate", "valueDate": "2026-04-23"},
+              {"url": "expectedCount", "valueInteger": 22},
+              {"url": "actualCount", "valueInteger": 17}
+            ]}]
+          },
+          {
+            "detail": {"kind": "ServiceRequest", "code": {"text": "Weekly weight measurement"}, "status": "in-progress", "scheduledTiming": {"repeat": {"frequency": 1, "period": 1, "periodUnit": "wk"}}},
+            "extension": [{"url": "https://vardana.ai/fhir/StructureDefinition/activity-adherence", "extension": [
+              {"url": "adherencePercent", "valueDecimal": 100},
+              {"url": "lastEventDate", "valueDate": "2026-04-21"},
+              {"url": "expectedCount", "valueInteger": 3},
+              {"url": "actualCount", "valueInteger": 3}
+            ]}]
+          },
+          {
+            "detail": {"kind": "ServiceRequest", "code": {"text": "Moderate aerobic activity 150 min/week"}, "status": "in-progress", "description": "Per ADA 2026 Section 5: ≥150 min/week moderate-intensity aerobic activity for adults with T2DM."},
+            "extension": [{"url": "https://vardana.ai/fhir/StructureDefinition/activity-adherence", "extension": [
+              {"url": "adherencePercent", "valueDecimal": 60},
+              {"url": "lastEventDate", "valueDate": "2026-04-22"},
+              {"url": "weeklyMinutesActual", "valueInteger": 90},
+              {"url": "weeklyMinutesTarget", "valueInteger": 150}
+            ]}]
+          },
+          {
+            "detail": {"kind": "ServiceRequest", "code": {"text": "DASH-pattern diet, sodium <2300 mg/day"}, "status": "in-progress", "description": "Per AHA/ACC 2017 HTN guideline: DASH dietary pattern with sodium <2300 mg/day (ideal <1500 mg/day)."},
+            "extension": [{"url": "https://vardana.ai/fhir/StructureDefinition/activity-adherence", "extension": [
+              {"url": "adherencePercent", "valueDecimal": 70},
+              {"url": "adherenceNote", "valueString": "Self-reported via weekly check-in."}
+            ]}]
+          },
+          {
+            "detail": {"kind": "ServiceRequest", "code": {"text": "Vardana voice check-in"}, "status": "in-progress", "scheduledTiming": {"repeat": {"frequency": 1, "period": 1, "periodUnit": "wk"}}, "description": "Weekly scheduled voice call + on-demand patient-initiated calls for symptoms."},
+            "extension": [{"url": "https://vardana.ai/fhir/StructureDefinition/activity-adherence", "extension": [
+              {"url": "adherencePercent", "valueDecimal": 100},
+              {"url": "lastEventDate", "valueDate": "2026-04-21"},
+              {"url": "expectedCount", "valueInteger": 3},
+              {"url": "actualCount", "valueInteger": 3}
+            ]}]
+          }
         ]
       },
       "request": {"method": "PUT", "url": "CarePlan/careplan-cardiometabolic-90d"}
