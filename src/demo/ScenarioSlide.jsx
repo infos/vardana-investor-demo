@@ -12,7 +12,7 @@ const SCENARIOS = {
     accentColor: DT.amber.hover,
     name: 'Sarah Chen',
     demo: '67F',
-    journey: 'Day 15 of 90',
+    journey: 'Day 15 · Recovery',
     condition: 'CHF HFrEF \u00b7 NYHA Class III',
     warnings: [
       { color: DT.amber.hover, text: 'Weight +2.3 lbs / 48hrs, exceeded 2 lb threshold' },
@@ -31,7 +31,7 @@ const SCENARIOS = {
     accentColor: DT.jade.hover,
     name: 'Marcus Williams',
     demo: '58M',
-    journey: 'Day 22 of 90',
+    journey: 'Day 22 · Continuous Care',
     condition: 'HTN + T2DM \u00b7 Missed medication',
     warnings: [
       { color: DT.jade.hover, text: 'BP 158/98, 4-day worsening trend (was 129/80)' },

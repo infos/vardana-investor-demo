@@ -6,7 +6,7 @@ const MOCK_DATA = {
   firstName: 'Marcus',
   programDay: 22,
   totalDays: 90,
-  program: '90-Day Cardiometabolic Management Program',
+  program: 'Continuous Cardiometabolic Care',
   vitals: [
     { label: 'Blood Pressure', value: '138/84', unit: 'mmHg', goal: '<130/80', status: 'above-goal' },
     { label: 'Fasting Glucose', value: '126', unit: 'mg/dL', goal: '<100', status: 'above-goal' },
@@ -210,7 +210,7 @@ export default function CheckinPage({ navigate }) {
             {getGreeting()}, {data.firstName}
           </h1>
           <p style={{ fontSize: 13, color: DT.text.muted, margin: 0 }}>
-            Day {data.programDay} of {data.totalDays} — {data.program}
+            Day {data.programDay} — {data.program}
           </p>
         </div>
 

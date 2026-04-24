@@ -5,7 +5,7 @@ import { DT } from '../demo/tokens';
 const DEMO_TIMELINE = [
   { t: 0,    speaker: 'Vardana', text: 'Hi Marcus, this is Vardana. Is this a good time to talk?' },
   { t: 6,    speaker: 'Marcus',  text: 'Yes, this is fine.' },
-  { t: 8,    speaker: 'Vardana', text: "You're on day 22 of your 90-day program. How are you feeling today?" },
+  { t: 8,    speaker: 'Vardana', text: "This is your Day 22 check-in. How are you feeling today?" },
   { t: 14,   speaker: 'Marcus',  text: 'Feel a little tired today.' },
   { t: 18,   speaker: 'Vardana', text: "I'm sorry to hear that. Is this lower than your usual energy level?" },
   { t: 26,   speaker: 'Marcus',  text: 'A bit lower than my usual energy level.' },

@@ -120,7 +120,7 @@ function HeroWidget() {
       }}>
         <div>
           <div style={{ color: '#F5F7FA', fontWeight: 700, fontSize: 13, marginBottom: 2 }}>Marcus Williams · 54M</div>
-          <div style={{ color: '#7A90A8', fontSize: 11 }}>HTN · T2DM · Day 22 of 90 · Optimize</div>
+          <div style={{ color: '#7A90A8', fontSize: 11 }}>HTN · T2DM · Day 22 · Optimize</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{
@@ -283,7 +283,7 @@ export default function HomePage() {
           }}>
             {[
               { value: '~47%', label: 'adults with a chronic condition have poor disease control' },
-              { value: '90d',  label: 'structured care journey' },
+              { value: 'Daily', label: 'structured care journey' },
             ].map(s => (
               <div key={s.label}>
                 <div style={{
@@ -331,7 +331,7 @@ export default function HomePage() {
               fontSize: 'clamp(28px, 3vw, 42px)', fontWeight: 400,
               letterSpacing: '-0.02em', color: C.s50, marginBottom: 16,
             }}>
-              A 90-day structured care journey
+              A structured continuous care journey
             </h2>
             <p style={{ fontSize: 16, color: C.s500, maxWidth: 520, margin: '0 auto', lineHeight: 1.65 }}>
               Vardana becomes a patient's personal companion between visits. It checks in daily, tracks care plan tasks, and keeps the care team in the loop on what is actually happening between appointments.
@@ -341,25 +341,25 @@ export default function HomePage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
             {[
               {
-                phase: 'Phase 1 · Days 1–14',
+                phase: 'Phase 1 · Onboarding',
                 name: 'Stabilize',
                 color: C.j500,
                 borderColor: C.j600,
                 description: 'A daily check-in, no app needed. Vardana reads the latest vitals from connected devices and the EHR, confirms medications were taken, and tells the care team what it found that day.',
               },
               {
-                phase: 'Phase 2 · Days 15–60',
+                phase: 'Phase 2 · Optimization',
                 name: 'Optimize',
                 color: C.a400,
                 borderColor: C.a500,
                 description: 'Vardana tracks how the patient is following their care plan, including medications, activity goals, and diet, and surfaces early signs that something needs attention before the next visit.',
               },
               {
-                phase: 'Phase 3 · Days 61–90',
+                phase: 'Phase 3 · Ongoing',
                 name: 'Maintain',
                 color: '#7A96B0',
                 borderColor: '#A8BAC8',
-                description: 'Patients finish knowing their warning signs, their routines, and what to do if something changes. Vardana hands off to their primary care team with a full picture of how the 90 days went.',
+                description: 'Patients know their warning signs, their routines, and what to do if something changes. Vardana continues daily engagement and keeps the care team in the loop with a full picture of how care is going.',
               },
             ].map(p => (
               <div key={p.name} style={{
@@ -440,7 +440,7 @@ export default function HomePage() {
             {[
               {
                 metric: 'Patient engagement',
-                description: 'Check-in completion rate across all 90 days',
+                description: 'Daily check-in completion rate across the care journey',
               },
               {
                 metric: 'Care plan adherence',

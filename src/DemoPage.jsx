@@ -140,7 +140,7 @@ export default function DemoPage({ navigate }) {
           Choose Your Demo Experience
         </h1>
         <p style={{ fontSize: 14, color: DT.text.muted, margin: 0, fontFamily: DT.font.body }}>
-          Marcus Williams, 58M, HTN + T2DM, Day 22 of 90
+          Marcus Williams, 58M, HTN + T2DM, Day 22 · Continuous Care
         </p>
       </div>
 
