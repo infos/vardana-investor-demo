@@ -420,7 +420,6 @@ const LOCAL_PATIENTS = [
     initials: "MW",
     meta: "HTN · T2DM · HLD",
     risk: "high",
-    alert: true,
     bg: "#3B2F1E",
     fg: "#E2D5B8",
     bundlePath: "/data/marcus-williams-bundle.json",
@@ -433,7 +432,6 @@ const LOCAL_PATIENTS = [
     initials: "LP",
     meta: "HTN · T2DM · CKD3a",
     risk: "mod",
-    alert: false,
     bg: "#1E2D3D",
     fg: "#85B7EB",
     bundlePath: "/data/linda-patel-bundle.json",
@@ -446,7 +444,6 @@ const LOCAL_PATIENTS = [
     initials: "AR",
     meta: "HTN · T2DM · HLD",
     risk: "mod",
-    alert: false,
     bg: "#2E1E3B",
     fg: "#C8A0E2",
     bundlePath: "/data/angela-ruiz-bundle.json",
@@ -459,7 +456,6 @@ const LOCAL_PATIENTS = [
     initials: "DB",
     meta: "HTN · Prediabetes",
     risk: "low",
-    alert: false,
     bg: "#1B3A2A",
     fg: "#9FE1CB",
     bundlePath: "/data/david-brooks-bundle.json",
@@ -1153,7 +1149,7 @@ const TABS = [
 
 export default function CoordinatorDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
-  const [roster, setRoster] = useState([]);           // [{ id, name, initials, meta, risk, alert, bg, fg, raw, summary }]
+  const [roster, setRoster] = useState([]);           // [{ id, name, initials, meta, risk, bg, fg, raw, summary }]
   const [rosterLoading, setRosterLoading] = useState(true);
   const [rosterError, setRosterError] = useState(null);
   const [selectedPatientId, setSelectedPatientId] = useState(null);
@@ -1199,7 +1195,6 @@ export default function CoordinatorDashboard() {
             initials: initialsFromName(p.name),
             meta: inferConditionsSummary(p.conditions),
             risk: inferRiskLevel(p),
-            alert: inferRiskLevel(p) === "high",
             bg: CARD_COLORS[(LOCAL_PATIENTS.length + i) % CARD_COLORS.length].bg,
             fg: CARD_COLORS[(LOCAL_PATIENTS.length + i) % CARD_COLORS.length].fg,
             summary: p,
@@ -1428,24 +1423,10 @@ export default function CoordinatorDashboard() {
         {rosterLoading && <div style={{ padding: 16, fontSize: 15, ...css.sans, color: S.sidebarMuted }}>Loading roster from Medplum…</div>}
         {rosterError && <div style={{ padding: 16, fontSize: 15, ...css.sans, color: S.red }}>Roster error: {rosterError}</div>}
 
-        {roster.filter(p => p.alert).length > 0 && (
-          <div style={{ padding: "10px 10px 4px", fontSize: 14, letterSpacing: "1.2px", textTransform: "uppercase", color: S.sidebarMuted, ...css.sans }}>Alerts</div>
+        {roster.length > 0 && (
+          <div style={{ padding: "10px 10px 4px", fontSize: 14, letterSpacing: "1.2px", textTransform: "uppercase", color: S.sidebarMuted, ...css.sans }}>Patients</div>
         )}
-        {roster.filter(p => p.alert).map((p) => (
-          <div key={p.id} onClick={() => setSelectedPatientId(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderLeft: `3px solid ${selectedPatientId === p.id ? S.navyText : "transparent"}`, background: selectedPatientId === p.id ? "rgba(226,213,184,0.12)" : "rgba(226,213,184,0.08)", cursor: "pointer" }}>
-            <div style={{ width: 30, height: 30, borderRadius: "50%", background: p.bg, color: p.fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, ...css.sans, flexShrink: 0 }}>{p.initials}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, color: "#CBD5E1" }}>{p.name}</div>
-              <div style={{ fontSize: 13, color: S.sidebarMuted, ...css.sans }}>{p.meta}</div>
-            </div>
-            <span style={{ background: S.red, color: "white", fontSize: 13, ...css.sans, padding: "1px 4px", borderRadius: 2 }}>1</span>
-            <div style={riskDot(p.risk)} />
-          </div>))}
-
-        {roster.filter(p => !p.alert).length > 0 && (
-          <div style={{ padding: "10px 10px 4px", marginTop: 6, fontSize: 14, letterSpacing: "1.2px", textTransform: "uppercase", color: S.sidebarMuted, ...css.sans }}>Patients</div>
-        )}
-        {roster.filter(p => !p.alert).map((p) => (
+        {roster.map((p) => (
           <div key={p.id} onClick={() => setSelectedPatientId(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderLeft: `3px solid ${selectedPatientId === p.id ? S.navyText : "transparent"}`, background: selectedPatientId === p.id ? "rgba(226,213,184,0.08)" : "transparent", cursor: "pointer" }}>
             <div style={{ width: 30, height: 30, borderRadius: "50%", background: p.bg, color: p.fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, ...css.sans, flexShrink: 0 }}>{p.initials}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
