@@ -153,8 +153,8 @@ const PATIENT_CLINICAL_DATA = {
       { name: "Potassium", value: "4.1 mEq/L", date: "Feb 28", status: "good" },
     ],
     recentCheckins: [
-      { date: "Mar 8, 10:00 AM", summary: "Routine check-in. James feeling great, walking 30 minutes daily. All vitals within target. On track for Phase 3 graduation." },
-      { date: "Mar 5, 10:00 AM", summary: "Discussed transition plan for post-90-day management. James understands ongoing monitoring importance. Very compliant with all medications." },
+      { date: "Mar 8, 10:00 AM", summary: "Routine check-in. James feeling great, walking 30 minutes daily. All vitals within target. On track with Phase 3 maintenance." },
+      { date: "Mar 5, 10:00 AM", summary: "Discussed ongoing care plan. James understands continued monitoring importance. Very compliant with all medications." },
     ],
     allergy: "None known",
     coordinator: "Rachel Kim, RN",
@@ -192,7 +192,7 @@ const PATIENT_CLINICAL_DATA = {
 };
 
 const VOICE_TRANSCRIPT = [
-  { t: 1200, speaker: "AI", text: "Good morning, Sarah. This is the Vardana Care Concierge calling for your daily check-in. You are on Day 15 of your 90-day recovery program. How are you feeling this morning?" },
+  { t: 1200, speaker: "AI", text: "Good morning, Sarah. This is the Vardana Care Concierge calling for your Day 15 check-in. How are you feeling this morning?" },
   { t: 6200, speaker: "Sarah", text: "Hi. I feel okay, about the same as yesterday I think." },
   { t: 11000, speaker: "AI", text: "I'm glad to hear that. I did want to flag something. Your weight has gone up a couple of pounds over the last two days. That can sometimes be a sign of fluid retention. Are you noticing any ankle swelling or feeling more short of breath than usual?" },
   { t: 17500, speaker: "Sarah", text: "Now that you mention it, my ankles have been a little puffy. And I have been more tired than usual the last couple of days." },
@@ -286,7 +286,7 @@ const MARCUS_CLINICAL_DATA = {
     ],
     allergy: "Penicillin (rash)",
     coordinator: "David Park, RN",
-    program: "90-Day Cardiometabolic Management Program",
+    program: "Continuous Cardiometabolic Care",
     riskAssessments: [
       { label: "ACC/AHA PCE", value: "17.3%", note: "10-year ASCVD risk" },
       { label: "AHA/ACC 2017 HTN", value: "Stage 1", note: "BP 130-139/80-89" },
@@ -3643,7 +3643,7 @@ function GenericPatientSummary({ patient, onOutreach }) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Day</div>
-              <div style={{ fontSize: 24, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>{patient.day}<span style={{ fontSize: 14, fontWeight: 500, color: c.textLight, fontFamily: DS.fontSans }}> / 90</span></div>
+              <div style={{ fontSize: 24, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>{patient.day}</div>
             </div>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Phase</div>
@@ -3662,7 +3662,7 @@ function GenericPatientSummary({ patient, onOutreach }) {
               <div style={{ height: "100%", borderRadius: 4, width: `${Math.min(100, (patient.day / 90) * 100)}%`, background: `linear-gradient(90deg, #10B981, ${phaseColors[patient.phase] || "#3B82F6"})`, transition: "width 0.5s ease" }} />
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 11, color: c.textLight }}>
-              <span>Day 1</span><span>Day 14</span><span>Day 60</span><span>Day 90</span>
+              <span>Onboarding</span><span>Optimization</span><span>Ongoing</span>
             </div>
           </div>
         </div>
@@ -3849,7 +3849,7 @@ function PatientDetail({ patient, onBack, onOutreach, callData, guidanceBanner, 
         <div>
           <h1 style={{ fontSize: 26, fontWeight: 400, color: c.text, margin: 0, fontFamily: DS.fontDisplay }}>{patient.name}</h1>
           <p style={{ fontSize: 14, color: c.textLight, margin: "4px 0 0", fontFamily: c.font }}>
-            {patient.age}{patient.gender || ""} · {patient.doctor ? patient.doctor + " · " : ""}<span style={{ fontFamily: DS.fontDisplay }}>Day {patient.day}</span> of 90 · {patient.phase}
+            {patient.age}{patient.gender || ""} · {patient.doctor ? patient.doctor + " · " : ""}<span style={{ fontFamily: DS.fontDisplay }}>Day {patient.day}</span> · {patient.phase}
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -4444,7 +4444,7 @@ function PatientExperienceView({ onSwitchRole }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <div>
               <div style={{ fontSize: 16, fontWeight: 700, color: c.text }}>Recovery Journey</div>
-              <div style={{ fontSize: 13, color: c.textLight, marginTop: 2 }}>Day {patient.day} of 90</div>
+              <div style={{ fontSize: 13, color: c.textLight, marginTop: 2 }}>Day {patient.day} · Continuous Care</div>
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: c.purple, background: c.purpleLight, padding: "4px 12px", borderRadius: 8 }}>
               {patient.phase}

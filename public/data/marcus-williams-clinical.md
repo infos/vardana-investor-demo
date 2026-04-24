@@ -8,7 +8,7 @@
 - Phone: 206-555-0287
 - Primary Care: Dr. Angela Torres, Internal Medicine
 - Care Coordinator: Nurse David Park
-- Program: Day 22 of 90-day Hypertension + Diabetes Management Program
+- Program: Continuous Cardiometabolic Care · Day 22
 - Program Start: February 25, 2026
 - ID: VRD-2026-002
 
@@ -71,8 +71,8 @@ Marcus was doing well for the first 2 weeks. BP was trending toward target (<130
 - Alert threshold: 70+ (P2 Alert, Coordinator notification)
 
 ## CarePlan
-- 90-Day Hypertension + Diabetes Management Program
-- Period: February 25, 2026 to May 25, 2026
+- Continuous Cardiometabolic Care
+- Period: February 25, 2026 onward (quarterly review milestones)
 - Activities:
   1. Daily morning BP monitoring
   2. Twice-daily glucose monitoring

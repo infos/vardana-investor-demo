@@ -141,7 +141,7 @@ function Step1() {
       left={
         <Card style={{ background: '#0F172A', border: 'none', padding: 20 }}>
           <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 12 }}>Messages</div>
-          <SMSBubble from="Vardana Health" text="Hi Marcus, Dr. Torres has enrolled you in a 90-day cardiometabolic management program. Vardana will help you track your blood pressure, glucose, and medications between visits. Reply YES to get started." />
+          <SMSBubble from="Vardana Health" text="Hi Marcus, Dr. Torres has enrolled you in continuous cardiometabolic care. Vardana will help you track your blood pressure, glucose, and medications between visits. Reply YES to get started." />
           <SMSBubble text="YES" align="right" />
           <SMSBubble from="Vardana Health" text="Welcome! You'll receive a link to your secure patient portal shortly. We'll also schedule your first check-in call." />
         </Card>
@@ -157,7 +157,7 @@ function Step1() {
             {[
               ['Conditions', 'HTN (I10), T2DM (E11.9), Hyperlipidemia (E78.5)'],
               ['Provider', 'Dr. Angela Torres'],
-              ['Program', '90-Day Cardiometabolic Management'],
+              ['Program', 'Continuous Cardiometabolic Care'],
               ['Care Team', 'David Park, RN (Coordinator)'],
             ].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', gap: 8, fontSize: 12 }}>
@@ -182,7 +182,7 @@ function Step2() {
       left={
         <Card>
           <div style={{ fontSize: 10, color: DT.text.muted, marginBottom: 4 }}>From: Vardana Health &lt;care@vardana.ai&gt;</div>
-          <div style={{ fontSize: 10, color: DT.text.muted, marginBottom: 12 }}>Subject: <strong style={{ color: DT.text.primary }}>Welcome to your 90-Day Program, Marcus</strong></div>
+          <div style={{ fontSize: 10, color: DT.text.muted, marginBottom: 12 }}>Subject: <strong style={{ color: DT.text.primary }}>Welcome to your care program, Marcus</strong></div>
           <div style={{ borderTop: `1px solid ${DT.border.subtle}`, paddingTop: 14 }}>
             <p style={{ fontSize: 13, color: DT.text.secondary, lineHeight: 1.7, margin: '0 0 12px' }}>Dear Marcus,</p>
             <p style={{ fontSize: 13, color: DT.text.secondary, lineHeight: 1.7, margin: '0 0 12px' }}>
@@ -231,8 +231,8 @@ function Step3() {
     <SplitView
       left={
         <Card>
-          <div style={{ fontSize: 18, fontWeight: 400, color: DT.text.primary, fontFamily: DT.font.display, marginBottom: 4 }}>Day 22 of 90</div>
-          <div style={{ fontSize: 12, color: DT.text.muted, marginBottom: 16 }}>Cardiometabolic Management Program</div>
+          <div style={{ fontSize: 18, fontWeight: 400, color: DT.text.primary, fontFamily: DT.font.display, marginBottom: 4 }}>Day 22 · Continuous Care</div>
+          <div style={{ fontSize: 12, color: DT.text.muted, marginBottom: 16 }}>Continuous Cardiometabolic Care</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {vitals.map((v, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: DT.bg.well, borderRadius: DT.radius.sm }}>
@@ -455,7 +455,7 @@ export default function ClinicalDemoPage({ navigate }) {
           Clinical Demo — Marcus Williams
         </h1>
         <p style={{ fontSize: 13, color: DT.text.muted, margin: '0 0 24px', fontFamily: DT.font.body }}>
-          90-Day Cardiometabolic Management Program
+          Continuous Cardiometabolic Care
         </p>
       </div>
 

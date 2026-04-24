@@ -874,7 +874,7 @@ function PamiTab({ patientData }) {
 const GENERIC_SESSIONS = [
   { id: "s-gen-1", date: "2026-02-27", duration: "4m 12s", summary: "Weekly check-in. Vitals stable. Patient reports good medication adherence and no new symptoms." },
   { id: "s-gen-2", date: "2026-02-20", duration: "5m 48s", summary: "Reviewed sodium intake and daily weight log. Reinforced warning signs. Care plan on track." },
-  { id: "s-gen-3", date: "2026-02-13", duration: "6m 05s", summary: "Post-discharge onboarding. Confirmed pharmacy, PCP contact, and 90-day journey expectations." },
+  { id: "s-gen-3", date: "2026-02-13", duration: "6m 05s", summary: "Post-discharge onboarding. Confirmed pharmacy, PCP contact, and care journey expectations." },
 ];
 const SESSION_FIXTURES = {
   "Marcus Williams": [
@@ -895,10 +895,10 @@ const SESSION_FIXTURES = {
   "Maria Gonzalez": [
     { id: "s-mg-1", date: "2026-02-28", duration: "7m 01s", summary: "Day 8 HFpEF follow-up in Spanish. Good response to diuretic; weight down 2.6 lb. Mood stable on sertraline." },
     { id: "s-mg-2", date: "2026-02-24", duration: "5m 48s", summary: "BP 148/92 trending down. Reinforced sodium 1500 mg target and daily AM weight logging." },
-    { id: "s-mg-3", date: "2026-02-21", duration: "6m 22s", summary: "Post-discharge onboarding in Spanish. Confirmed pharmacy, PCP, and 90-day journey structure." },
+    { id: "s-mg-3", date: "2026-02-21", duration: "6m 22s", summary: "Post-discharge onboarding in Spanish. Confirmed pharmacy, PCP, and care journey structure." },
   ],
   "James Thompson": [
-    { id: "s-jt-1", date: "2026-02-28", duration: "3m 12s", summary: "Day 83. Graduation prep. All metrics in target 21 days. Reviewed self-management plan for post-90." },
+    { id: "s-jt-1", date: "2026-02-28", duration: "3m 12s", summary: "Day 83. Quarterly review prep. All metrics in target 21 days. Reviewed ongoing self-management plan." },
     { id: "s-jt-2", date: "2026-02-21", duration: "4m 05s", summary: "Stable on Carvedilol 25 BID. BP 118/70. Discussed calcium/vitamin D adherence for osteoporosis." },
     { id: "s-jt-3", date: "2026-02-14", duration: "3m 38s", summary: "Maintain phase check-in. No new symptoms. Confirmed next cardiology visit scheduled Mar 4." },
   ],
