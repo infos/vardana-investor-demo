@@ -442,42 +442,6 @@ const LOCAL_PATIENTS = [
     summary: null,
     local: true,
   },
-  {
-    id: "local-linda",
-    name: "Linda Patel",
-    initials: "LP",
-    meta: "HTN · T2DM · CKD3a",
-    risk: "mod",
-    bg: "#1E2D3D",
-    fg: "#85B7EB",
-    bundlePath: "/data/linda-patel-bundle.json",
-    summary: null,
-    local: true,
-  },
-  {
-    id: "local-angela",
-    name: "Angela Ruiz",
-    initials: "AR",
-    meta: "HTN · T2DM · HLD",
-    risk: "mod",
-    bg: "#2E1E3B",
-    fg: "#C8A0E2",
-    bundlePath: "/data/angela-ruiz-bundle.json",
-    summary: null,
-    local: true,
-  },
-  {
-    id: "local-david",
-    name: "David Brooks",
-    initials: "DB",
-    meta: "HTN · Prediabetes",
-    risk: "low",
-    bg: "#1B3A2A",
-    fg: "#9FE1CB",
-    bundlePath: "/data/david-brooks-bundle.json",
-    summary: null,
-    local: true,
-  },
 ];
 const LOCAL_MARCUS_ROSTER = LOCAL_PATIENTS[0];
 const LOCAL_PATIENT_BY_ID = new Map(LOCAL_PATIENTS.map(p => [p.id, p]));
@@ -495,7 +459,6 @@ const SUPPRESSED_PATIENT_NAMES = new Set([
 const ROSTER_ORDER = [
   "Marcus Williams",
   "Linda Patel",
-  "Angela Ruiz",
   "Maria Gonzalez",
   "David Brooks",
 ];
