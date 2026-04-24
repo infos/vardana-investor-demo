@@ -126,7 +126,7 @@ function inferConditionsSummary(conditions) {
   return parts.join(" · ") || conditions[0].text?.slice(0, 20) || "—";
 }
 function identifierMatchesMarcus(summary) {
-  const name = (summary.name || "").toLowerCase();
+  const name = (summary?.name || "").toLowerCase();
   return name.includes("marcus") && name.includes("williams");
 }
 
@@ -316,19 +316,86 @@ function buildCarePlanView(cp, goalResources = []) {
   };
 }
 
+// ── Local fixture patients ──
+// Each entry seeds a roster card AND knows where its full FHIR bundle
+// lives. Used both as the demo default (when Medplum is unavailable)
+// and as authoritative data in front of Medplum for named patients
+// (see roster loader below).
 const LOCAL_MARCUS_ID = "local-marcus";
-const LOCAL_MARCUS_ROSTER = {
-  id: LOCAL_MARCUS_ID,
-  name: "Marcus Williams",
-  initials: "MW",
-  meta: "HTN · T2DM · HLD",
-  risk: "high",
-  alert: true,
-  bg: "#3B2F1E",
-  fg: "#E2D5B8",
-  summary: null,
-  local: true,
-};
+const LOCAL_PATIENTS = [
+  {
+    id: LOCAL_MARCUS_ID,
+    name: "Marcus Williams",
+    initials: "MW",
+    meta: "HTN · T2DM · HLD",
+    risk: "high",
+    alert: true,
+    bg: "#3B2F1E",
+    fg: "#E2D5B8",
+    bundlePath: "/data/marcus-williams-bundle.json",
+    summary: null,
+    local: true,
+  },
+  {
+    id: "local-linda",
+    name: "Linda Patel",
+    initials: "LP",
+    meta: "HTN · T2DM · CKD3a",
+    risk: "mod",
+    alert: false,
+    bg: "#1E2D3D",
+    fg: "#85B7EB",
+    bundlePath: "/data/linda-patel-bundle.json",
+    summary: null,
+    local: true,
+  },
+  {
+    id: "local-angela",
+    name: "Angela Ruiz",
+    initials: "AR",
+    meta: "HTN · T2DM · HLD",
+    risk: "mod",
+    alert: false,
+    bg: "#2E1E3B",
+    fg: "#C8A0E2",
+    bundlePath: "/data/angela-ruiz-bundle.json",
+    summary: null,
+    local: true,
+  },
+  {
+    id: "local-david",
+    name: "David Brooks",
+    initials: "DB",
+    meta: "HTN · Prediabetes",
+    risk: "low",
+    alert: false,
+    bg: "#1B3A2A",
+    fg: "#9FE1CB",
+    bundlePath: "/data/david-brooks-bundle.json",
+    summary: null,
+    local: true,
+  },
+];
+const LOCAL_MARCUS_ROSTER = LOCAL_PATIENTS[0];
+const LOCAL_PATIENT_BY_ID = new Map(LOCAL_PATIENTS.map(p => [p.id, p]));
+const LOCAL_PATIENT_NAMES = new Set(LOCAL_PATIENTS.map(p => p.name));
+// Patients suppressed from the Medplum roster for this demo. They are
+// not deleted — older links, eval fixtures, and recorded demo content
+// may still reference them. Suppression is reversible; deletion is not.
+const SUPPRESSED_PATIENT_NAMES = new Set([
+  "Sarah Chen",
+  "Robert Williams",
+  "James Thompson",
+]);
+// Display order for the left-nav roster. Anything not listed keeps its
+// Medplum-returned order and falls to the tail.
+const ROSTER_ORDER = [
+  "Marcus Williams",
+  "Linda Patel",
+  "Angela Ruiz",
+  "Maria Gonzalez",
+  "David Brooks",
+];
 
 // Roster card colors cycle
 const CARD_COLORS = [
@@ -882,25 +949,25 @@ const SESSION_FIXTURES = {
     { id: "s-mw-2", date: "2026-02-28", duration: "4m 08s", summary: "Routine HTN check-in. BP 142/88. Reinforced evening Lisinopril routine and home cuff technique." },
     { id: "s-mw-3", date: "2026-02-22", duration: "3m 51s", summary: "Patient declined glucose-log review. No new symptoms. Agreed to resume weekly readings." },
   ],
-  "Sarah Chen": [
-    { id: "s-sc-1", date: "2026-03-05", duration: "6m 14s", summary: "Weight +2.3 lb/48 hr, ankle swelling, orthopnea. P2 CHF decompensation risk — routed to Rachel Kim." },
-    { id: "s-sc-2", date: "2026-02-28", duration: "4m 36s", summary: "Stable HFrEF check-in. Weight 187.7 lb, BP 136/86. Medication adherence confirmed across all five." },
-    { id: "s-sc-3", date: "2026-02-21", duration: "5m 02s", summary: "Transitioned from Stabilize to Optimize phase. Reviewed Phase 2 goals and Furosemide timing." },
+  "Linda Patel": [
+    { id: "s-lp-1", date: "2026-04-22", duration: "4m 47s", summary: "Home BP 130/78, eGFR stable at 52 mL/min. Reinforced Losartan + HCTZ timing. Asked about salt-substitute safety given CKD3a." },
+    { id: "s-lp-2", date: "2026-04-15", duration: "5m 31s", summary: "Fasting glucose averaging 104 on Metformin + Glipizide. A1c due in next quarterly review. No hypoglycemia episodes." },
+    { id: "s-lp-3", date: "2026-04-08", duration: "4m 02s", summary: "Quarterly review prep. BP cuff technique reviewed; nephrology follow-up scheduled for Q2 review cycle." },
   ],
-  "Robert Williams": [
-    { id: "s-rw-1", date: "2026-02-28", duration: "3m 44s", summary: "Day 52 check-in. NYHA II, Sacubitril/Valsartan well-tolerated. No AF-related symptoms this week." },
-    { id: "s-rw-2", date: "2026-02-21", duration: "4m 17s", summary: "Stable weight, BP 122/74. Patient asked about exercise tolerance — escalated to cardiology for guidance." },
-    { id: "s-rw-3", date: "2026-02-14", duration: "5m 30s", summary: "Reviewed Apixaban adherence and bleeding-risk warning signs. Patient articulated them back correctly." },
+  "Angela Ruiz": [
+    { id: "s-ar-1", date: "2026-04-22", duration: "5m 18s", summary: "Week 12 on Ozempic. Weight 94.5 kg (−7.5 kg from baseline). Mild nausea early in week, resolved with smaller evening meals." },
+    { id: "s-ar-2", date: "2026-04-15", duration: "6m 03s", summary: "A1c 7.2% on most recent draw, down from 8.1% at GLP-1 initiation. Fasting glucose trending 126–132 range. Good tolerance." },
+    { id: "s-ar-3", date: "2026-04-08", duration: "4m 55s", summary: "GI side-effect triage: intermittent early satiety, no vomiting or dehydration. Reinforced hydration + slow meal pacing." },
   ],
   "Maria Gonzalez": [
-    { id: "s-mg-1", date: "2026-02-28", duration: "7m 01s", summary: "Day 8 HFpEF follow-up in Spanish. Good response to diuretic; weight down 2.6 lb. Mood stable on sertraline." },
-    { id: "s-mg-2", date: "2026-02-24", duration: "5m 48s", summary: "BP 148/92 trending down. Reinforced sodium 1500 mg target and daily AM weight logging." },
-    { id: "s-mg-3", date: "2026-02-21", duration: "6m 22s", summary: "Post-discharge onboarding in Spanish. Confirmed pharmacy, PCP, and care journey structure." },
+    { id: "s-mg-1", date: "2026-02-28", duration: "7m 01s", summary: "HTN + HLD follow-up in Spanish. BP 148/92 trending down on Lisinopril + Atorvastatin. Reinforced sodium 1500 mg target and daily AM weight logging." },
+    { id: "s-mg-2", date: "2026-02-24", duration: "5m 48s", summary: "BP cuff technique reviewed. Patient reports good medication adherence. Scheduled lipid panel for next month." },
+    { id: "s-mg-3", date: "2026-02-21", duration: "6m 22s", summary: "Onboarding in Spanish. Confirmed pharmacy, PCP, and care journey structure." },
   ],
-  "James Thompson": [
-    { id: "s-jt-1", date: "2026-02-28", duration: "3m 12s", summary: "Day 83. Quarterly review prep. All metrics in target 21 days. Reviewed ongoing self-management plan." },
-    { id: "s-jt-2", date: "2026-02-21", duration: "4m 05s", summary: "Stable on Carvedilol 25 BID. BP 118/70. Discussed calcium/vitamin D adherence for osteoporosis." },
-    { id: "s-jt-3", date: "2026-02-14", duration: "3m 38s", summary: "Maintain phase check-in. No new symptoms. Confirmed next cardiology visit scheduled Mar 4." },
+  "David Brooks": [
+    { id: "s-db-1", date: "2026-04-23", duration: "3m 42s", summary: "Home BP 130/80 stable on Lisinopril 10mg. Fasting glucose trending 114–120 — reinforced continued risk of progression to T2DM without lifestyle change." },
+    { id: "s-db-2", date: "2026-04-16", duration: "4m 15s", summary: "Reviewed DASH diet pattern and 150 min/week aerobic target. Patient hitting ~90 min/week; discussed barriers." },
+    { id: "s-db-3", date: "2026-04-08", duration: "3m 58s", summary: "Onboarding. Confirmed home BP cuff, lifestyle goals, and quarterly A1c cadence." },
   ],
 };
 function getSessionsFor(patientName) {
@@ -1022,7 +1089,7 @@ export default function CoordinatorDashboard() {
         if (!res.ok) throw new Error(`Roster fetch failed: ${res.status}`);
         const data = await res.json();
         if (cancelled) return;
-        // Dedupe by patient id (Medplum sometimes returns duplicate Sarah Chens)
+        // Dedupe by patient id (Medplum sometimes returns duplicates)
         const seen = new Set();
         const uniq = [];
         for (const p of (data.patients || [])) {
@@ -1030,34 +1097,42 @@ export default function CoordinatorDashboard() {
           seen.add(p.id);
           uniq.push(p);
         }
-        let items = uniq.map((p, i) => ({
-          id: p.id,
-          name: p.name || "Unknown",
-          initials: initialsFromName(p.name),
-          meta: inferConditionsSummary(p.conditions),
-          risk: inferRiskLevel(p),
-          alert: inferRiskLevel(p) === "high",
-          bg: CARD_COLORS[i % CARD_COLORS.length].bg,
-          fg: CARD_COLORS[i % CARD_COLORS.length].fg,
-          summary: p,
-        }));
-        // Ensure Marcus is in the roster. If Medplum doesn't have him, fall
-        // back to the local bundle so the demo keeps working.
-        const marcusFromMedplum = items.find(identifierMatchesMarcus);
-        if (!marcusFromMedplum) {
-          items = [LOCAL_MARCUS_ROSTER, ...items];
-        }
-        setRoster(items);
-        // Auto-select Marcus
-        const marcus = items.find(identifierMatchesMarcus) || items.find(i => i.id === LOCAL_MARCUS_ID);
-        setSelectedPatientId((marcus || items[0])?.id || null);
+        // Suppress CHF / retired-demo patients from the Medplum response
+        // AND suppress names for which we have a local fixture (locals
+        // take precedence so the demo is deterministic).
+        const medplumItems = uniq
+          .filter(p => !SUPPRESSED_PATIENT_NAMES.has(p.name))
+          .filter(p => !LOCAL_PATIENT_NAMES.has(p.name))
+          .map((p, i) => ({
+            id: p.id,
+            name: p.name || "Unknown",
+            initials: initialsFromName(p.name),
+            meta: inferConditionsSummary(p.conditions),
+            risk: inferRiskLevel(p),
+            alert: inferRiskLevel(p) === "high",
+            bg: CARD_COLORS[(LOCAL_PATIENTS.length + i) % CARD_COLORS.length].bg,
+            fg: CARD_COLORS[(LOCAL_PATIENTS.length + i) % CARD_COLORS.length].fg,
+            summary: p,
+          }));
+        // Merge local fixtures (always present) with Medplum items, then
+        // apply the display order from ROSTER_ORDER; anything not named
+        // falls to the tail in its original order.
+        const merged = [...LOCAL_PATIENTS, ...medplumItems];
+        const orderIdx = (name) => {
+          const i = ROSTER_ORDER.indexOf(name);
+          return i === -1 ? ROSTER_ORDER.length : i;
+        };
+        merged.sort((a, b) => orderIdx(a.name) - orderIdx(b.name));
+        setRoster(merged);
+        // Auto-select Marcus (always present via LOCAL_PATIENTS)
+        setSelectedPatientId(LOCAL_MARCUS_ID);
       } catch (err) {
         if (cancelled) return;
         // Medplum unreachable (e.g. preview deploys without MEDPLUM_CLIENT_ID
         // scoped to Preview). Surface the error for transparency but still
-        // seed the local Marcus fixture so the call flow stays demoable.
+        // seed the local fixtures so the call flow stays demoable.
         setRosterError(err.message);
-        setRoster([LOCAL_MARCUS_ROSTER]);
+        setRoster([...LOCAL_PATIENTS]);
         setSelectedPatientId(LOCAL_MARCUS_ID);
       } finally {
         if (!cancelled) setRosterLoading(false);
@@ -1073,10 +1148,11 @@ export default function CoordinatorDashboard() {
     setPatientLoading(true);
     (async () => {
       try {
-        // Local Marcus fallback — load bundle from /public/data
-        if (selectedPatientId === LOCAL_MARCUS_ID) {
-          const res = await fetch("/data/marcus-williams-bundle.json");
-          if (!res.ok) throw new Error(`Local Marcus bundle fetch failed: ${res.status}`);
+        // Local fixture path — load bundle from /public/data
+        const localPatient = LOCAL_PATIENT_BY_ID.get(selectedPatientId);
+        if (localPatient) {
+          const res = await fetch(localPatient.bundlePath);
+          if (!res.ok) throw new Error(`Local bundle fetch failed (${localPatient.name}): ${res.status}`);
           const bundle = await res.json();
           if (cancelled) return;
           setPatientData(normalizeBundle(bundle));
@@ -1109,7 +1185,7 @@ export default function CoordinatorDashboard() {
   // fixtures + the pinned lastCallSummary card for his demo session view.
   useEffect(() => {
     if (!selectedPatientId) return;
-    if (selectedPatientId === LOCAL_MARCUS_ID) { setSessions([]); return; }
+    if (LOCAL_PATIENT_BY_ID.has(selectedPatientId)) { setSessions([]); return; }
     let cancelled = false;
     setSessionsLoading(true);
     (async () => {
@@ -1135,8 +1211,8 @@ export default function CoordinatorDashboard() {
     setCallOpen(false);
     const name = patientData?.patient?.name || roster.find(r => r.id === selectedPatientId)?.name || "Patient";
     setLastCallSummary({ ...payload, patientName: name, patientId: selectedPatientId });
-    // Don't POST for the local Marcus demo (no Medplum Patient resource).
-    if (!selectedPatientId || selectedPatientId === LOCAL_MARCUS_ID) return;
+    // Don't POST for any local fixture patient (no Medplum Patient resource).
+    if (!selectedPatientId || LOCAL_PATIENT_BY_ID.has(selectedPatientId)) return;
     setSessionLogStatus("saving");
     try {
       const res = await fetch("/api/medplum-fhir?action=log-session", {

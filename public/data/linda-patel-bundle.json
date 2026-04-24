@@ -1,0 +1,226 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823",
+        "active": true,
+        "identifier": [{"system": "http://vardana.ai/patients", "value": "VRD-2026-006"}],
+        "name": [{"use": "official", "family": "Patel", "given": ["Linda"]}],
+        "gender": "female",
+        "birthDate": "1959-01-15",
+        "telecom": [{"system": "phone", "value": "206-555-0342", "use": "home"}],
+        "address": [{"line": ["1108 Rainier Ave S"], "city": "Seattle", "state": "WA", "postalCode": "98144"}],
+        "generalPractitioner": [{"display": "Dr. Priya Shah, Internal Medicine"}]
+      },
+      "request": {"method": "PUT", "url": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"}
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "lp-cond-htn",
+        "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
+        "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
+        "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "I10", "display": "Essential (primary) hypertension"}]},
+        "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"},
+        "onsetDateTime": "2014-03-15"
+      },
+      "request": {"method": "PUT", "url": "Condition/lp-cond-htn"}
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "lp-cond-t2dm",
+        "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
+        "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
+        "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "E11.9", "display": "Type 2 diabetes mellitus without complications"}]},
+        "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"},
+        "onsetDateTime": "2017-08-22"
+      },
+      "request": {"method": "PUT", "url": "Condition/lp-cond-t2dm"}
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "lp-cond-ckd3a",
+        "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
+        "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
+        "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "N18.3", "display": "Chronic kidney disease, stage 3a"}]},
+        "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"},
+        "onsetDateTime": "2022-11-10"
+      },
+      "request": {"method": "PUT", "url": "Condition/lp-cond-ckd3a"}
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "lp-cond-hld",
+        "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
+        "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
+        "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "E78.5", "display": "Hyperlipidemia"}]},
+        "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"},
+        "onsetDateTime": "2017-08-22"
+      },
+      "request": {"method": "PUT", "url": "Condition/lp-cond-hld"}
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "lp-med-losartan",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "979485", "display": "Losartan 50 MG Oral Tablet"}]},
+        "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"},
+        "dosageInstruction": [{"text": "50mg daily AM", "timing": {"repeat": {"frequency": 1, "period": 1, "periodUnit": "d"}}}]
+      },
+      "request": {"method": "PUT", "url": "MedicationRequest/lp-med-losartan"}
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "lp-med-hctz",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "310798", "display": "Hydrochlorothiazide 25 MG Oral Tablet"}]},
+        "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"},
+        "dosageInstruction": [{"text": "25mg daily AM", "timing": {"repeat": {"frequency": 1, "period": 1, "periodUnit": "d"}}}]
+      },
+      "request": {"method": "PUT", "url": "MedicationRequest/lp-med-hctz"}
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "lp-med-glipizide",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "310489", "display": "Glipizide 5 MG Oral Tablet"}]},
+        "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"},
+        "dosageInstruction": [{"text": "5mg daily AM", "timing": {"repeat": {"frequency": 1, "period": 1, "periodUnit": "d"}}}]
+      },
+      "request": {"method": "PUT", "url": "MedicationRequest/lp-med-glipizide"}
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "lp-med-metformin",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "860975", "display": "Metformin hydrochloride 500 MG Oral Tablet"}]},
+        "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"},
+        "dosageInstruction": [{"text": "500mg BID with meals", "timing": {"repeat": {"frequency": 2, "period": 1, "periodUnit": "d"}}}]
+      },
+      "request": {"method": "PUT", "url": "MedicationRequest/lp-med-metformin"}
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "lp-med-atorvastatin",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "617310", "display": "Atorvastatin 20 MG Oral Tablet"}]},
+        "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"},
+        "dosageInstruction": [{"text": "20mg daily PM", "timing": {"repeat": {"frequency": 1, "period": 1, "periodUnit": "d"}}}]
+      },
+      "request": {"method": "PUT", "url": "MedicationRequest/lp-med-atorvastatin"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lp-bp-d1", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel"}]}, "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"}, "effectiveDateTime": "2026-04-18T07:30:00-07:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6", "display": "Systolic blood pressure"}]}, "valueQuantity": {"value": 132, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4", "display": "Diastolic blood pressure"}]}, "valueQuantity": {"value": 78, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/lp-bp-d1"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lp-bp-d2", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel"}]}, "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"}, "effectiveDateTime": "2026-04-20T07:30:00-07:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 126, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 74, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/lp-bp-d2"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lp-bp-d3", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel"}]}, "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"}, "effectiveDateTime": "2026-04-22T07:30:00-07:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 130, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 78, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/lp-bp-d3"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lp-bp-d4", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel"}]}, "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"}, "effectiveDateTime": "2026-04-23T07:30:00-07:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 124, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 74, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/lp-bp-d4"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lp-bp-d5", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel"}]}, "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"}, "effectiveDateTime": "2026-04-24T07:30:00-07:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 128, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 76, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/lp-bp-d5"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lp-weight-1", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "29463-7", "display": "Body weight"}]}, "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"}, "effectiveDateTime": "2026-04-20T07:30:00-07:00", "valueQuantity": {"value": 68.2, "unit": "kg", "system": "http://unitsofmeasure.org", "code": "kg"}},
+      "request": {"method": "PUT", "url": "Observation/lp-weight-1"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lp-weight-2", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "29463-7", "display": "Body weight"}]}, "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"}, "effectiveDateTime": "2026-04-23T07:30:00-07:00", "valueQuantity": {"value": 68.0, "unit": "kg", "system": "http://unitsofmeasure.org", "code": "kg"}},
+      "request": {"method": "PUT", "url": "Observation/lp-weight-2"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lp-fg-1", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "1558-6", "display": "Fasting glucose"}]}, "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"}, "effectiveDateTime": "2026-04-18", "valueQuantity": {"value": 108, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/lp-fg-1"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lp-fg-2", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "1558-6", "display": "Fasting glucose"}]}, "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"}, "effectiveDateTime": "2026-04-20", "valueQuantity": {"value": 102, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/lp-fg-2"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lp-fg-3", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "1558-6", "display": "Fasting glucose"}]}, "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"}, "effectiveDateTime": "2026-04-22", "valueQuantity": {"value": 106, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/lp-fg-3"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lp-fg-4", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "1558-6", "display": "Fasting glucose"}]}, "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"}, "effectiveDateTime": "2026-04-23", "valueQuantity": {"value": 104, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/lp-fg-4"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lp-fg-5", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "1558-6", "display": "Fasting glucose"}]}, "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"}, "effectiveDateTime": "2026-04-24", "valueQuantity": {"value": 105, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/lp-fg-5"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lp-lab-hba1c", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "4548-4", "display": "Hemoglobin A1c"}]}, "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"}, "effectiveDateTime": "2026-03-05", "valueQuantity": {"value": 6.8, "unit": "%", "system": "http://unitsofmeasure.org", "code": "%"}},
+      "request": {"method": "PUT", "url": "Observation/lp-lab-hba1c"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "lp-lab-egfr", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "33914-3", "display": "Glomerular filtration rate (eGFR)"}]}, "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"}, "effectiveDateTime": "2026-03-25", "valueQuantity": {"value": 52, "unit": "mL/min/1.73m2", "system": "http://unitsofmeasure.org", "code": "mL/min/{1.73_m2}"}},
+      "request": {"method": "PUT", "url": "Observation/lp-lab-egfr"}
+    },
+    {
+      "resource": {
+        "resourceType": "CarePlan",
+        "id": "lp-careplan",
+        "status": "active",
+        "intent": "plan",
+        "category": [{"coding": [{"system": "http://hl7.org/fhir/us/core/CodeSystem/careplan-category", "code": "assess-plan", "display": "Assessment and Plan of Treatment"}]}],
+        "title": "Continuous Cardiometabolic Care",
+        "description": "Continuous cardiometabolic management for hypertension, type 2 diabetes, hyperlipidemia, and stage 3a CKD. Daily voice-first patient engagement, ADA quarterly milestone reviews.",
+        "subject": {"reference": "Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823"},
+        "period": {"start": "2026-03-14"},
+        "created": "2026-03-14",
+        "author": {"display": "Dr. Priya Shah, Internal Medicine"}
+      },
+      "request": {"method": "PUT", "url": "CarePlan/lp-careplan"}
+    }
+  ]
+}

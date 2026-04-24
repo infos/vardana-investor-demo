@@ -1,0 +1,146 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "e83f91c6-4a28-4e5b-9d17-5b7f3c82a946",
+        "active": true,
+        "identifier": [{"system": "http://vardana.ai/patients", "value": "VRD-2026-007"}],
+        "name": [{"use": "official", "family": "Brooks", "given": ["David"]}],
+        "gender": "male",
+        "birthDate": "1976-10-20",
+        "telecom": [{"system": "phone", "value": "206-555-0553", "use": "home"}],
+        "address": [{"line": ["2205 Eastlake Ave E"], "city": "Seattle", "state": "WA", "postalCode": "98102"}],
+        "generalPractitioner": [{"display": "Dr. Priya Shah, Internal Medicine"}]
+      },
+      "request": {"method": "PUT", "url": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"}
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "db-cond-htn",
+        "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
+        "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
+        "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "I10", "display": "Essential (primary) hypertension"}]},
+        "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"},
+        "onsetDateTime": "2025-10-26"
+      },
+      "request": {"method": "PUT", "url": "Condition/db-cond-htn"}
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "db-cond-prediabetes",
+        "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
+        "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
+        "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "R73.03", "display": "Prediabetes"}]},
+        "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"},
+        "onsetDateTime": "2025-10-26"
+      },
+      "request": {"method": "PUT", "url": "Condition/db-cond-prediabetes"}
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "db-med-lisinopril",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "314076", "display": "Lisinopril 10 MG Oral Tablet"}]},
+        "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"},
+        "dosageInstruction": [{"text": "10mg daily AM", "timing": {"repeat": {"frequency": 1, "period": 1, "periodUnit": "d"}}}]
+      },
+      "request": {"method": "PUT", "url": "MedicationRequest/db-med-lisinopril"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "db-bp-d1", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9", "display": "Blood pressure panel"}]}, "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"}, "effectiveDateTime": "2026-04-18T07:30:00-07:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6", "display": "Systolic blood pressure"}]}, "valueQuantity": {"value": 130, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4", "display": "Diastolic blood pressure"}]}, "valueQuantity": {"value": 82, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/db-bp-d1"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "db-bp-d2", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9"}]}, "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"}, "effectiveDateTime": "2026-04-20T07:30:00-07:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 128, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 80, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/db-bp-d2"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "db-bp-d3", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9"}]}, "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"}, "effectiveDateTime": "2026-04-22T07:30:00-07:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 126, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 78, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/db-bp-d3"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "db-bp-d4", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9"}]}, "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"}, "effectiveDateTime": "2026-04-23T07:30:00-07:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 130, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 80, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/db-bp-d4"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "db-bp-d5", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "85354-9"}]}, "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"}, "effectiveDateTime": "2026-04-24T07:30:00-07:00",
+        "component": [
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8480-6"}]}, "valueQuantity": {"value": 128, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}},
+          {"code": {"coding": [{"system": "http://loinc.org", "code": "8462-4"}]}, "valueQuantity": {"value": 80, "unit": "mmHg", "system": "http://unitsofmeasure.org", "code": "mm[Hg]"}}
+        ]
+      },
+      "request": {"method": "PUT", "url": "Observation/db-bp-d5"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "db-weight-1", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "vital-signs"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "29463-7", "display": "Body weight"}]}, "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"}, "effectiveDateTime": "2026-04-23T07:30:00-07:00", "valueQuantity": {"value": 88.0, "unit": "kg", "system": "http://unitsofmeasure.org", "code": "kg"}},
+      "request": {"method": "PUT", "url": "Observation/db-weight-1"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "db-fg-1", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "1558-6", "display": "Fasting glucose"}]}, "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"}, "effectiveDateTime": "2026-04-18", "valueQuantity": {"value": 114, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/db-fg-1"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "db-fg-2", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "1558-6", "display": "Fasting glucose"}]}, "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"}, "effectiveDateTime": "2026-04-20", "valueQuantity": {"value": 116, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/db-fg-2"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "db-fg-3", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "1558-6", "display": "Fasting glucose"}]}, "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"}, "effectiveDateTime": "2026-04-22", "valueQuantity": {"value": 118, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/db-fg-3"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "db-fg-4", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "1558-6", "display": "Fasting glucose"}]}, "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"}, "effectiveDateTime": "2026-04-23", "valueQuantity": {"value": 120, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/db-fg-4"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "db-fg-5", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "1558-6", "display": "Fasting glucose"}]}, "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"}, "effectiveDateTime": "2026-04-24", "valueQuantity": {"value": 122, "unit": "mg/dL", "system": "http://unitsofmeasure.org", "code": "mg/dL"}},
+      "request": {"method": "PUT", "url": "Observation/db-fg-5"}
+    },
+    {
+      "resource": {"resourceType": "Observation", "id": "db-lab-hba1c", "status": "final", "category": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/observation-category", "code": "laboratory"}]}], "code": {"coding": [{"system": "http://loinc.org", "code": "4548-4", "display": "Hemoglobin A1c"}]}, "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"}, "effectiveDateTime": "2026-03-25", "valueQuantity": {"value": 6.5, "unit": "%", "system": "http://unitsofmeasure.org", "code": "%"}},
+      "request": {"method": "PUT", "url": "Observation/db-lab-hba1c"}
+    },
+    {
+      "resource": {
+        "resourceType": "CarePlan",
+        "id": "db-careplan",
+        "status": "active",
+        "intent": "plan",
+        "category": [{"coding": [{"system": "http://hl7.org/fhir/us/core/CodeSystem/careplan-category", "code": "assess-plan", "display": "Assessment and Plan of Treatment"}]}],
+        "title": "Continuous Cardiometabolic Care",
+        "description": "Continuous cardiometabolic management for early-stage hypertension and prediabetes. Daily voice-first patient engagement, lifestyle reinforcement, and quarterly review cadence to prevent progression to T2DM.",
+        "subject": {"reference": "Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946"},
+        "period": {"start": "2026-03-25"},
+        "created": "2026-03-25",
+        "author": {"display": "Dr. Priya Shah, Internal Medicine"}
+      },
+      "request": {"method": "PUT", "url": "CarePlan/db-careplan"}
+    }
+  ]
+}
