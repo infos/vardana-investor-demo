@@ -139,9 +139,16 @@ function calcPCE(inputs) {
   const la = Math.log(age), lt = Math.log(tc), lh = Math.log(hdl), ls = Math.log(sbp);
   let r = 0;
   if (group === "wm") { const s = 12.344*la+11.853*lt-2.664*la*lt-7.990*lh+1.769*la*lh+(bptx?1.797:1.764)*ls+7.837*smoke-1.795*la*smoke+0.661*dm; r = 1-Math.pow(0.9144,Math.exp(s-61.18)); }
-  else if (group === "wf") { const s = -29.799*la+4.884*la*la+13.540*lt-3.114*la*lt-13.578*lh+3.149*la*lh+(bptx?2.019:1.957)*ls+7.574*smoke-1.665*la*smoke+0.661*dm; r = 1-Math.pow(0.9665,Math.exp(s-29.799)); }
+  // NHW Female: Goff 2013 Table A. Mean coefficient sum is -29.18 (negative),
+  // so the exponent is exp(s - (-29.18)) = exp(s + 29.18). The sign matters —
+  // using s - 29.799 (the |ln Age| coefficient) clamps all output to the 0.1%
+  // floor for realistic inputs.
+  else if (group === "wf") { const s = -29.799*la+4.884*la*la+13.540*lt-3.114*la*lt-13.578*lh+3.149*la*lh+(bptx?2.019:1.957)*ls+7.574*smoke-1.665*la*smoke+0.661*dm; r = 1-Math.pow(0.9665,Math.exp(s+29.18)); }
   else if (group === "am") { const s = 2.469*la+0.302*lt-0.307*lh+(bptx?1.916:1.809)*ls+0.549*smoke+0.645*dm; r = 1-Math.pow(0.8954,Math.exp(s-19.54)); }
-  else { const s = 17.1141*la+0.9396*lt-18.9196*lh+4.4748*la*lh+(bptx?29.2907:27.8197)*ls+(bptx?-6.4321:-6.0873)*la*ls+0.8738*smoke+0.8738*dm; r = 1-Math.pow(0.9533,Math.exp(s-86.61)); }
+  // NHB Female: smoker coefficient is 0.8738 but diabetes coefficient is
+  // 0.5421 (not 0.8738 — they happen to share smoker's value in some
+  // summaries but are distinct per Goff 2013 Table A).
+  else { const s = 17.1141*la+0.9396*lt-18.9196*lh+4.4748*la*lh+(bptx?29.2907:27.8197)*ls+(bptx?-6.4321:-6.0873)*la*ls+0.8738*smoke+0.5421*dm; r = 1-Math.pow(0.9533,Math.exp(s-86.61)); }
   return Math.max(0.001, Math.min(0.99, r)) * 100;
 }
 function pceTierLabel(pct) {
@@ -159,10 +166,16 @@ function defaultPCEInputs(patientData) {
   const latestBP = patientData?.latestBP;
   const conditions = patientData?.conditions || [];
   const hasDM = conditions.some(c => /diabetes|t2dm/i.test(c.text || ""));
+  // Route to the correct race/sex PCE group. Sex comes from the FHIR
+  // Patient.gender field; race is not carried on our current Patient
+  // resources (US Core race extension would be authoritative), so default
+  // to white. The Risk tab's Race/sex select lets a clinician override.
+  const gender = (patientData?.patient?.gender || "").toLowerCase();
+  const group = gender === "female" ? "wf" : "wm";
   return {
     age: ageFromBirthDate(patientData?.patient?.birthDate) || 58,
     tc: 195, hdl: 42, sbp: latestBP?.systolic || 138,
-    bptx: 1, dm: hasDM ? 1 : 0, smoke: 0, group: "wm",
+    bptx: 1, dm: hasDM ? 1 : 0, smoke: 0, group,
   };
 }
 
