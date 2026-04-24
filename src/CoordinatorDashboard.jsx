@@ -57,6 +57,14 @@ const css = {
 function Chip({ children }) {
   return <span style={{ fontSize: 14, ...css.sans, color: S.textMed, background: S.chip, padding: "2px 7px", borderRadius: 3 }}>{children}</span>;
 }
+const allergyChipStyle = {
+  fontSize: 14, ...css.sans, background: S.redBg, color: S.redText,
+  border: `1px solid #FECACA`, padding: "2px 8px", borderRadius: 3, fontWeight: 600,
+};
+const nkdaChipStyle = {
+  fontSize: 14, ...css.sans, background: "#F5F3ED", color: S.textMed,
+  padding: "2px 7px", borderRadius: 3, letterSpacing: "0.05em",
+};
 function Badge({ children, color = "blue" }) {
   const colors = {
     blue: { bg: S.blueBg, text: S.blue }, green: { bg: S.greenBg, text: S.greenText },
@@ -295,6 +303,7 @@ function normalizeBundle(rawBundle) {
       if (sys && dia) bloodPressures.push({ systolic: sys.valueQuantity?.value, diastolic: dia.valueQuantity?.value, date: obs.effectiveDateTime });
     } else if (cat === "laboratory" || obs.valueQuantity) {
       labs.push({
+        code: obs.code?.coding?.[0]?.code,
         name: obs.code?.coding?.[0]?.display || obs.code?.text,
         value: obs.valueQuantity?.value,
         unit: obs.valueQuantity?.unit,
@@ -806,6 +815,171 @@ function CarePlanTab({ patientData }) {
   </div>;
 }
 
+// ── Overview cards: Conditions, Medications, Labs ──
+// Active-only filter applied client-side. TODO: push clinicalStatus=active
+// filter into the Medplum resolver so inactive conditions never ship.
+function ConditionsCard({ conditions = [] }) {
+  const active = conditions.filter(c => !c.status || c.status === "active");
+  const historical = conditions.filter(c => c.status && c.status !== "active");
+  return (
+    <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14 }}>
+      <CardTitle>Active conditions</CardTitle>
+      {active.length === 0 && <EmptyState>No active conditions.</EmptyState>}
+      {active.map((c, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "8px 0", borderBottom: i < active.length - 1 ? `1px solid #F0EEE8` : "none", ...css.sans }}>
+          <span style={{ fontSize: 15, color: S.text, flex: 1 }}>{c.text}</span>
+          {c.code && <span style={{ fontSize: 13, ...css.mono, color: S.textLight }}>{c.code}</span>}
+          {c.onset && <span style={{ fontSize: 13, ...css.mono, color: S.textLight }}>Since {fmtDate(c.onset)}</span>}
+        </div>
+      ))}
+      {historical.length > 0 && (
+        <details style={{ marginTop: 10 }}>
+          <summary style={{ fontSize: 13, ...css.sans, color: S.textLight, cursor: "pointer" }}>
+            History ({historical.length})
+          </summary>
+          {historical.map((c, i) => (
+            <div key={i} style={{ fontSize: 14, ...css.sans, color: S.textMed, padding: "6px 0 0", lineHeight: 1.5 }}>
+              {c.text}{c.code ? ` · ${c.code}` : ""} · {c.status}
+            </div>
+          ))}
+        </details>
+      )}
+    </div>
+  );
+}
+
+// Clinical ordering: BP meds first for HTN patients, then glycemic, then
+// lipids, then prophylactic, then anything uncategorized. Do not
+// alphabetize — chart summary tic, not clinical reasoning.
+const MED_CLASS_ORDER = ["htn", "glycemic", "lipid", "prophylactic", "other"];
+const MED_CLASSIFIERS = [
+  { cls: "htn", re: /(lisinopril|losartan|valsartan|ramipril|enalapril|amlodipine|hydrochlorothiazide|hctz|metoprolol|carvedilol|atenolol|chlorthalidone)/i },
+  { cls: "glycemic", re: /(metformin|glipizide|glyburide|sitagliptin|empagliflozin|dapagliflozin|liraglutide|semaglutide|ozempic|jardiance|mounjaro|insulin)/i },
+  { cls: "lipid", re: /(atorvastatin|rosuvastatin|simvastatin|pravastatin|ezetimibe|evolocumab|statin)/i },
+  { cls: "prophylactic", re: /(aspirin|clopidogrel|warfarin|apixaban|rivaroxaban|ticagrelor)/i },
+];
+function classifyMed(name = "") {
+  for (const c of MED_CLASSIFIERS) if (c.re.test(name)) return c.cls;
+  return "other";
+}
+function MedicationsCard({ medications = [] }) {
+  const active = medications.filter(m => !m.status || m.status === "active");
+  const sorted = active
+    .map((m, idx) => ({ ...m, cls: classifyMed(m.name), idx }))
+    .sort((a, b) => {
+      const ai = MED_CLASS_ORDER.indexOf(a.cls);
+      const bi = MED_CLASS_ORDER.indexOf(b.cls);
+      if (ai !== bi) return ai - bi;
+      return a.idx - b.idx; // preserve source order within class
+    });
+  return (
+    <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14 }}>
+      <CardTitle>Current medications</CardTitle>
+      {sorted.length === 0 && <EmptyState>No active medications.</EmptyState>}
+      {sorted.map((m, i) => (
+        <div key={i} style={{ padding: "8px 0", borderBottom: i < sorted.length - 1 ? `1px solid #F0EEE8` : "none", ...css.sans }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <span style={{ fontSize: 15, color: S.text, flex: 1 }}>{m.name}</span>
+          </div>
+          {m.dosage && (
+            <div style={{ fontSize: 13, color: S.textMed, marginTop: 2, lineHeight: 1.5 }}>{m.dosage}</div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Group labs by LOINC, compute trend for each. Filters to codes with ≥2
+// readings in the last 30 days so the "trended labs" grid only shows
+// actionable directional data. Single-reading labs go to a collapsed
+// affordance below.
+const LAB_CONFIG = {
+  "41604-0": { label: "Fasting glucose", target: "<130", targetMax: 130, loinc: "41604-0" },
+  "1558-6":  { label: "Fasting glucose", target: "<130", targetMax: 130, loinc: "1558-6" },
+  "4548-4":  { label: "Hemoglobin A1c",  target: "<7.0", targetMax: 7.0, loinc: "4548-4" },
+  "2089-1":  { label: "LDL cholesterol", target: "<70",  targetMax: 70,  loinc: "2089-1" },
+  "2160-0":  { label: "Creatinine",      target: "0.7–1.3" },
+  "69405-9": { label: "eGFR",            target: "≥60" },
+  "14959-1": { label: "Microalbumin/Cr", target: "<30",  targetMax: 30, loinc: "14959-1" },
+};
+function LabsRow({ labs = [] }) {
+  const groups = new Map();
+  for (const l of labs) {
+    if (!l.code) continue;
+    if (!groups.has(l.code)) groups.set(l.code, []);
+    groups.get(l.code).push(l);
+  }
+
+  // Window: readings from the last 30 days only.
+  const now = Date.now();
+  const horizonMs = 30 * 24 * 60 * 60 * 1000;
+  const trended = [];
+  const single = [];
+  for (const [code, readings] of groups) {
+    const windowed = readings.filter(r => r.date && now - new Date(r.date).getTime() <= horizonMs);
+    const cfg = LAB_CONFIG[code];
+    const label = cfg?.label || readings[0]?.name || code;
+    if (windowed.length >= 2) {
+      const trend = computeTrend(windowed, {
+        limit: 5,
+        format: r => `${r.value}`,
+      });
+      const latest = [...windowed].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+      const status = cfg?.targetMax != null && latest.value != null
+        ? (latest.value <= cfg.targetMax ? "ok" : "alert")
+        : "neutral";
+      trended.push({ code, label, cfg, trend, latest, status });
+    } else if (windowed.length === 1) {
+      single.push({ code, label, cfg, reading: windowed[0] });
+    }
+  }
+
+  if (trended.length === 0 && single.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: 4 }}>
+      <div style={{ fontSize: 14, ...css.sans, color: S.textLight, textTransform: "uppercase", letterSpacing: 1, margin: "6px 0 10px" }}>
+        Recent labs — trended
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+        {trended.map(t => (
+          <MetricTile
+            key={t.code}
+            label={t.label}
+            value={t.latest.value}
+            unit={t.latest.unit}
+            date={fmtDate(t.latest.date)}
+            status={t.status}
+            trend={t.trend && { arrow: t.trend.arrow, series: t.trend.series, window: t.trend.window, target: t.cfg?.target }}
+          />
+        ))}
+      </div>
+      {single.length > 0 && (
+        <details style={{ marginTop: 12 }}>
+          <summary style={{ fontSize: 13, ...css.sans, color: S.textLight, cursor: "pointer" }}>
+            Recent labs (single readings) · {single.length}
+          </summary>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 8 }}>
+            {single.map(s => (
+              <div key={s.code} style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 6, padding: 10, ...css.sans }}>
+                <div style={{ fontSize: 13, color: S.textLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{s.label}</div>
+                <div style={{ fontSize: 20, ...css.serif, color: S.text }}>
+                  {s.reading.value}
+                  <span style={{ fontSize: 13, ...css.sans, color: S.textLight, marginLeft: 6 }}>{s.reading.unit || ""}</span>
+                </div>
+                <div style={{ fontSize: 13, color: S.textLight, marginTop: 4 }}>
+                  {fmtDate(s.reading.date)}{s.cfg?.target ? ` · target ${s.cfg.target}` : ""}
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
 // ── Tab: Overview ──
 function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onViewCarePlan, medplumSessions, lastCallSummary, sessionLogStatus, onDismissLastCall }) {
   if (!patientData) return <EmptyState>No patient data loaded from Medplum.</EmptyState>;
@@ -891,20 +1065,11 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onView
       </div>
     </div>
     <CarePlanOverviewCard carePlan={patientData.carePlan} onViewFull={onViewCarePlan} />
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-      <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14 }}>
-        <CardTitle>Active conditions</CardTitle>
-        {conditions.length === 0 && <EmptyState>No conditions recorded.</EmptyState>}
-        {conditions.map((c, i) => (
-          <PRow key={i} label={c.text} value={`${c.code || ""}${c.onset ? ` · Since ${fmtDate(c.onset)}` : ""}`} badge={c.status === "active" ? "Active" : c.status} badgeColor={c.status === "active" ? "green" : "gray"} />
-        ))}
-      </div>
-      <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14 }}>
-        <CardTitle>Current medications</CardTitle>
-        {medications.length === 0 && <EmptyState>No medications in Medplum.</EmptyState>}
-        {medications.map((m, i) => <PRow key={i} label={m.name} value={m.dosage || m.status || ""} />)}
-      </div>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+      <ConditionsCard conditions={conditions} />
+      <MedicationsCard medications={medications} conditions={conditions} />
     </div>
+    <LabsRow labs={patientData.labs} />
     <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14, marginTop: 14 }}>
       <CardTitle>Recent sessions</CardTitle>
       {recentSessions.length === 0 && <EmptyState>No sessions logged yet.</EmptyState>}
@@ -1015,49 +1180,6 @@ function RiskTab({ patientData }) {
       ))}
       <div style={{ fontSize: 13, ...css.sans, color: S.textLight, marginTop: 12, lineHeight: 1.55 }}>
         Symptom-based escalation rules aligned to published guidelines. Informational only. All clinical decisions by the treating clinician.
-      </div>
-    </div>
-  </div>;
-}
-
-// ── Tab: PAMI (Problems, Allergies, Meds, Investigations) ──
-function PamiTab({ patientData }) {
-  if (!patientData) return <EmptyState>No patient data loaded from Medplum.</EmptyState>;
-  const { conditions = [], allergies = [], medications = [], labs = [] } = patientData;
-
-  return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-    <div>
-      <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14, marginBottom: 14 }}>
-        <div style={{ fontSize: 18, ...css.serif, marginBottom: 10, borderBottom: `1px solid ${S.border}`, paddingBottom: 6 }}>Problems</div>
-        {conditions.length === 0 && <EmptyState>No conditions in Medplum.</EmptyState>}
-        {conditions.map((c, i) => <PRow key={i} label={c.text} value={`${c.code || ""}${c.onset ? ` · Since ${fmtDate(c.onset)}` : ""}`} badge={c.status === "active" ? "Active" : (c.status || "—")} badgeColor="green" />)}
-      </div>
-      <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14, marginBottom: 14 }}>
-        <div style={{ fontSize: 18, ...css.serif, marginBottom: 10, borderBottom: `1px solid ${S.border}`, paddingBottom: 6 }}>Allergies</div>
-        {allergies.length === 0 && <EmptyState>No allergies recorded.</EmptyState>}
-        {allergies.map((a, i) => <PRow key={i} label={a.substance || "—"} value={[a.reaction, a.status].filter(Boolean).join(" · ") || "—"} badge="Allergy" badgeColor="red" />)}
-      </div>
-      <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14 }}>
-        <div style={{ fontSize: 18, ...css.serif, marginBottom: 10, borderBottom: `1px solid ${S.border}`, paddingBottom: 6 }}>Recent labs</div>
-        {labs.length === 0 && <EmptyState>No labs in Medplum.</EmptyState>}
-        {labs.slice(0, 8).map((l, i) => <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: i < Math.min(labs.length, 8) - 1 ? `1px solid #F0EEE8` : "none", ...css.sans, fontSize: 15 }}>
-          <span style={{ flex: "0 0 150px", color: S.text }}>{l.name}</span>
-          <span style={{ flex: 1, color: S.textMed }}>{l.value}{l.unit ? ` ${l.unit}` : ""}{l.date ? ` · ${fmtDate(l.date)}` : ""}</span>
-        </div>)}
-      </div>
-    </div>
-    <div>
-      <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14 }}>
-        <div style={{ fontSize: 18, ...css.serif, marginBottom: 10, borderBottom: `1px solid ${S.border}`, paddingBottom: 6 }}>Medications</div>
-        {medications.length === 0 && <EmptyState>No medications in Medplum.</EmptyState>}
-        {medications.map((m, i) => <div key={i} style={{ padding: "8px 0", borderBottom: i < medications.length - 1 ? `1px solid #F0EEE8` : "none" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 15, ...css.sans, flex: 1 }}>{m.name}</span>
-            <Badge color={m.status === "active" ? "blue" : "gray"}>{m.status || "—"}</Badge>
-          </div>
-          {m.dosage && <div style={{ fontSize: 14, ...css.sans, color: S.textMed, marginTop: 2 }}>{m.dosage}</div>}
-
-        </div>)}
       </div>
     </div>
   </div>;
@@ -1252,7 +1374,6 @@ const TABS = [
   { id: "sessions", label: "Sessions" },
   { id: "care-plan", label: "Care plan" },
   { id: "risk", label: "Risk profile" },
-  { id: "pami", label: "PAMI" },
   { id: "outreach", label: "Outreach" },
 ];
 
@@ -1510,7 +1631,6 @@ export default function CoordinatorDashboard() {
     "care-plan": <CarePlanTab patientData={patientData} />,
     risk: <RiskTab patientData={patientData} />,
     sessions: <SessionsTab patientData={patientData} medplumSessions={sessions} loading={sessionsLoading} />,
-    pami: <PamiTab patientData={patientData} />,
     outreach: <OutreachTab patientData={patientData} onInitiateCall={handleInitiateCall} />,
   };
 
@@ -1519,6 +1639,11 @@ export default function CoordinatorDashboard() {
   const age = ageFromBirthDate(patient?.birthDate);
   const gender = patient?.gender || "—";
   const mrn = patient?.identifier || patient?.id || "—";
+  // Active allergies for the header chip. NKDA (no known drug allergies)
+  // is rendered explicitly rather than omitted — silence is dangerous.
+  const activeAllergies = (patientData?.allergies || []).filter(
+    a => !a.status || a.status === "active",
+  );
 
   return (
     <div style={{ display: "flex", height: "100vh", minHeight: 720, background: S.bg }}>
@@ -1599,6 +1724,13 @@ export default function CoordinatorDashboard() {
                   {patient.generalPractitioner && <Chip>PCP: {patient.generalPractitioner}</Chip>}
                   {patient.phone && <Chip>{patient.phone}</Chip>}
                   {patient.email && <Chip>{patient.email}</Chip>}
+                  {activeAllergies.length > 0 ? (
+                    <span style={allergyChipStyle} title={activeAllergies.map(a => [a.substance, a.reaction].filter(Boolean).join(" — ")).join("; ")}>
+                      ⚠ Allergies: {activeAllergies.map(a => a.substance).filter(Boolean).join(", ")}
+                    </span>
+                  ) : (
+                    <span style={nkdaChipStyle}>NKDA</span>
+                  )}
                 </div>
               </div>
             </div>
