@@ -111,7 +111,7 @@ function fmtDate(iso) {
 function inferRiskLevel(summary) {
   const bp = summary.latestBP;
   const hasHTN = (summary.conditions || []).some(c => /hypertension|htn/i.test(c.text || ""));
-  const hasT2DM = (summary.conditions || []).some(c => /diabetes|t2dm/i.test(c.text || ""));
+  const hasT2DM = hasActiveDiabetes(summary.conditions);
   if (bp && (bp.systolic >= 155 || bp.diastolic >= 95)) return "high";
   if (bp && (bp.systolic >= 140 || bp.diastolic >= 90)) return "mod";
   if (hasHTN && hasT2DM) return "mod";
@@ -121,7 +121,7 @@ function inferConditionsSummary(conditions) {
   if (!conditions?.length) return "—";
   const parts = [];
   if (conditions.some(c => /hypertension|htn/i.test(c.text || ""))) parts.push("HTN");
-  if (conditions.some(c => /diabetes|t2dm/i.test(c.text || ""))) parts.push("T2DM");
+  if (hasActiveDiabetes(conditions)) parts.push("T2DM");
   if (conditions.some(c => /hyperlipidemia|dyslipidemia/i.test(c.text || ""))) parts.push("HLD");
   return parts.join(" · ") || conditions[0].text?.slice(0, 20) || "—";
 }
@@ -162,10 +162,21 @@ function pceTierColors(pct) {
   if (pct < 7.5) return { bg: S.amberBg, text: S.amberText, bar: S.amber };
   return { bg: S.redBg, text: S.redText, bar: S.red };
 }
+// Classify diabetes by ICD-10 code, not display-string regex. The
+// substring pattern /diabetes|t2dm/i matches "Prediabetes" (R73.03) as
+// a false positive, which materially inflates ASCVD risk for prediabetic
+// patients. Count only E10.* (Type 1) and E11.* (Type 2) with an active
+// clinical status.
+function hasActiveDiabetes(conditions = []) {
+  return conditions.some(c => {
+    const code = (c.code || "").toUpperCase();
+    const active = !c.status || c.status === "active";
+    return active && /^E1[01](\.|$)/.test(code);
+  });
+}
 function defaultPCEInputs(patientData) {
   const latestBP = patientData?.latestBP;
-  const conditions = patientData?.conditions || [];
-  const hasDM = conditions.some(c => /diabetes|t2dm/i.test(c.text || ""));
+  const hasDM = hasActiveDiabetes(patientData?.conditions);
   // Route to the correct race/sex PCE group. Sex comes from the FHIR
   // Patient.gender field; race is not carried on our current Patient
   // resources (US Core race extension would be authoritative), so default
@@ -813,8 +824,7 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onView
 // ── Tab: Risk Profile ──
 function RiskTab({ patientData }) {
   const latestBP = patientData?.latestBP;
-  const conditions = patientData?.conditions || [];
-  const hasDM = conditions.some(c => /diabetes|t2dm/i.test(c.text || ""));
+  const hasDM = hasActiveDiabetes(patientData?.conditions);
   const [pceInputs, setPceInputs] = useState(() => defaultPCEInputs(patientData));
   const [tips, setTips] = useState({});
 
