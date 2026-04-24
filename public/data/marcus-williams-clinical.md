@@ -8,8 +8,8 @@
 - Phone: 206-555-0287
 - Primary Care: Dr. Angela Torres, Internal Medicine
 - Care Coordinator: Nurse David Park
-- Program: Continuous Cardiometabolic Care · Day 22
-- Program Start: February 25, 2026
+- Program: Continuous Cardiometabolic Care · Day 22 at time of scenario snapshot
+- Program Start: Day 1 (22 days before the scenario "today"). Bundle dates auto-shift at load time; see public/data/marcus-williams-bundle.json `_demoAnchor`.
 - ID: VRD-2026-002
 
 ## Active Conditions
@@ -36,24 +36,28 @@
 Marcus was doing well for the first 2 weeks. BP was trending toward target (<130/80). Then starting Day 18 his morning BP began rising. He ran out of Lisinopril on Day 19 and did not refill for 3 days. By Day 22 (today) BP is 158/98, a sustained 4-day worsening trend. His fasting glucose has also been elevated, suggesting stress response and dietary drift. He has a mild headache this morning.
 
 ## Vital Signs Series
-| Day | Date | BP Morning (mmHg) | Fasting Glucose (mg/dL) | Note |
-|-----|------|-------------------|------------------------|------|
-| 1 | Feb 25 | 148/94 | 182 | Baseline, elevated at program start |
-| 3 | Feb 27 | 145/91 | 175 | Improving on meds |
-| 5 | Mar 1 | 142/88 | 168 | Improving |
-| 7 | Mar 3 | 138/86 | 162 | Trending toward target |
-| 10 | Mar 6 | 134/84 | 155 | Approaching target |
-| 12 | Mar 8 | 131/82 | 148 | Near target |
-| 14 | Mar 10 | 129/80 | 144 | Best reading, near BP target |
-| 16 | Mar 12 | 130/81 | 146 | Holding |
-| 17 | Mar 13 | 132/83 | 149 | Slight uptick |
-| 18 | Mar 14 | 136/87 | 158 | First concerning rise |
-| 19 | Mar 15 | 141/90 | 166 | Missed Lisinopril refill |
-| 20 | Mar 16 | 148/94 | 172 | Back to baseline, no meds |
-| 21 | Mar 17 | 154/96 | 178 | Worsening |
-| 22 | Mar 18 | 158/98 | 186 | TODAY: TRIGGER, 4-day rise + symptoms |
+Dates are relative to the scenario "today" (Day 22). In the fixture bundle,
+Day 22 is anchored to the `_demoAnchor` date and shifted forward at load
+time so "today" always matches real wall-clock today.
 
-## Lab Results (Program Start, Feb 25)
+| Day | BP Morning (mmHg) | Fasting Glucose (mg/dL) | Note |
+|-----|-------------------|------------------------|------|
+| 1 | 148/94 | 182 | Baseline, elevated at program start |
+| 3 | 145/91 | 175 | Improving on meds |
+| 5 | 142/88 | 168 | Improving |
+| 7 | 138/86 | 162 | Trending toward target |
+| 10 | 134/84 | 155 | Approaching target |
+| 12 | 131/82 | 148 | Near target |
+| 14 | 129/80 | 144 | Best reading, near BP target |
+| 16 | 130/81 | 146 | Holding |
+| 17 | 132/83 | 149 | Slight uptick |
+| 18 | 136/87 | 158 | First concerning rise |
+| 19 | 141/90 | 166 | Missed Lisinopril refill |
+| 20 | 148/94 | 172 | Back to baseline, no meds |
+| 21 | 154/96 | 178 | Worsening |
+| 22 | 158/98 | 186 | TODAY: TRIGGER, 4-day rise + symptoms |
+
+## Lab Results (Program Start, Day 1)
 | Test | Value | Reference | Note |
 |------|-------|-----------|------|
 | HbA1c | 8.4% | <7% | Above target |
@@ -72,7 +76,7 @@ Marcus was doing well for the first 2 weeks. BP was trending toward target (<130
 
 ## CarePlan
 - Continuous Cardiometabolic Care
-- Period: February 25, 2026 onward (quarterly review milestones)
+- Period: Day 1 onward (quarterly review milestones at Q1 +90d, Q2 +180d, Q3 +270d)
 - Activities:
   1. Daily morning BP monitoring
   2. Twice-daily glucose monitoring
