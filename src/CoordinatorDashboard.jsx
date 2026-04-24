@@ -191,7 +191,74 @@ function defaultPCEInputs(patientData) {
 }
 
 // Normalize a local FHIR transaction Bundle into the same shape as /api/medplum-fhir?action=patient
-function normalizeBundle(bundle) {
+// Shift all demo-dated fields in a FHIR Bundle forward so that the
+// bundle's `_demoAnchor` date lands on today. This keeps scenario
+// vitals, CarePlan periods, goal due dates, and adherence events
+// perpetually "current" regardless of when the demo is run, without
+// hand-editing the fixtures. Historical facts (Patient.birthDate,
+// Condition.onsetDateTime) and static code references are NOT shifted.
+// No-op if the bundle has no `_demoAnchor` or the anchor is already
+// in the future.
+function shiftBundleDates(bundle) {
+  const anchor = bundle?._demoAnchor;
+  if (!anchor) return bundle;
+  const anchorDate = parseLocalDate(anchor);
+  if (!anchorDate) return bundle;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const offsetMs = today.getTime() - anchorDate.getTime();
+  if (offsetMs <= 0) return bundle;
+  const shiftIso = (iso) => {
+    if (typeof iso !== "string" || !iso) return iso;
+    const hasTime = iso.includes("T");
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    const shifted = new Date(d.getTime() + offsetMs);
+    return hasTime ? shifted.toISOString().replace(/\.\d{3}Z$/, "Z") : shifted.toISOString().slice(0, 10);
+  };
+  const clone = JSON.parse(JSON.stringify(bundle));
+  for (const entry of clone.entry || []) {
+    const r = entry.resource;
+    if (!r) continue;
+    switch (r.resourceType) {
+      case "Observation":
+      case "DiagnosticReport":
+        if (r.effectiveDateTime) r.effectiveDateTime = shiftIso(r.effectiveDateTime);
+        break;
+      case "Encounter":
+        if (r.period?.start) r.period.start = shiftIso(r.period.start);
+        if (r.period?.end) r.period.end = shiftIso(r.period.end);
+        break;
+      case "CarePlan":
+        if (r.period?.start) r.period.start = shiftIso(r.period.start);
+        if (r.period?.end) r.period.end = shiftIso(r.period.end);
+        if (r.created) r.created = shiftIso(r.created);
+        for (const act of r.activity || []) {
+          for (const ext of act.extension || []) {
+            if (ext.url === ADHERENCE_EXT_URL) {
+              for (const sub of ext.extension || []) {
+                if (sub.url === "lastEventDate" && sub.valueDate) {
+                  sub.valueDate = shiftIso(sub.valueDate);
+                }
+              }
+            }
+          }
+        }
+        break;
+      case "Goal":
+        if (r.startDate) r.startDate = shiftIso(r.startDate);
+        for (const t of r.target || []) {
+          if (t.dueDate) t.dueDate = shiftIso(t.dueDate);
+        }
+        break;
+      // Patient / Condition / MedicationRequest / AllergyIntolerance:
+      // intentionally unshifted (historical facts or no date fields).
+    }
+  }
+  return clone;
+}
+
+function normalizeBundle(rawBundle) {
+  const bundle = shiftBundleDates(rawBundle);
   const entries = bundle?.entry || [];
   const get = (rt) => entries.map(e => e.resource).filter(r => r?.resourceType === rt);
   const patient = get("Patient")[0];
