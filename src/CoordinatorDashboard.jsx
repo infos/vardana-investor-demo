@@ -1,5 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
 import { VoiceCallDemo } from "./App.jsx";
+import { MetricTile } from "./components/CareConsole/MetricTile.jsx";
+import { AdherenceRow } from "./components/CareConsole/AdherenceRow.jsx";
+import { SessionsCadence } from "./components/CareConsole/SessionsCadence.jsx";
+import { CrossSessionInsight } from "./components/CareConsole/CrossSessionInsight.jsx";
+import { SessionCard } from "./components/CareConsole/SessionCard.jsx";
+import {
+  computeTrend,
+  sourceForAdherence,
+  cadenceFromSessions,
+  MARCUS_SESSIONS,
+  MARCUS_CROSS_SESSION_INSIGHT,
+} from "./components/CareConsole/careConsoleData.js";
 
 // ── Styles ──
 const S = {
@@ -74,11 +86,6 @@ function PRow({ label, value, badge, badgeColor }) {
     <span style={{ flex: "0 0 170px", color: S.text }}>{label}</span>
     <span style={{ color: S.textMed, flex: 1 }}>{value}</span>
     {badge && <Badge color={badgeColor}>{badge}</Badge>}
-  </div>;
-}
-function MiniChart({ bars, accentColor }) {
-  return <div style={{ height: 50, display: "flex", alignItems: "flex-end", gap: 2, marginTop: 6 }}>
-    {bars.map((h, i) => <div key={i} style={{ flex: 1, borderRadius: "2px 2px 0 0", minHeight: 4, height: `${h}%`, background: i === bars.length - 1 ? accentColor : "#CBD5E1" }} />)}
   </div>;
 }
 function EmptyState({ children }) {
@@ -670,16 +677,23 @@ function CarePlanOverviewCard({ carePlan, onViewFull }) {
           {rows.length === 0 && <EmptyState>No adherence data.</EmptyState>}
           {rows.map((r, i) => {
             const pct = r.percent;
-            const colors = adherenceBadgeColor(pct);
-            const flag = pct != null && pct < 85 ? "⚠" : "✓";
+            const { source, confidence, detail: sourceDetail } = sourceForAdherence(r.label);
+            const rowDetail = r.display || sourceDetail;
+            const status = pct == null
+              ? "missing"
+              : pct >= 85
+                ? "ok"
+                : "warn";
             return (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", fontSize: 14, ...css.sans }}>
-                <span style={{ color: S.text, flex: 1 }}>{r.label}</span>
-                <span style={{ padding: "2px 6px", borderRadius: 4, background: colors.bg, color: colors.text, fontWeight: 700, minWidth: 58, textAlign: "center" }}>
-                  {pct == null ? "—" : (r.display || `${pct}%`)}
-                </span>
-                <span style={{ color: pct != null && pct < 85 ? S.amber : S.green, width: 14, textAlign: "center" }}>{flag}</span>
-              </div>
+              <AdherenceRow
+                key={i}
+                label={r.label}
+                pct={pct}
+                source={pct == null ? "no device sync" : source}
+                detail={pct == null ? "no recent reading" : rowDetail}
+                confidence={confidence}
+                status={status}
+              />
             );
           })}
         </div>
@@ -796,7 +810,19 @@ function CarePlanTab({ patientData }) {
 function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onViewCarePlan, medplumSessions, lastCallSummary, sessionLogStatus, onDismissLastCall }) {
   if (!patientData) return <EmptyState>No patient data loaded from Medplum.</EmptyState>;
   const { conditions = [], medications = [], vitals = {} } = patientData;
-  const recentSessions = resolveSessions(medplumSessions, patientData?.patient?.name || "").slice(0, 3);
+  const patientName = patientData?.patient?.name || "";
+  const isMarcus = /marcus\s+williams/i.test(patientName);
+  // Marcus's Overview summary mirrors the Sessions tab data so the three
+  // most recent cards match what the coordinator sees when they click in.
+  const recentSessions = !medplumSessions?.length && isMarcus
+    ? MARCUS_SESSIONS.slice(0, 3).map(s => ({
+        id: s.id,
+        date: s.sortDate,
+        duration: `${Math.floor(s.durationSec / 60)}m ${String(s.durationSec % 60).padStart(2, "0")}s`,
+        summary: s.synthesis,
+        source: "fixture",
+      }))
+    : resolveSessions(medplumSessions, patientName).slice(0, 3);
   const truncate = (s, n = 120) => (s && s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s || "");
   const pcePct = calcPCE(defaultPCEInputs(patientData));
   const pceTier = pceTierLabel(pcePct);
@@ -804,32 +830,49 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onView
   const pceShort = pcePct >= 20 ? "High" : pcePct >= 7.5 ? "Intermediate" : pcePct >= 5 ? "Borderline" : "Low";
   const latestBP = patientData.latestBP;
   const latestWeight = patientData.latestWeight;
-  const bps = (vitals.bloodPressures || []).slice(0, 5).reverse();
-  const weights = (vitals.weights || []).slice(0, 5).reverse();
-  const bpBars = bps.length ? bps.map(b => Math.min(100, Math.max(20, b.systolic - 80))) : [70, 72, 75, 73, 78];
-  const wtBars = weights.length ? weights.map(w => Math.min(100, Math.max(20, (w.value || 80)))) : [72, 74, 73, 72, 72];
+  const bps = (vitals.bloodPressures || []).slice(0, 5);
+  const weights = (vitals.weights || []).slice(0, 5);
+  const bpTrend = computeTrend(bps, {
+    limit: 5,
+    format: r => `${r.systolic}/${r.diastolic}`,
+  });
+  const wtTrend = computeTrend(weights, {
+    limit: 5,
+    format: r => `${r.value}`,
+  });
+  const bpStatus = latestBP
+    ? (latestBP.systolic >= 140 || latestBP.diastolic >= 90 ? "alert" : "ok")
+    : "neutral";
 
   return <div>
     {lastCallSummary && <PostCallSummary summary={lastCallSummary} status={sessionLogStatus} onDismiss={onDismissLastCall} onViewSessions={onViewAllSessions} />}
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
-      <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 6, padding: 10 }}>
-        <CardTitle>Latest BP</CardTitle>
-        <div>
-          <span style={{ fontSize: 24, ...css.serif }}>{latestBP ? `${latestBP.systolic}` : "—"}</span>
-          <span style={{ fontSize: 13, color: S.textLight, ...css.sans }}>{latestBP ? `/${latestBP.diastolic} mmHg` : ""}</span>
-        </div>
-        <div style={{ fontSize: 13, ...css.sans, color: S.amber, marginTop: 2 }}>{latestBP ? fmtDate(latestBP.date) : "No data"}</div>
-        <MiniChart bars={bpBars} accentColor={S.amber} />
-      </div>
-      <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 6, padding: 10 }}>
-        <CardTitle>Weight</CardTitle>
-        <div>
-          <span style={{ fontSize: 24, ...css.serif }}>{latestWeight ? latestWeight.value : "—"}</span>
-          <span style={{ fontSize: 13, color: S.textLight, ...css.sans }}>{latestWeight ? ` ${latestWeight.unit || "lb"}` : ""}</span>
-        </div>
-        <div style={{ fontSize: 13, ...css.sans, color: S.textLight, marginTop: 2 }}>{latestWeight ? fmtDate(latestWeight.date) : "No data"}</div>
-        <MiniChart bars={wtBars} accentColor="#8C8C7A" />
-      </div>
+      <MetricTile
+        label="Latest BP"
+        value={latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : "—"}
+        unit={latestBP ? "mmHg" : ""}
+        date={latestBP ? fmtDate(latestBP.date) : "No data"}
+        status={bpStatus}
+        trend={bpTrend && {
+          arrow: bpTrend.arrow,
+          series: bpTrend.series,
+          window: bpTrend.window,
+          target: "<130/80",
+        }}
+      />
+      <MetricTile
+        label="Weight"
+        value={latestWeight ? latestWeight.value : "—"}
+        unit={latestWeight ? (latestWeight.unit || "lb") : ""}
+        date={latestWeight ? fmtDate(latestWeight.date) : "No data"}
+        status="neutral"
+        trend={wtTrend && {
+          arrow: wtTrend.arrow,
+          series: wtTrend.series,
+          window: wtTrend.window,
+          target: null,
+        }}
+      />
       <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 6, padding: 10, display: "flex", flexDirection: "column" }}>
         <CardTitle>10-year ASCVD risk</CardTitle>
         <div>
@@ -1085,32 +1128,98 @@ function resolveSessions(medplumSessions, patientName) {
 }
 
 // ── Tab: Sessions ──
+// Three-layer structure: cadence header → cross-session insight → per-session cards.
+// Marcus's chart uses hard-coded MARCUS_SESSIONS so Teja demos read as the
+// product's spine. Generalized rule engine TODO (see data dependencies).
 function SessionsTab({ patientData, medplumSessions, loading }) {
   const name = patientData?.patient?.name || "";
-  const sessions = resolveSessions(medplumSessions, name);
+  const isMarcus = /marcus\s+williams/i.test(name);
+
   if (loading) return <EmptyState>Loading sessions from Medplum…</EmptyState>;
-  if (!sessions.length) return <EmptyState>No sessions logged yet. Complete an AI check-in to populate this list.</EmptyState>;
-  return <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14 }}>
-    <CardTitle>Session history{sessions[0]?.source === "fixture" && " (sample)"}</CardTitle>
-    {sessions.map((s, i) => (
-      <div key={s.id} style={{ padding: "10px 0", borderBottom: i < sessions.length - 1 ? `1px solid #F0EEE8` : "none" }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 4 }}>
-          <span style={{ fontSize: 14, ...css.serif, color: S.text }}>{fmtSessionDate(s.date)}</span>
-          {s.duration && <Chip>{s.duration}</Chip>}
-          {s.alertGenerated && <Badge color="red">Alert</Badge>}
-          <span style={{ flex: 1 }} />
-          <span style={{ fontSize: 14, ...css.sans, color: S.textLight }}>AI voice check-in{s.source === "medplum" ? " · Medplum" : ""}</span>
-        </div>
-        <div style={{ fontSize: 15, ...css.sans, color: S.textMed, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{s.summary}</div>
-        {s.transcript && (
-          <details style={{ marginTop: 6 }}>
-            <summary style={{ fontSize: 14, ...css.sans, color: S.textLight, cursor: "pointer" }}>Show transcript</summary>
-            <pre style={{ fontSize: 13, ...css.mono, color: S.textMed, background: "#F6F4EC", padding: 8, borderRadius: 4, marginTop: 6, whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{s.transcript}</pre>
-          </details>
-        )}
-      </div>
-    ))}
-  </div>;
+
+  // Prefer real Medplum sessions when present. Fall back to the rich
+  // Marcus fixture for the demo; other patients fall through to the
+  // lightweight legacy fixtures.
+  const hasMedplum = medplumSessions && medplumSessions.length > 0;
+  let cards = [];
+  if (hasMedplum) {
+    cards = medplumSessions.map(s => ({
+      id: s.id,
+      date: fmtSessionDate(s.date),
+      sortDate: s.date,
+      durationSec: parseDurationToSec(s.duration),
+      synthesis: s.summary || s.reason || "AI voice check-in",
+      transcript: s.transcript || "",
+      outcome: inferOutcomeFromMedplum(s),
+    }));
+  } else if (isMarcus) {
+    cards = MARCUS_SESSIONS;
+  } else {
+    const legacy = getSessionsFor(name) || [];
+    cards = legacy.map(s => ({
+      id: s.id,
+      date: fmtSessionDate(s.date),
+      sortDate: s.date,
+      durationSec: parseDurationToSec(s.duration),
+      synthesis: s.summary,
+      transcript: s.transcript || "",
+      outcome: { state: "stable", reason: "" },
+    }));
+  }
+
+  if (!cards.length) return <EmptyState>No sessions logged yet. Complete an AI check-in to populate this list.</EmptyState>;
+
+  const cadence = cadenceFromSessions(cards);
+  const insight = isMarcus ? MARCUS_CROSS_SESSION_INSIGHT : null;
+
+  return (
+    <div>
+      {cadence && (
+        <SessionsCadence
+          totalSessions={cadence.totalSessions}
+          windowDays={cadence.windowDays}
+          avgDurationSec={cadence.avgDurationSec}
+          completionRate={cadence.completionRate}
+          lastSession={cadence.lastSession}
+        />
+      )}
+      {insight && (
+        <CrossSessionInsight
+          severity={insight.severity}
+          title={insight.title}
+          body={insight.body}
+          flaggedAt={insight.flaggedAt}
+        />
+      )}
+      {cards.map((c, i) => (
+        <SessionCard
+          key={c.id}
+          date={c.date}
+          durationSec={c.durationSec}
+          synthesis={c.synthesis}
+          outcome={c.outcome}
+          transcript={c.transcript}
+          defaultOpen={i === 0 && isMarcus}
+        />
+      ))}
+    </div>
+  );
+}
+
+// "4m 12s" → 252. Tolerates bare seconds and missing values.
+function parseDurationToSec(str) {
+  if (!str || typeof str !== "string") return null;
+  const m = str.match(/(\d+)m\s*(\d+)?s?/);
+  if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2] || 0, 10);
+  const n = parseInt(str, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function inferOutcomeFromMedplum(s) {
+  if (s.alertGenerated) return { state: "sameDay", reason: s.reason || "Alert escalated" };
+  if (s.riskLevel === "high") return { state: "sameDay", reason: "High risk" };
+  if (s.riskLevel === "moderate") return { state: "watch", reason: "Moderate risk" };
+  return { state: "stable", reason: "" };
 }
 
 // ── Tab: Outreach ──
@@ -1140,9 +1249,9 @@ function OutreachTab({ patientData, onInitiateCall }) {
 // ── Main Dashboard ──
 const TABS = [
   { id: "overview", label: "Overview" },
+  { id: "sessions", label: "Sessions" },
   { id: "care-plan", label: "Care plan" },
   { id: "risk", label: "Risk profile" },
-  { id: "sessions", label: "Sessions" },
   { id: "pami", label: "PAMI" },
   { id: "outreach", label: "Outreach" },
 ];
