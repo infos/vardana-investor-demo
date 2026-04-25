@@ -20,11 +20,30 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const scanRes = await fetch(`${kvUrl}/scan/0/match/visit:*/count/500`, {
-      headers: { Authorization: `Bearer ${kvToken}` },
-    });
-    const scanData = await scanRes.json();
-    const keys = scanData.result[1] || [];
+    // Iterate SCAN cursor until exhausted. Single-page SCAN with a count
+    // hint is not a guarantee — Upstash returns whatever it has at that
+    // cursor position, and we'd silently drop keys once the keyspace
+    // grows past one page. Loop is bounded (MAX_PAGES) so a runaway
+    // cursor can't hang the function.
+    const MAX_PAGES = 50;
+    const seen = new Set();
+    let cursor = '0';
+    let pages = 0;
+    do {
+      const scanRes = await fetch(
+        `${kvUrl}/scan/${cursor}/match/visit:*/count/500`,
+        { headers: { Authorization: `Bearer ${kvToken}` } },
+      );
+      const scanData = await scanRes.json();
+      // Upstash REST returns result as [nextCursor, [keys...]]; both are
+      // strings. Cursor "0" signals the iteration is complete.
+      const next = scanData?.result?.[0];
+      const batch = scanData?.result?.[1] || [];
+      for (const k of batch) seen.add(k);
+      cursor = typeof next === 'string' ? next : '0';
+      pages += 1;
+    } while (cursor !== '0' && pages < MAX_PAGES);
+    const keys = Array.from(seen);
 
     const visits = (
       await Promise.all(
