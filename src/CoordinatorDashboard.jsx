@@ -633,7 +633,7 @@ function CarePlanOverviewCard({ carePlan, onViewFull }) {
         )}
       </div>
       <div style={{ fontSize: 18, ...css.serif, color: S.text, marginBottom: 12 }}>{carePlan.title}</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+      <div style={{ display: "grid", gridTemplateColumns: rows.length ? "1fr 1fr" : "1fr", gap: 18 }}>
         <div>
           <div style={{ fontSize: 13, ...css.sans, color: S.textLight, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Goals</div>
           {goals.length === 0 && <EmptyState>No goals defined.</EmptyState>}
@@ -644,9 +644,8 @@ function CarePlanOverviewCard({ carePlan, onViewFull }) {
             </div>
           ))}
         </div>
-        <div>
+        {rows.length > 0 && <div>
           <div style={{ fontSize: 13, ...css.sans, color: S.textLight, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Adherence this week</div>
-          {rows.length === 0 && <EmptyState>No adherence data.</EmptyState>}
           {rows.map((r, i) => {
             const pct = r.percent;
             const { source, confidence, detail: sourceDetail } = sourceForAdherence(r.label);
@@ -668,7 +667,7 @@ function CarePlanOverviewCard({ carePlan, onViewFull }) {
               />
             );
           })}
-        </div>
+        </div>}
       </div>
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
         <button onClick={onViewFull} style={{ fontSize: 14, ...css.sans, color: S.navy, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
@@ -943,24 +942,209 @@ function LabsRow({ labs = [] }) {
   );
 }
 
+// ── Clinical state per patient (hardcoded for the demo) ──
+// Keyed by patient name as returned from Medplum / LOCAL_PATIENTS. Patients
+// not present here render no Current Clinical State block — silence is
+// preferred over placeholder text. Replace with a server-side resolver
+// once a clinical-state rule engine exists.
+const CLINICAL_STATES = {
+  "Marcus Williams": {
+    state: "watch",
+    reason: "BP 158/98 above target, suboptimal adherence",
+    action: "Reinforce medication adherence, repeat BP in 48h",
+    threshold: "≥180 systolic or symptoms → SAME-DAY",
+  },
+  "Linda Patel": {
+    state: "stable",
+    reason: "BP at target, glucose stable, A1C 6.8%, eGFR 52",
+    action: "Continue current cadence",
+    threshold: "SBP ≥150, hypoglycemia symptoms, or eGFR <45 → WATCH",
+  },
+  "David Brooks": {
+    state: "watch",
+    reason: "BP drifting up (138 → 152, 14d), adherence-naive",
+    action: "Reinforce lisinopril adherence, BP technique check",
+    threshold: "SBP ≥160 or symptoms → SAME-DAY",
+  },
+  "Maria Gonzalez": {
+    state: "stable",
+    reason: "BP and weight stable, on full regimen",
+    action: "Continue current cadence",
+    threshold: "SBP ≥150 or new symptoms → WATCH",
+  },
+};
+const STATE_TONES = {
+  stable:    { label: "STABLE",    fg: "#065F46", bg: "#ECFDF5", border: "#A7F3D0" },
+  watch:     { label: "WATCH",     fg: "#78350F", bg: "#FFFBEB", border: "#FCD34D" },
+  sameDay:   { label: "SAME-DAY",  fg: "#7F1D1D", bg: "#FEF2F2", border: "#FCA5A5" },
+  emergency: { label: "EMERGENCY", fg: "#FFFFFF", bg: "#A93226", border: "#A93226" },
+};
+
+// ── Sessions strip (top of Overview) ──
+// Source: medplumSessions for non-Marcus patients (already shaped by the
+// CoordinatorDashboard sessions resolver), MARCUS_SESSIONS fixture for
+// Marcus. If there are zero sessions render the strip in muted form
+// rather than hiding — sessions ARE the product, the absence of them
+// is itself a signal.
+function SessionsStrip({ patientName, isMarcus, medplumSessions, onViewAll }) {
+  // Build the unified session list ordered newest-first.
+  let sessions;
+  if (!medplumSessions?.length && isMarcus) {
+    sessions = MARCUS_SESSIONS.map(s => ({
+      sortDate: s.sortDate,
+      label: s.date,
+      synthesis: s.synthesis,
+    }));
+  } else {
+    const list = medplumSessions || [];
+    sessions = [...list]
+      .map(s => ({
+        sortDate: s.date,
+        label: fmtSessionDateTime(s.date),
+        synthesis: s.summary || s.reason || "AI voice check-in",
+      }))
+      .sort((a, b) => new Date(b.sortDate) - new Date(a.sortDate));
+  }
+
+  const last = sessions[0];
+  const total = sessions.length;
+  // Compute window from earliest to latest. Floor to 1d so a single-session
+  // patient still reads as "1 session in 1d" rather than 0d.
+  const windowDays = total > 1
+    ? Math.max(1, Math.ceil((new Date(sessions[0].sortDate) - new Date(sessions[total - 1].sortDate)) / 86400000))
+    : 1;
+  const insight = isMarcus ? MARCUS_CROSS_SESSION_INSIGHT : null;
+
+  return (
+    <div
+      style={{
+        background: S.card,
+        border: `1px solid ${S.border}`,
+        borderRadius: 8,
+        padding: 14,
+        marginBottom: 14,
+        ...css.sans,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+        <CardTitle>Sessions</CardTitle>
+        {total > 0 && (
+          <span style={{ fontSize: 13, color: S.textLight, fontVariantNumeric: "tabular-nums" }}>
+            {total} {total === 1 ? "session" : "sessions"} in {windowDays}d
+          </span>
+        )}
+      </div>
+      {last ? (
+        <div>
+          <div style={{ fontSize: 13, color: S.textLight, ...css.mono, marginBottom: 4 }}>
+            Last session · {last.label}
+          </div>
+          <div style={{ fontSize: 15, color: S.text, lineHeight: 1.5 }}>{last.synthesis}</div>
+        </div>
+      ) : (
+        <div style={{ fontSize: 14, color: S.textLight, fontStyle: "italic" }}>No sessions yet</div>
+      )}
+      {insight && (
+        <div
+          style={{
+            marginTop: 10,
+            paddingTop: 10,
+            borderTop: `1px solid ${S.border}`,
+            display: "flex",
+            gap: 10,
+            alignItems: "flex-start",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: STATE_TONES.watch.fg,
+              background: STATE_TONES.watch.bg,
+              border: `1px solid ${STATE_TONES.watch.border}`,
+              padding: "2px 6px",
+              borderRadius: 3,
+              flexShrink: 0,
+              marginTop: 2,
+            }}
+          >
+            {insight.severity === "sameDay" ? "Same-day" : insight.severity}
+          </span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, color: S.text, fontWeight: 600 }}>{insight.title}</div>
+            <div style={{ fontSize: 13, color: S.textMed, marginTop: 2, lineHeight: 1.5 }}>{insight.body}</div>
+          </div>
+        </div>
+      )}
+      {total > 0 && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+          <button onClick={onViewAll} style={{ fontSize: 14, ...css.sans, color: S.navy, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
+            View all sessions →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Format an ISO date as "Apr 22, 8:14 AM" or "Today, 8:14 AM" if same day.
+function fmtSessionDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  if (sameDay) return `Today, ${time}`;
+  return `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${time}`;
+}
+
+// ── Current Clinical State block ──
+function CurrentClinicalState({ patientName }) {
+  const cs = CLINICAL_STATES[patientName];
+  if (!cs) return null;
+  const tone = STATE_TONES[cs.state] || STATE_TONES.stable;
+  return (
+    <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14, marginBottom: 14, ...css.sans }}>
+      <CardTitle>Current clinical state</CardTitle>
+      <div style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "10px 16px", alignItems: "baseline" }}>
+        <div>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: tone.fg,
+              background: tone.bg,
+              border: `1px solid ${tone.border}`,
+              padding: "4px 8px",
+              borderRadius: 3,
+            }}
+          >
+            {tone.label}
+          </span>
+        </div>
+        <div style={{ fontSize: 15, color: S.text, lineHeight: 1.5 }}>{cs.reason}</div>
+
+        <div style={{ fontSize: 12, color: S.textLight, textTransform: "uppercase", letterSpacing: "0.06em" }}>Action</div>
+        <div style={{ fontSize: 14, color: S.text, lineHeight: 1.5 }}>{cs.action}</div>
+
+        <div style={{ fontSize: 12, color: S.textLight, textTransform: "uppercase", letterSpacing: "0.06em" }}>Escalation</div>
+        <div style={{ fontSize: 13, color: S.textMed, lineHeight: 1.5, ...css.mono }}>{cs.threshold}</div>
+      </div>
+    </div>
+  );
+}
+
 // ── Tab: Overview ──
 function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onViewCarePlan, medplumSessions, lastCallSummary, sessionLogStatus, onDismissLastCall }) {
   if (!patientData) return <EmptyState>No patient data loaded from Medplum.</EmptyState>;
   const { conditions = [], medications = [], vitals = {} } = patientData;
   const patientName = patientData?.patient?.name || "";
   const isMarcus = /marcus\s+williams/i.test(patientName);
-  // Marcus's Overview summary mirrors the Sessions tab data so the three
-  // most recent cards match what the coordinator sees when they click in.
-  const recentSessions = !medplumSessions?.length && isMarcus
-    ? MARCUS_SESSIONS.slice(0, 3).map(s => ({
-        id: s.id,
-        date: s.sortDate,
-        duration: `${Math.floor(s.durationSec / 60)}m ${String(s.durationSec % 60).padStart(2, "0")}s`,
-        summary: s.synthesis,
-        source: "fixture",
-      }))
-    : resolveSessions(medplumSessions, patientName).slice(0, 3);
-  const truncate = (s, n = 120) => (s && s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s || "");
   const pcePct = calcPCE(defaultPCEInputs(patientData));
   const pceTier = pceTierLabel(pcePct);
   const pceColors = pceTierColors(pcePct);
@@ -983,6 +1167,13 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onView
 
   return <div>
     {lastCallSummary && <PostCallSummary summary={lastCallSummary} status={sessionLogStatus} onDismiss={onDismissLastCall} onViewSessions={onViewAllSessions} />}
+    <SessionsStrip
+      patientName={patientName}
+      isMarcus={isMarcus}
+      medplumSessions={medplumSessions}
+      onViewAll={onViewAllSessions}
+    />
+    <CurrentClinicalState patientName={patientName} />
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
       <MetricTile
         label="Latest BP"
@@ -1033,25 +1224,6 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onView
       <MedicationsCard medications={medications} conditions={conditions} />
     </div>
     <LabsRow labs={patientData.labs} />
-    <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: 14, marginTop: 14 }}>
-      <CardTitle>Recent sessions</CardTitle>
-      {recentSessions.length === 0 && <EmptyState>No sessions logged yet.</EmptyState>}
-      {recentSessions.map((s, i) => (
-        <div key={s.id} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "8px 0", borderBottom: i < recentSessions.length - 1 ? `1px solid #F0EEE8` : "none", ...css.sans, fontSize: 15 }}>
-          <span style={{ flex: "0 0 120px", color: S.text }}>{fmtSessionDate(s.date)}</span>
-          <span style={{ flex: "0 0 70px", color: S.textLight }}>{s.duration}</span>
-          <span style={{ flex: 1, color: S.textMed, lineHeight: 1.5 }}>{truncate(s.summary)}</span>
-        </div>
-      ))}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
-        <button
-          onClick={onViewAllSessions}
-          style={{ fontSize: 14, ...css.sans, color: S.navy, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-        >
-          View all sessions →
-        </button>
-      </div>
-    </div>
   </div>;
 }
 
