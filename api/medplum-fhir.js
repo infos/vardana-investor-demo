@@ -381,8 +381,13 @@ export default async function handler(req, res) {
     }
 
     if (action === 'roster') {
-      // Fetch all Vardana patients by identifier system
-      const patientsBundle = await fhirGet('Patient?identifier=http://vardana.ai/patients|&_count=20', token);
+      // Return all patients in the project. Identifier-system filter was
+      // dropped on 2026-04-24 — patients seeded under different identifier
+      // systems (e.g. https://vardana.ai/fhir/identifier) were being filtered
+      // out. Client-side SUPPRESSED_PATIENT_NAMES + LOCAL_PATIENT_NAMES in
+      // CoordinatorDashboard.jsx handle exclusions of stale CHF-era patients
+      // and local-fixture overrides.
+      const patientsBundle = await fhirGet('Patient?_count=20', token);
       const patients = (patientsBundle?.entry || []).map(e => e.resource);
 
       // For each patient, fetch summary data in parallel
