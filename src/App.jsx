@@ -249,7 +249,7 @@ const MARCUS_GLUCOSE_DATA = [
 ];
 
 const MARCUS_ROSTER = [
-  { id: 101, name: "Marcus Williams", age: 58, gender: "M", dob: { month: 6, day: 3, year: 1967 }, day: 22, phase: "Stabilize \u2192 Optimize", risk: 53, riskLevel: "high", alert: true, alertType: "BP crisis risk", alertTime: "12 min ago", trend: "worsening", scheduledOutreach: null, doctor: "Dr. Angela Torres" },
+  { id: 101, name: "Marcus Williams", age: 58, gender: "M", dob: { month: 6, day: 2, year: 1967 }, day: 22, phase: "Stabilize \u2192 Optimize", risk: 53, riskLevel: "high", alert: true, alertType: "BP crisis risk", alertTime: "12 min ago", trend: "worsening", scheduledOutreach: null, doctor: "Dr. Angela Torres" },
   { id: 2, name: "Robert Williams", age: 74, gender: "M", dob: { month: 3, day: 22, year: 1951 }, day: 52, phase: "Optimize", risk: 34, riskLevel: "low", alert: false, trend: "stable", scheduledOutreach: "Today 2:00 PM \u00b7 Voice", doctor: "Dr. Sarah Patel" },
   { id: 3, name: "Maria Gonzalez", age: 61, gender: "F", dob: { month: 11, day: 5, year: 1964 }, day: 8, phase: "Stabilize", risk: 45, riskLevel: "moderate", alert: false, trend: "improving", scheduledOutreach: "Tomorrow 10:00 AM \u00b7 SMS", doctor: "Dr. Michael Torres" },
   { id: 4, name: "James Thompson", age: 79, gender: "M", dob: { month: 9, day: 18, year: 1946 }, day: 83, phase: "Maintain", risk: 22, riskLevel: "low", alert: false, trend: "stable", scheduledOutreach: null, doctor: "Dr. Lisa Chen" },
@@ -257,28 +257,28 @@ const MARCUS_ROSTER = [
 
 const MARCUS_CLINICAL_DATA = {
   101: {
-    dob: "June 3, 1967",
-    conditions: ["Essential Hypertension", "Type 2 Diabetes with Hyperglycemia", "Hyperlipidemia", "Obesity (BMI 31.4)"],
+    dob: "June 2, 1967",
+    conditions: ["Essential hypertension", "Type 2 diabetes mellitus", "Hyperlipidemia", "Obesity, BMI 31.4"],
     medications: [
-      { name: "Lisinopril", dose: "20mg", timing: "Once daily (morning)" },
-      { name: "Amlodipine", dose: "5mg", timing: "Once daily" },
-      { name: "Metformin", dose: "1000mg", timing: "Twice daily (with meals)" },
-      { name: "Atorvastatin", dose: "40mg", timing: "Once daily (evening)" },
-      { name: "Aspirin", dose: "81mg", timing: "Once daily" },
+      { name: "Lisinopril", dose: "20mg", timing: "Daily AM" },
+      { name: "Amlodipine", dose: "5mg", timing: "Daily" },
+      { name: "Metformin", dose: "1000mg", timing: "BID with meals" },
+      { name: "Atorvastatin", dose: "40mg", timing: "Daily PM" },
+      { name: "Aspirin", dose: "81mg", timing: "Daily" },
     ],
     vitals: {
-      bp: { sys: 158, dia: 98, status: "critical", note: "4-day worsening, was 129/80 on Day 14" },
+      bp: { sys: 158, dia: 98, status: "critical", note: "4-day worsening, was 142/88 four days ago" },
       glucose: { value: 186, unit: "mg/dL", status: "warning", note: "Fasting, elevated" },
       hr: { value: 78, status: "good", note: "Normal sinus rhythm" },
       spo2: { value: 97, status: "good" },
     },
     labs: [
-      { name: "HbA1c", value: "8.4%", date: "Feb 25", status: "elevated" },
-      { name: "Fasting Glucose", value: "182 mg/dL", date: "Feb 25", status: "elevated" },
-      { name: "LDL", value: "118 mg/dL", date: "Feb 25", status: "borderline" },
-      { name: "Creatinine", value: "1.1 mg/dL", date: "Feb 25", status: "good" },
-      { name: "eGFR", value: "72 mL/min", date: "Feb 25", status: "good" },
-      { name: "Microalbumin/Cr", value: "42 mg/g", date: "Feb 25", status: "elevated" },
+      { name: "HbA1c", value: "8.4%", date: "Apr 3, 2026", status: "elevated" },
+      { name: "Fasting Glucose", value: "182 mg/dL", date: "Apr 3, 2026", status: "elevated" },
+      { name: "LDL", value: "118 mg/dL", date: "Apr 3, 2026", status: "borderline" },
+      { name: "Creatinine", value: "1.1 mg/dL", date: "Apr 3, 2026", status: "good" },
+      { name: "eGFR", value: "72 mL/min", date: "Apr 3, 2026", status: "good" },
+      { name: "Microalbumin/Cr", value: "42 mg/g", date: "Apr 3, 2026", status: "elevated" },
     ],
     recentCheckins: [
       { date: "Today, 7:30 AM", summary: "AI concierge detected 4-day BP worsening trend. BP 158/98. Patient reports headache. Missed Lisinopril for a few days. Escalated to care coordinator." },
@@ -288,9 +288,9 @@ const MARCUS_CLINICAL_DATA = {
     coordinator: "David Park, RN",
     program: "Continuous Cardiometabolic Care",
     riskAssessments: [
-      { label: "ACC/AHA PCE", value: "17.3%", note: "10-year ASCVD risk" },
-      { label: "AHA/ACC 2017 HTN", value: "Stage 1", note: "BP 130-139/80-89" },
-      { label: "ADA 2026 CV Risk", value: "High", note: "T2DM + HTN + Hyperlipidemia" },
+      { label: "ACC/AHA PCE", value: "24.5%", note: "10-year ASCVD risk" },
+      { label: "AHA/ACC 2017 HTN", value: "Stage 2", note: "BP ≥ 140/90" },
+      { label: "ADA 2026 CV Risk", value: "High", note: "T2DM + HTN + Hyperlipidemia + ASCVD ≥ 20%" },
     ],
   },
 };
@@ -2526,28 +2526,6 @@ export function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, 
                 )}
               </div>
             )}
-
-            {/* FHIR Activity — newest first */}
-            <div ref={fhirSectionRef} style={{ padding: "13px 16px 4px", borderBottom: "none" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", letterSpacing: "0.07em" }}>FHIR Activity</div>
-            </div>
-            <div style={{ padding: "6px 12px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
-              {fhirLog.length === 0 ? (
-                <div style={{ fontSize: 12, color: "#7A96B0", textAlign: "center", marginTop: 12, marginBottom: 12, lineHeight: 1.6 }}>Waiting for AI to<br />begin querying...</div>
-              ) : [...fhirLog].reverse().map((q, i) => {
-                const methodColor = q.method === "POST" ? "#D97706" : q.color === c.red ? c.red : "#059669";
-                const methodBg = q.method === "POST" ? "#FFFBEB" : q.color === c.red ? "#FEF2F2" : "#ECFDF5";
-                return (
-                <div key={fhirLog.length - 1 - i} style={{ background: "#F6F7F9", borderRadius: 7, padding: "7px 9px", border: `1px solid ${q.color === c.red ? "#FEE2E2" : "#E8EDF3"}`, animation: i === 0 ? "slideUp 0.25s ease, fhirPulse 0.6s ease" : "slideUp 0.25s ease" }}>
-                  <div style={{ display: "flex", gap: 5, alignItems: "center", marginBottom: 3 }}>
-                    <span style={{ fontSize: 8, fontWeight: 800, background: methodBg, color: methodColor, padding: "1px 4px", borderRadius: 3 }}>{q.method}</span>
-                    <span style={{ fontSize: 8, color: "#4A6380", fontFamily: DS.fontMono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{q.path.length > 34 ? q.path.slice(0, 34) + "…" : q.path}</span>
-                  </div>
-                  <div style={{ fontSize: 10, color: "#7A96B0" }}>→ {q.result}</div>
-                </div>
-                );
-              })}
-            </div>
 
             {/* AI Assessment */}
             {(demoMode === "live" ? Object.keys(aiAssessment).length > 0 : transcript.length >= (isMarcusDemo ? 3 : 6)) && (
