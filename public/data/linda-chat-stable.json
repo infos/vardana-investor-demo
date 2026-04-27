@@ -1,0 +1,54 @@
+{
+  "scenario_id": "linda-chat-stable",
+  "scenario_label": "Routine check-in, well-controlled (STABLE)",
+  "_draft": "Clinical content is a DRAFT skeleton — review and polish before forwarding externally.",
+  "patient_id": "c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823",
+  "patient_name": "Linda Patel",
+  "synthesis_initial": "Conversation starting.",
+  "synthesis": "Routine check-in. BP 122/78, HbA1c trending down. Patient asymptomatic and adherent. No coordinator follow-up needed.",
+  "escalation_state": "STABLE",
+  "turns": [
+    {
+      "role": "ai",
+      "delay_ms": 1100,
+      "content": "Hi Linda, this is Vardana. Your BP this morning was 122 over 78 and your last HbA1c came back at 6.7%, which is down from 7.1 in February. Nice work. How are you feeling today?",
+      "fhir_calls": [
+        { "method": "GET", "path": "/Patient/c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823", "result": "Linda Patel · 3 conditions · 3 active meds" },
+        { "method": "GET", "path": "/Observation?patient=c4e1f8b2-7b3a-4d15-8f92-41a6b0e7d823&category=vital-signs", "result": "2026-04-27: 122/78 mmHg · last HbA1c 6.7%" }
+      ],
+      "synthesis_snapshot": "Opening greeting. Vitals at goal, A1c improving.",
+      "escalation_state": "STABLE"
+    },
+    {
+      "role": "patient",
+      "delay_ms": 3200,
+      "content": "Feeling really good. The walking group has been a game changer."
+    },
+    {
+      "role": "ai",
+      "delay_ms": 1500,
+      "content": "That's wonderful — the numbers show it. Any side effects from the Metformin or Lisinopril we should talk about?",
+      "fhir_calls": [],
+      "synthesis_snapshot": "Patient reports feeling well. Screening for med side effects.",
+      "escalation_state": "STABLE"
+    },
+    {
+      "role": "patient",
+      "delay_ms": 2800,
+      "content": "No, none. I take them with breakfast and dinner like you suggested."
+    },
+    {
+      "role": "ai",
+      "delay_ms": 1300,
+      "content": "Perfect. I'll let your coordinator know you're tracking well. Keep going — you're doing the work.",
+      "fhir_calls": [],
+      "synthesis_snapshot": "Routine check-in. BP 122/78, HbA1c trending down. Patient asymptomatic and adherent. No coordinator follow-up needed.",
+      "escalation_state": "STABLE"
+    },
+    {
+      "role": "patient",
+      "delay_ms": 1800,
+      "content": "Thanks Vardana, talk soon."
+    }
+  ]
+}

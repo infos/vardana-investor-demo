@@ -1,0 +1,77 @@
+{
+  "scenario_id": "marcus-chat-watch",
+  "scenario_label": "Adherence + rising BP (WATCH → SAME-DAY)",
+  "patient_id": "1de9768a-2459-4586-a888-d184a70479cc",
+  "patient_name": "Marcus Williams",
+  "synthesis_initial": "Conversation starting.",
+  "synthesis": "BP 158/98, fourth consecutive reading above goal. Patient confirmed missing Lisinopril for several days. Priority alert dispatched to David Park for same-day medication reconciliation.",
+  "escalation_state": "SAME-DAY",
+  "turns": [
+    {
+      "role": "ai",
+      "delay_ms": 1100,
+      "content": "Good morning, Marcus. This is Vardana checking in for your Day 22. I just pulled your latest readings — your blood pressure this morning was 158 over 98, which is noticeably higher than 142 over 88 four days ago, and your fasting glucose came in at 186. Before we dig into any of that, how are you feeling today?",
+      "fhir_calls": [
+        { "method": "GET", "path": "/Patient/1de9768a-2459-4586-a888-d184a70479cc", "result": "Marcus Williams · 4 conditions · 5 active meds" },
+        { "method": "GET", "path": "/Observation?patient=1de9768a-2459-4586-a888-d184a70479cc&category=vital-signs", "result": "2026-04-27: 158/98 mmHg · 2026-04-27: 186 mg/dL · 0 weights" },
+        { "method": "GET", "path": "/CarePlan?patient=1de9768a-2459-4586-a888-d184a70479cc&status=active", "result": "Continuous Cardiometabolic Care · Day 22 of 90"  }
+      ],
+      "synthesis_snapshot": "Active conversation (0 turns) — opening greeting.",
+      "escalation_state": "STABLE"
+    },
+    {
+      "role": "patient",
+      "delay_ms": 4200,
+      "content": "I've had a bit of a headache since I woke up. Nothing terrible, but it's there."
+    },
+    {
+      "role": "ai",
+      "delay_ms": 1600,
+      "content": "I'm sorry to hear that. A headache alongside the blood-pressure trend we're seeing is something we shouldn't ignore. Quick question — have you been taking your Lisinopril consistently this week?",
+      "fhir_calls": [],
+      "synthesis_snapshot": "Patient reports headache. BP elevated; investigating adherence.",
+      "escalation_state": "WATCH"
+    },
+    {
+      "role": "patient",
+      "delay_ms": 4800,
+      "content": "Actually, no. I ran out a few days ago and kept forgetting to call the pharmacy. I've been taking the Amlodipine though."
+    },
+    {
+      "role": "ai",
+      "delay_ms": 1900,
+      "content": "Thank you for telling me — that's important. Missing Lisinopril for a few days is very likely why your blood pressure has climbed, and probably what's driving the headache. I'm sending a priority alert to your care coordinator David Park right now so he can get the medication sorted today.",
+      "fhir_calls": [
+        { "method": "POST", "path": "/Flag", "result": "Flag created · risk=HIGH · bp-crisis-risk + adherence-gap" }
+      ],
+      "synthesis_snapshot": "Lisinopril non-adherence confirmed. P2 alert dispatched to David Park for same-day medication reconciliation.",
+      "escalation_state": "SAME-DAY"
+    },
+    {
+      "role": "patient",
+      "delay_ms": 3200,
+      "content": "Okay. Is it serious?"
+    },
+    {
+      "role": "ai",
+      "delay_ms": 2000,
+      "content": "Your blood pressure is elevated but you're not in immediate danger. David will reach out today to arrange a refill and to review whether a different dosing schedule might work better for you. In the meantime — take it easy, stay hydrated, and ease off the salty foods. If the headache gets worse, or you develop any chest pain or vision changes, please call 911 right away.",
+      "fhir_calls": [],
+      "synthesis_snapshot": "Reassurance + safety guidance delivered. Coordinator follow-up scheduled today.",
+      "escalation_state": "SAME-DAY"
+    },
+    {
+      "role": "patient",
+      "delay_ms": 3000,
+      "content": "Got it. Thanks for checking in."
+    },
+    {
+      "role": "ai",
+      "delay_ms": 1100,
+      "content": "Of course, Marcus. David will be in touch shortly. Take care.",
+      "fhir_calls": [],
+      "synthesis_snapshot": "BP 158/98, fourth consecutive reading above goal. Patient confirmed missing Lisinopril for several days. Priority alert dispatched to David Park for same-day medication reconciliation.",
+      "escalation_state": "SAME-DAY"
+    }
+  ]
+}
