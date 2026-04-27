@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { VoiceCallDemo } from "./App.jsx";
+import ChatCheckinDemo from "./ChatCheckinDemo.jsx";
+import { scenariosForPatient, loadScenario } from "./chatScenarios.js";
 import { MetricTile } from "./components/CareConsole/MetricTile.jsx";
 import { AdherenceRow } from "./components/CareConsole/AdherenceRow.jsx";
 import { SessionsCadence } from "./components/CareConsole/SessionsCadence.jsx";
@@ -1522,6 +1524,15 @@ export default function CoordinatorDashboard() {
   const [patientLoading, setPatientLoading] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
 
+  // ── Chat surface (additive to voice — voice flow untouched) ──
+  // mode "live" hits /chat/turn on the EC2 voice service. mode "replay"
+  // plays back a static JSON scenario; never touches the network or Medplum.
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMode, setChatMode] = useState("live");
+  const [chatScenario, setChatScenario] = useState(null);
+  const [chatScenarioMenuOpen, setChatScenarioMenuOpen] = useState(false);
+  const [chatError, setChatError] = useState("");
+
   // ── Sessions (logged AI check-ins fetched from Medplum) ──
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
@@ -1752,6 +1763,45 @@ export default function CoordinatorDashboard() {
 
   const riskDot = (r) => ({ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: r === "high" ? S.red : r === "mod" ? S.amber : S.green, boxShadow: r === "high" ? "0 0 5px rgba(239,68,68,0.5)" : "none" });
 
+  // ── Chat eligibility & handlers ──
+  // Live chat is gated on: patient has a CarePlan AND at least one Encounter
+  // (sessions.length > 0). Recorded chat is gated on: at least one scenario in
+  // the manifest matches this patient's name. Voice eligibility is unchanged.
+  const chatPatient = (patientData?.patient && patientData.patient.id)
+    ? { id: patientData.patient.id, name: patientData.patient.name || selectedRosterItem?.name || "Patient" }
+    : null;
+  const chatLiveEligible = !!(chatPatient && patientData?.carePlan && (sessions?.length || 0) > 0);
+  const chatScenariosAvailable = scenariosForPatient(chatPatient?.name || selectedRosterItem?.name || "");
+
+  const handleInitiateChat = () => {
+    if (!chatLiveEligible || !chatPatient) {
+      setChatError("Live chat requires a CarePlan and at least one Encounter for this patient.");
+      return;
+    }
+    setChatError("");
+    setChatScenario(null);
+    setChatMode("live");
+    setChatOpen(true);
+  };
+
+  const handlePlayRecordedChat = async (scenarioMeta) => {
+    setChatError("");
+    setChatScenarioMenuOpen(false);
+    try {
+      const data = await loadScenario(scenarioMeta.file);
+      setChatScenario(data);
+      setChatMode("replay");
+      setChatOpen(true);
+    } catch (e) {
+      setChatError(`Could not load recorded scenario: ${e.message}`);
+    }
+  };
+
+  const handleCloseChat = () => {
+    setChatOpen(false);
+    setChatScenario(null);
+  };
+
   const tabContent = {
     overview: <OverviewTab
       patientData={patientData}
@@ -1821,6 +1871,71 @@ export default function CoordinatorDashboard() {
             </div>
           </div>
           <div style={{ flex: 1 }} />
+
+          {/* Recorded chat — dropdown of available scenarios for this patient */}
+          {chatScenariosAvailable.length > 0 && (
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => setChatScenarioMenuOpen(o => !o)}
+                title="Open the chat surface in replay mode with a recorded scenario"
+                style={{
+                  padding: "10px 16px", borderRadius: 6, fontSize: 14, ...css.sans,
+                  background: "transparent", color: S.navy,
+                  fontWeight: 600,
+                  border: `1px solid ${S.border}`, cursor: "pointer",
+                }}
+              >
+                Play recorded chat ▾
+              </button>
+              {chatScenarioMenuOpen && (
+                <div style={{
+                  position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 20,
+                  background: S.card, border: `1px solid ${S.border}`,
+                  borderRadius: 6, boxShadow: "0 6px 16px rgba(0,0,0,0.12)",
+                  minWidth: 280, padding: 4,
+                }}>
+                  {chatScenariosAvailable.map(s => (
+                    <div
+                      key={s.id}
+                      onClick={() => handlePlayRecordedChat(s)}
+                      style={{
+                        padding: "8px 12px", borderRadius: 4,
+                        cursor: "pointer", fontSize: 13, ...css.sans, color: S.text,
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = S.bg}
+                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                    >
+                      <div style={{ fontWeight: 600 }}>{s.label}</div>
+                      <div style={{ fontSize: 11, color: S.textLight, marginTop: 2 }}>{s.id}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Live chat — gated on CarePlan + ≥1 Encounter */}
+          {chatPatient && (
+            <button
+              onClick={handleInitiateChat}
+              disabled={!chatLiveEligible}
+              title={chatLiveEligible
+                ? "Start a live AI chat check-in"
+                : "Live chat requires a CarePlan and at least one Encounter for this patient."}
+              style={{
+                padding: "10px 20px", borderRadius: 6, fontSize: 14, ...css.sans,
+                background: chatLiveEligible ? S.navy : "#CBD5E1",
+                color: "#FFFFFF",
+                fontWeight: 700,
+                border: "none",
+                cursor: chatLiveEligible ? "pointer" : "not-allowed",
+                opacity: chatLiveEligible ? 1 : 0.7,
+              }}
+            >
+              Initiate chat
+            </button>
+          )}
+
           {patientForCall && (
             <button
               onClick={handleInitiateCall}
@@ -1837,6 +1952,13 @@ export default function CoordinatorDashboard() {
             </button>
           )}
         </div>
+
+        {chatError && (
+          <div style={{ background: S.redBg, borderBottom: `1px solid #FECACA`, padding: "8px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 15, ...css.sans, color: S.redText, flex: 1 }}>{chatError}</span>
+            <button onClick={() => setChatError("")} style={{ fontSize: 14, ...css.sans, background: "transparent", color: S.redText, border: `1px solid #FECACA`, padding: "2px 8px", borderRadius: 4, cursor: "pointer" }}>Dismiss</button>
+          </div>
+        )}
 
         {callError && (
           <div style={{ background: S.redBg, borderBottom: `1px solid #FECACA`, padding: "8px 16px", display: "flex", alignItems: "center", gap: 10 }}>
@@ -1909,6 +2031,17 @@ export default function CoordinatorDashboard() {
             />
           </div>
         </div>
+      )}
+
+      {/* Chat overlay — additive to voice. Replay mode never persists an
+          Encounter (no /session/end); live mode persists on close. */}
+      {chatOpen && chatPatient && (
+        <ChatCheckinDemo
+          patient={chatPatient}
+          mode={chatMode}
+          scenario={chatScenario}
+          onClose={handleCloseChat}
+        />
       )}
     </div>
   );

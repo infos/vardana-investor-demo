@@ -1,0 +1,62 @@
+{
+  "scenario_id": "marcus-chat-stable",
+  "scenario_label": "Routine check-in, BP at goal (STABLE)",
+  "_draft": "Clinical content is a DRAFT skeleton — review and polish before forwarding externally.",
+  "patient_id": "1de9768a-2459-4586-a888-d184a70479cc",
+  "patient_name": "Marcus Williams",
+  "synthesis_initial": "Conversation starting.",
+  "synthesis": "Routine check-in. BP 128/82, glucose 124, both within goal. No symptoms, full medication adherence reported. No coordinator follow-up needed.",
+  "escalation_state": "STABLE",
+  "turns": [
+    {
+      "role": "ai",
+      "delay_ms": 1100,
+      "content": "Good morning, Marcus. This is Vardana checking in for your Day 30. Your BP this morning was 128 over 82 and your fasting glucose was 124 — both right where we want them. How are you feeling today?",
+      "fhir_calls": [
+        { "method": "GET", "path": "/Patient/1de9768a-2459-4586-a888-d184a70479cc", "result": "Marcus Williams · 4 conditions · 5 active meds" },
+        { "method": "GET", "path": "/Observation?patient=1de9768a-2459-4586-a888-d184a70479cc&category=vital-signs", "result": "2026-04-27: 128/82 mmHg · 2026-04-27: 124 mg/dL · 0 weights" }
+      ],
+      "synthesis_snapshot": "Opening greeting. Vitals within goal.",
+      "escalation_state": "STABLE"
+    },
+    {
+      "role": "patient",
+      "delay_ms": 3500,
+      "content": "Honestly, I feel pretty good today. Sleeping better since I started walking after dinner."
+    },
+    {
+      "role": "ai",
+      "delay_ms": 1500,
+      "content": "That's great to hear, and the numbers are reflecting it. Are you taking all five of your medications consistently this week?",
+      "fhir_calls": [],
+      "synthesis_snapshot": "Patient reports feeling well. Confirming adherence.",
+      "escalation_state": "STABLE"
+    },
+    {
+      "role": "patient",
+      "delay_ms": 2800,
+      "content": "Yes — Lisinopril, Amlodipine, Metformin, Atorvastatin, and the baby aspirin. Every day."
+    },
+    {
+      "role": "ai",
+      "delay_ms": 1400,
+      "content": "Excellent. I'll let David know things are tracking well. Keep up the evening walks — they're clearly helping. Anything you'd like me to flag for him?",
+      "fhir_calls": [],
+      "synthesis_snapshot": "Full adherence confirmed. No flags raised.",
+      "escalation_state": "STABLE"
+    },
+    {
+      "role": "patient",
+      "delay_ms": 2200,
+      "content": "No, all good. Thanks!"
+    },
+    {
+      "role": "ai",
+      "delay_ms": 1100,
+      "content": "Take care, Marcus. We'll check in again next week.",
+      "fhir_calls": [],
+      "synthesis_snapshot": "Routine check-in. BP 128/82, glucose 124, both within goal. No symptoms, full medication adherence reported. No coordinator follow-up needed.",
+      "escalation_state": "STABLE"
+    }
+  ]
+}

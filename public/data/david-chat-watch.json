@@ -1,0 +1,64 @@
+{
+  "scenario_id": "david-chat-watch",
+  "scenario_label": "Drifting BP + adherence-naive pattern (WATCH)",
+  "_draft": "Clinical content is a DRAFT skeleton — review and polish before forwarding externally.",
+  "patient_id": "e83f91c6-4a28-4e5b-9d17-5b7f3c82a946",
+  "patient_name": "David Brooks",
+  "synthesis_initial": "Conversation starting.",
+  "synthesis": "BP drifting up over the last 10 days (currently 146/92, was 132/84). Patient unsure when he last took Losartan. Coordinator follow-up scheduled for medication review and home cuff technique check.",
+  "escalation_state": "WATCH",
+  "turns": [
+    {
+      "role": "ai",
+      "delay_ms": 1100,
+      "content": "Hi David, this is Vardana. Your blood pressure this morning was 146 over 92 — a few points higher than last week, when you were running closer to 132 over 84. How are you feeling today?",
+      "fhir_calls": [
+        { "method": "GET", "path": "/Patient/e83f91c6-4a28-4e5b-9d17-5b7f3c82a946", "result": "David Brooks · 2 conditions · 2 active meds" },
+        { "method": "GET", "path": "/Observation?patient=e83f91c6-4a28-4e5b-9d17-5b7f3c82a946&category=vital-signs", "result": "2026-04-27: 146/92 mmHg · 10-day upward drift" }
+      ],
+      "synthesis_snapshot": "Opening greeting. BP drifting upward over 10 days.",
+      "escalation_state": "STABLE"
+    },
+    {
+      "role": "patient",
+      "delay_ms": 3400,
+      "content": "Feeling fine, just a little tired. Work's been hectic."
+    },
+    {
+      "role": "ai",
+      "delay_ms": 1700,
+      "content": "Got it. With your numbers drifting up, I want to make sure nothing has changed with your routine. When did you last take your Losartan?",
+      "fhir_calls": [],
+      "synthesis_snapshot": "Probing adherence given BP drift.",
+      "escalation_state": "WATCH"
+    },
+    {
+      "role": "patient",
+      "delay_ms": 4500,
+      "content": "Hmm, honestly I'm not sure. Maybe two days ago? I keep meaning to set up a pill reminder."
+    },
+    {
+      "role": "ai",
+      "delay_ms": 1900,
+      "content": "Thanks for being honest. Inconsistent dosing is a really common cause of the kind of drift we're seeing. I'm going to flag this for your coordinator so they can walk you through a routine that fits your week — we'll keep this at a watch level for now, not an urgent escalation, since you're feeling fine and your numbers aren't crisis-range.",
+      "fhir_calls": [
+        { "method": "POST", "path": "/Flag", "result": "Flag created · risk=MEDIUM · adherence-gap" }
+      ],
+      "synthesis_snapshot": "Adherence gap suspected. WATCH-level flag dispatched for coordinator review.",
+      "escalation_state": "WATCH"
+    },
+    {
+      "role": "patient",
+      "delay_ms": 2400,
+      "content": "Yeah, that would help. Thanks."
+    },
+    {
+      "role": "ai",
+      "delay_ms": 1100,
+      "content": "Of course. Talk to you in a few days, David.",
+      "fhir_calls": [],
+      "synthesis_snapshot": "BP drifting up over the last 10 days (currently 146/92, was 132/84). Patient unsure when he last took Losartan. Coordinator follow-up scheduled for medication review and home cuff technique check.",
+      "escalation_state": "WATCH"
+    }
+  ]
+}
