@@ -25,7 +25,10 @@ import json
 import sys
 from pathlib import Path
 
-from rules import assess_escalation_state, RuleResult
+import importlib.util
+
+import rules as reference_rules
+from rules import RuleResult
 
 
 HARNESS_DIR = Path(__file__).resolve().parent
@@ -47,13 +50,33 @@ def load_scenarios(path: Path) -> dict:
     return data
 
 
-def run_all(data: dict) -> list[dict]:
-    """Run every scenario, return list of result records."""
+def load_rules_module(path_str: str):
+    """Load a rules module either by name (default) or by file path."""
+    if path_str in (None, "", "rules"):
+        return reference_rules
+    path = Path(path_str).resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"Rules module not found: {path}")
+    spec = importlib.util.spec_from_file_location("custom_rules", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["custom_rules"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def run_all(data: dict, rules_module=None) -> list[dict]:
+    """Run every scenario, return list of result records.
+
+    rules_module supplies an `assess_escalation_state(scenario, patient)`
+    callable. Defaults to the reference rules in rules.py.
+    """
+    if rules_module is None:
+        rules_module = reference_rules
     patients = data["patients"]
     out = []
     for s in data["scenarios"]:
         patient = patients[s["patient_id"]]
-        predicted: RuleResult = assess_escalation_state(s, patient)
+        predicted = rules_module.assess_escalation_state(s, patient)
         passed = predicted.state == s["ground_truth"]
         # Subtype agreement is a softer check - only fails the scenario if
         # state is correct but the rule fired for a different reason than expected
@@ -221,14 +244,21 @@ def main() -> int:
                         help="Path to write markdown report (default: report_<scenarios_stem>.md)")
     parser.add_argument("--json", action="store_true",
                         help="Also emit results JSON next to the report")
+    parser.add_argument("--rules", default="rules",
+                        help="Rules module: 'rules' (default reference) or a "
+                             "path to a Python file exposing "
+                             "assess_escalation_state(scenario, patient).")
     args = parser.parse_args()
 
     scenarios_path = Path(args.scenarios)
     stem = scenarios_path.stem
-    report_path = Path(args.report) if args.report else HARNESS_DIR / f"report_{stem}.md"
+    rules_module = load_rules_module(args.rules)
+    rules_tag = "ref" if rules_module is reference_rules else Path(args.rules).stem
+    report_stem = f"report_{stem}" if rules_tag == "ref" else f"report_{stem}_{rules_tag}"
+    report_path = Path(args.report) if args.report else HARNESS_DIR / f"{report_stem}.md"
 
     data = load_scenarios(scenarios_path)
-    results = run_all(data)
+    results = run_all(data, rules_module=rules_module)
     report = render_report(data, results)
     report_path.write_text(report)
     print_console_summary(data, results)
