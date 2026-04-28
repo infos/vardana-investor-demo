@@ -1764,9 +1764,11 @@ export default function CoordinatorDashboard() {
   const riskDot = (r) => ({ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: r === "high" ? S.red : r === "mod" ? S.amber : S.green, boxShadow: r === "high" ? "0 0 5px rgba(239,68,68,0.5)" : "none" });
 
   // ── Chat eligibility & handlers ──
-  // Live chat is gated on: patient has a CarePlan AND at least one Encounter
-  // (sessions.length > 0) — these come from patientData and require Medplum
-  // detail to have resolved. Recorded chat only needs a patient name (matched
+  // Live chat needs: a CarePlan (so the AI has a plan to anchor against) and
+  // some prior care signal (Encounters from Medplum, OR a local-bundle patient
+  // like Marcus who ships with rich fixture history). The bundle path always
+  // satisfies both — Medplum is short-circuited to sessions=[] for local
+  // patients on purpose. Recorded chat only needs a patient name (matched
   // against the scenario manifest) and never hits the network, so it must open
   // even when patientData is still loading or Medplum is unavailable.
   const chatPatientFromData = (patientData?.patient && patientData.patient.id)
@@ -1776,12 +1778,14 @@ export default function CoordinatorDashboard() {
   // ChatCheckinDemo never uses patient.id in replay mode.
   const chatPatientForReplay = chatPatientFromData
     || (selectedRosterItem ? { id: selectedRosterItem.id, name: selectedRosterItem.name } : null);
-  const chatLiveEligible = !!(chatPatientFromData && patientData?.carePlan && (sessions?.length || 0) > 0);
+  const isLocalSelected = !!(selectedPatientId && LOCAL_PATIENT_BY_ID.has(selectedPatientId));
+  const hasPriorCareSignal = isLocalSelected || (sessions?.length || 0) > 0;
+  const chatLiveEligible = !!(chatPatientFromData && patientData?.carePlan && hasPriorCareSignal);
   const chatScenariosAvailable = scenariosForPatient(chatPatientFromData?.name || selectedRosterItem?.name || "");
 
   const handleInitiateChat = () => {
     if (!chatLiveEligible || !chatPatientFromData) {
-      setChatError("Live chat requires a CarePlan and at least one Encounter for this patient.");
+      setChatError("Live chat requires a patient with a CarePlan and prior care history.");
       return;
     }
     setChatError("");
@@ -1927,7 +1931,7 @@ export default function CoordinatorDashboard() {
               disabled={!chatLiveEligible}
               title={chatLiveEligible
                 ? "Start a live AI chat check-in"
-                : "Live chat requires a CarePlan and at least one Encounter for this patient."}
+                : "Live chat requires a patient with a CarePlan and prior care history."}
               style={{
                 padding: "10px 20px", borderRadius: 6, fontSize: 14, ...css.sans,
                 background: chatLiveEligible ? S.navy : "#CBD5E1",
