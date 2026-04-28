@@ -1837,6 +1837,14 @@ export default function CoordinatorDashboard() {
     }
   };
 
+  // Only show the post-session card on the patient it belongs to. Without
+  // this filter, a chat with Linda would surface as "Chat just ended" on
+  // Marcus's Overview tab as soon as the coordinator switched roster
+  // selection.
+  const summaryForSelected = lastCallSummary && lastCallSummary.patientId === selectedPatientId
+    ? lastCallSummary
+    : null;
+
   const tabContent = {
     overview: <OverviewTab
       patientData={patientData}
@@ -1844,8 +1852,8 @@ export default function CoordinatorDashboard() {
       onViewRiskProfile={() => setActiveTab("risk")}
       onViewCarePlan={() => setActiveTab("care-plan")}
       medplumSessions={sessions}
-      lastCallSummary={lastCallSummary}
-      sessionLogStatus={sessionLogStatus}
+      lastCallSummary={summaryForSelected}
+      sessionLogStatus={summaryForSelected ? sessionLogStatus : null}
       onDismissLastCall={() => { setLastCallSummary(null); setSessionLogStatus(null); }}
     />,
     "care-plan": <CarePlanTab patientData={patientData} />,
