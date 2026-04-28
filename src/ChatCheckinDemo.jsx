@@ -51,9 +51,27 @@ function buildPatientContext(patient, patientData) {
   const medications = (patientData?.medications || [])
     .filter(m => !m.status || m.status === "active")
     .map(m => ({ name: m.name, dosage: m.dosage }));
+  // Send a date with each lab so the model can see trend direction (e.g.
+  // A1c 6.2 -> 6.3 -> 6.4 over 6 months). Without dates the model treats
+  // labs as a flat snapshot and has been describing rising sequences as
+  // "stable". Sorted newest-first; capped at 12 so the prompt stays bounded.
   const labs = (patientData?.labs || [])
+    .slice()
+    .sort((a, b) => (b.date ? new Date(b.date).getTime() : 0) - (a.date ? new Date(a.date).getTime() : 0))
     .slice(0, 12)
-    .map(l => ({ name: l.name, value: l.value, unit: l.unit }));
+    .map(l => ({
+      name: l.name,
+      value: l.value,
+      unit: l.unit,
+      date: l.date ? new Date(l.date).toISOString().slice(0, 10) : undefined,
+    }));
+  const latestBp = patientData?.latestBP;
+  // Send the latest BP reading explicitly so the model has it as a single
+  // structured field, not buried in a labs sequence.
+  const latestBpStruct = latestBp
+    ? { systolic: latestBp.systolic, diastolic: latestBp.diastolic, date: latestBp.date }
+    : undefined;
+
   return {
     name: patient.name,
     age,
@@ -61,6 +79,7 @@ function buildPatientContext(patient, patientData) {
     conditions,
     medications,
     labs,
+    latestBp: latestBpStruct,
   };
 }
 

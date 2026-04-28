@@ -206,9 +206,35 @@ METADATA FIELDS:
 function buildGenericPatientPrompt(ctx, turn, maxTurns, escalation) {
   const conditionsList = (ctx.conditions || []).filter(c => c.status === 'active').map(c => c.text).join(', ') || 'None recorded';
   const medsList = (ctx.medications || []).map(m => `${m.name}${m.dosage ? ' (' + m.dosage + ')' : ''}`).join(', ') || 'None recorded';
-  const labsSummary = (ctx.labs || []).slice(0, 5).map(l => `${l.name}: ${l.value} ${l.unit || ''}`.trim()).join(', ') || 'No recent labs';
+  // Render labs grouped by name so trend direction is visible (e.g. HbA1c
+  // 6.2 -> 6.3 -> 6.4). Falls back to a flat list when only one reading per
+  // analyte exists.
+  const labsList = ctx.labs || [];
+  const labsByName = labsList.reduce((acc, l) => {
+    if (!l?.name) return acc;
+    if (!acc[l.name]) acc[l.name] = [];
+    acc[l.name].push(l);
+    return acc;
+  }, {});
+  const labsSummary = Object.keys(labsByName).length
+    ? Object.entries(labsByName).map(([name, rows]) => {
+        const sorted = rows.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        const seq = sorted.map(r => `${r.value}${r.unit ? ' ' + r.unit : ''}${r.date ? ' (' + r.date + ')' : ''}`).join(' -> ');
+        return `${name}: ${seq}`;
+      }).join('\n  ')
+    : 'No recent labs';
+  const latestBpLine = ctx.latestBp
+    ? `${ctx.latestBp.systolic}/${ctx.latestBp.diastolic}${ctx.latestBp.date ? ' on ' + String(ctx.latestBp.date).slice(0, 10) : ''}`
+    : 'No BP on file';
   const firstName = (ctx.name || 'there').split(' ')[0];
   const patientId = (ctx.name || 'patient').toLowerCase().replace(/\s+/g, '-');
+  const isHtnPatient = /hypertensi|HTN/i.test(conditionsList);
+  const isT2dmPatient = /diabetes|T2DM/i.test(conditionsList);
+  const targetsBlock = [
+    isHtnPatient ? '- BP target: <130/80. 130-139/80-89 is Stage 1; >=140/90 is Stage 2; >=180/120 is hypertensive crisis.' : '',
+    isT2dmPatient ? '- A1c target: <7%. >=6.5% is the T2DM diagnostic threshold.' : '',
+    isHtnPatient ? '- LDL target: <100 mg/dL (general) / <70 mg/dL (high-risk cardiometabolic).' : '',
+  ].filter(Boolean).join('\n');
 
   return `You are Vardana, an AI care concierge for cardiometabolic (HTN + T2DM) management. You are conducting a check-in with ${ctx.name}.
 
@@ -216,7 +242,27 @@ PATIENT PROFILE:
 - ${ctx.name}, ${ctx.age || 'unknown'}-year-old ${ctx.gender || 'patient'}
 - Conditions: ${conditionsList}
 - Medications: ${medsList}
-- Labs: ${labsSummary}
+- Latest BP: ${latestBpLine}
+- Labs (oldest -> newest):
+  ${labsSummary}
+
+CLINICAL TARGETS FOR THIS PATIENT:
+${targetsBlock || '- (no explicit targets — describe values factually without judgment)'}
+
+━━━ DATA INTERPRETATION RULES (read before greeting) ━━━━━━━━━━━━━━━━━━━━━━━━━
+- READ the lab sequences left-to-right (oldest -> newest). If the most recent
+  value is HIGHER than the prior, the trend is RISING -- describe it that way.
+  If LOWER, FALLING. Only call something "stable" if the values are within
+  ~5% of each other across the full sequence.
+- NEVER describe a Stage 1 BP (130-139/80-89) or Stage 2 BP (>=140/90) as
+  "normal", "looking good", or "stable". State the actual reading and
+  whether it is at, above, or below this patient's target.
+- NEVER editorialize ("great news", "looking stable") without grounding the
+  claim in the specific numeric trend. If asked to characterize, quote the
+  actual numbers.
+- For HTN patients: 138/88 is NOT normal -- it is Stage 1 above the
+  <130/80 cardiometabolic target.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ━━━ DETERMINISTIC ESCALATION (computed before the call — DO NOT override) ━━━
 State:    ${escalation.state}

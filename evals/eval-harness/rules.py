@@ -253,6 +253,33 @@ def rule_stage2_sustained_adherent(s: dict) -> RuleResult | None:
     )
 
 
+def rule_stage1_with_adherence_gap(s: dict) -> RuleResult | None:
+    """Stage 1 BP (130-139/80-89) + adherence gap -> WATCH.
+
+    Stage 2 + adherence gap is SAME-DAY (rule_stage2_sustained_with_adherence).
+    Stage 1 is less acute, but a confirmed adherence gap on top of Stage 1
+    BP still warrants coordinator follow-up within 24h -- the patient's BP
+    is already drifting AND the prescribed therapy isn't being taken.
+    Without this rule, the case falls through to ROUTINE, which understates
+    the clinical signal.
+    """
+    v = s.get("vitals", {})
+    ctx = s.get("context", {})
+    sbp_avg = v.get("bp_7day_avg_systolic", 0)
+    dbp_avg = v.get("bp_7day_avg_diastolic", 0)
+    in_stage1 = (130 <= sbp_avg <= 139) or (80 <= dbp_avg <= 89)
+    if not in_stage1:
+        return None
+    if not ctx.get("adherence_gap"):
+        return None
+    return RuleResult(
+        "WATCH",
+        "stage1_with_adherence_gap",
+        [f"bp_avg_{sbp_avg}_{dbp_avg}", "adherence_gap"],
+        "2025 AHA/ACC HTN Guideline · Stage 1 BP + adherence intervention warrants 24h coordinator follow-up",
+    )
+
+
 def rule_stage1_drift(s: dict) -> RuleResult | None:
     """Stage 1 BP (130-139/80-89) sustained, asymptomatic, adherent."""
     v = s.get("vitals", {})
@@ -322,6 +349,7 @@ RULE_ORDER = [
     # WATCH
     rule_stage2_sustained_adherent,
     rule_a1c_diagnostic_threshold,
+    rule_stage1_with_adherence_gap,
     rule_stage1_drift,
 ]
 

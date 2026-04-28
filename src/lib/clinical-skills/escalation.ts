@@ -235,6 +235,27 @@ function ruleA1cDiagnosticThreshold(s: ScenarioWithPatient): EscalationResult | 
   };
 }
 
+function ruleStage1WithAdherenceGap(s: ScenarioWithPatient): EscalationResult | null {
+  // Stage 1 BP (130-139/80-89) + adherence gap -> WATCH. Less acute than
+  // Stage 2 + adherence gap (SAME-DAY), but still warrants coordinator
+  // follow-up within 24h. Without this rule the case fell through to
+  // ROUTINE, which understated the clinical signal.
+  const v = s.vitals;
+  const ctx = s.context;
+  const sbpAvg = v.bp_7day_avg_systolic ?? 0;
+  const dbpAvg = v.bp_7day_avg_diastolic ?? 0;
+  const inStage1 = (sbpAvg >= 130 && sbpAvg <= 139) || (dbpAvg >= 80 && dbpAvg <= 89);
+  if (!inStage1) return null;
+  if (!ctx.adherence_gap) return null;
+  return {
+    state: "WATCH",
+    subtype: "stage1_with_adherence_gap",
+    triggers: [`bp_avg_${sbpAvg}_${dbpAvg}`, "adherence_gap"],
+    citation:
+      "2025 AHA/ACC HTN Guideline · Stage 1 BP + adherence intervention warrants 24h coordinator follow-up",
+  };
+}
+
 function ruleStage1Drift(s: ScenarioWithPatient): EscalationResult | null {
   const v = s.vitals;
   const ctx = s.context;
@@ -299,6 +320,7 @@ const RULE_ORDER: Array<(s: ScenarioWithPatient) => EscalationResult | null> = [
   // WATCH
   ruleStage2SustainedAdherent,
   ruleA1cDiagnosticThreshold,
+  ruleStage1WithAdherenceGap,
   ruleStage1Drift,
 ];
 
