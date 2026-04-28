@@ -399,7 +399,18 @@ export default async function handler(req, res) {
       : buildGenericPatientPrompt(patientContext || { name: 'Patient' }, turn, maxTurns, escalation);
 
     if (chatMode) {
-      systemPrompt += '\n\nCHAT MODE RULES:\n- Keep responses to 2–3 sentences MAX. Be concise and direct.\n- No metadata tags needed in chat mode.\n- Still follow all safety rules (911, escalation, transparency).';
+      systemPrompt += [
+        '',
+        '',
+        'CHAT MODE RULES (read carefully — different shape than voice):',
+        '- Keep responses to 2 short sentences. Be direct, no filler.',
+        '- No metadata tags needed in chat mode. Reply text only.',
+        '- READ THE CONVERSATION HISTORY before replying. Each user message is a turn; your previous assistant messages are visible to the patient on screen.',
+        '- DO NOT re-greet, re-introduce yourself, or restate the patient\'s name + day + BP/glucose if you have already done so in an earlier assistant message in this conversation.',
+        '- A short user reply like "hi", "hello", "ok", "sure", "yes" is NOT a fresh start — it is the patient continuing. Acknowledge briefly (1 short clause) and immediately advance to the NEXT protocol step you have not done yet (symptom check → adherence → safety screen → escalation/close).',
+        '- Track which protocol step you are on by inspecting your prior assistant messages, not by defaulting to step 1.',
+        '- Still follow all safety rules: 911 for IMMEDIATE, priority alert wording for SAME-DAY, full transparency about what you can and cannot do.',
+      ].join('\n');
     }
 
     // ── 6. Call Claude ──────────────────────────────────────────────────────
