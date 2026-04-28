@@ -422,6 +422,47 @@ function PatientSummaryPane({
   );
 }
 
+// Build the post-session summary card payload that CoordinatorDashboard's
+// PostCallSummary component renders on the Overview tab. Shape mirrors what
+// VoiceCallDemo.onComplete sends so the dashboard can treat both surfaces
+// uniformly. Risk tier is derived from the deterministic escalation state.
+function escalationToRiskLevel(state) {
+  switch (state) {
+    case "IMMEDIATE": return "critical";
+    case "SAME-DAY":  return "high";
+    case "WATCH":     return "moderate";
+    default:          return "low";
+  }
+}
+
+function buildLiveChatSummary({
+  patientName, sessionStartedAt, messages, escalationState, synthesis, riskScore,
+}) {
+  const endedAt = new Date();
+  const seconds = Math.max(1, Math.round((endedAt.getTime() - sessionStartedAt.getTime()) / 1000));
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  const duration = `${mins}m ${secs.toString().padStart(2, "0")}s`;
+  const transcript = messages.map(m => ({
+    speaker: m.role === "ai" ? "AI" : (patientName || "Patient"),
+    text: m.text,
+  }));
+  const summaryLine = synthesis && synthesis !== "Conversation starting."
+    ? synthesis
+    : `Chat check-in completed. Escalation: ${escalationState}.`;
+  return {
+    kind: "chat",
+    duration,
+    timestamp: endedAt.toLocaleString(),
+    riskLevel: escalationToRiskLevel(escalationState),
+    alertGenerated: escalationState === "IMMEDIATE" || escalationState === "SAME-DAY",
+    summary: summaryLine,
+    transcript,
+    riskScore: typeof riskScore === "number" ? riskScore : null,
+    escalationState,
+  };
+}
+
 const KICKOFF_PATIENT_MESSAGE = "Hi, I just opened the chat for my check-in.";
 
 export default function ChatCheckinDemo({
@@ -429,7 +470,8 @@ export default function ChatCheckinDemo({
   patientData = null,  // parsed FHIR bundle from CoordinatorDashboard (live mode)
   mode = "live",       // "live" | "replay"
   scenario = null,     // required for mode="replay"; the parsed scenario JSON
-  onClose,
+  onClose,             // ({reason}) => void — fired when the user dismisses
+  onComplete,          // (summary) => void — fired with a session summary in live mode
 }) {
   const isReplay = mode === "replay";
 
@@ -699,16 +741,6 @@ export default function ChatCheckinDemo({
             </div>
           </div>
 
-          {/* Voice / Chat toggle — visual only, chat default */}
-          <div style={{
-            marginLeft: 14,
-            display: "inline-flex", border: `1px solid ${S.border}`,
-            borderRadius: 6, overflow: "hidden",
-          }}>
-            <span style={{ padding: "5px 10px", fontSize: 12, color: S.textMed, background: "transparent" }}>Voice</span>
-            <span style={{ padding: "5px 10px", fontSize: 12, color: "#FFFFFF", background: S.navy, fontWeight: 700 }}>Chat</span>
-          </div>
-
           {isReplay && (
             <span style={{
               marginLeft: 8,
@@ -723,7 +755,23 @@ export default function ChatCheckinDemo({
 
           <div style={{ flex: 1 }} />
 
-          <button onClick={onClose} style={{
+          <button onClick={() => {
+            // In live mode, hand a summary back to the dashboard so it can
+            // pin the post-session card on the Overview tab — same flow voice
+            // uses via VoiceCallDemo.onComplete. Skip for replay (no real
+            // session to summarize) and when no AI replies have arrived yet.
+            if (!isReplay && messages.some(m => m.role === "ai") && typeof onComplete === "function") {
+              onComplete(buildLiveChatSummary({
+                patientName: patient?.name,
+                sessionStartedAt,
+                messages,
+                escalationState,
+                synthesis,
+                riskScore,
+              }));
+            }
+            onClose?.();
+          }} style={{
             fontSize: 13, ...css.sans, background: "transparent",
             color: S.textMed, border: `1px solid ${S.border}`,
             padding: "6px 12px", borderRadius: 4, cursor: "pointer",

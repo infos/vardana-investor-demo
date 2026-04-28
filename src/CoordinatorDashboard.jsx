@@ -478,9 +478,10 @@ const CARD_COLORS = [
 // shows the Medplum persistence status (saving / saved / error).
 function PostCallSummary({ summary, status, onDismiss, onViewSessions }) {
   if (!summary) return null;
-  const { patientName, duration, timestamp, riskLevel, alertGenerated, summary: summaryText, transcript } = summary;
+  const { patientName, duration, timestamp, riskLevel, alertGenerated, summary: summaryText, transcript, kind } = summary;
   const when = timestamp || new Date().toLocaleString();
   const tier = (riskLevel || "").toUpperCase();
+  const sessionLabel = kind === "chat" ? "Chat just ended" : "Call just ended";
   const transcriptText = Array.isArray(transcript)
     ? transcript.map(t => `${t.speaker || "AI"}: ${t.text || ""}`).join("\n")
     : (transcript || "");
@@ -492,7 +493,7 @@ function PostCallSummary({ summary, status, onDismiss, onViewSessions }) {
   return (
     <div style={{ background: S.card, border: `1px solid ${S.navy}`, borderLeft: `4px solid ${S.amber}`, borderRadius: 8, padding: 14, marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
-        <span style={{ fontSize: 14, letterSpacing: 1, textTransform: "uppercase", color: S.amber, fontWeight: 700, ...css.sans }}>Call just ended</span>
+        <span style={{ fontSize: 14, letterSpacing: 1, textTransform: "uppercase", color: S.amber, fontWeight: 700, ...css.sans }}>{sessionLabel}</span>
         <span style={{ fontSize: 13, ...css.sans, color: S.textLight }}>{when}{duration ? ` · ${duration}` : ""}</span>
         <span style={{ flex: 1 }} />
         {alertGenerated && <Badge color="red">Alert generated</Badge>}
@@ -1812,6 +1813,33 @@ export default function CoordinatorDashboard() {
     setChatScenario(null);
   };
 
+  // Mirrors handleCallComplete (voice). Pinned to the Overview tab via
+  // PostCallSummary so the coordinator sees the chat outcome the same way
+  // they see a voice-call outcome. Persistence to Medplum is skipped for
+  // local-bundle patients (Marcus); other patients get an Encounter logged.
+  const handleChatComplete = async (payload) => {
+    setChatOpen(false);
+    setChatScenario(null);
+    const name = patientData?.patient?.name || roster.find(r => r.id === selectedPatientId)?.name || "Patient";
+    setLastCallSummary({ ...payload, patientName: name, patientId: selectedPatientId });
+    if (!selectedPatientId || LOCAL_PATIENT_BY_ID.has(selectedPatientId)) return;
+    setSessionLogStatus("saving");
+    try {
+      const res = await fetch("/api/medplum-fhir?action=log-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: selectedPatientId, ...payload }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `Log session failed: ${res.status}`);
+      }
+      setSessionLogStatus("saved");
+    } catch (err) {
+      setSessionLogStatus(`error:${err.message}`);
+    }
+  };
+
   const tabContent = {
     overview: <OverviewTab
       patientData={patientData}
@@ -2054,6 +2082,7 @@ export default function CoordinatorDashboard() {
           mode={chatMode}
           scenario={chatScenario}
           onClose={handleCloseChat}
+          onComplete={handleChatComplete}
         />
       )}
     </div>
