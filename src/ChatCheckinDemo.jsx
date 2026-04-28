@@ -66,6 +66,35 @@ function buildPatientContext(patient, patientData) {
       date: l.date ? new Date(l.date).toISOString().slice(0, 10) : undefined,
     }));
   const latestBp = patientData?.latestBP;
+
+  // Send the full BP history so the rule engine can compute proper 7-day
+  // averages instead of falling back to whatever the patient happens to
+  // mention in chat text. Sorted newest-first by the bundle parser already.
+  const bpReadings = (patientData?.vitals?.bloodPressures || [])
+    .filter(r => r?.systolic != null && r?.diastolic != null)
+    .slice(0, 30)
+    .map(r => ({
+      date: r.date ? new Date(r.date).toISOString() : new Date().toISOString(),
+      systolic: r.systolic,
+      diastolic: r.diastolic,
+    }));
+
+  // Glucose / A1c / eGFR pulled out of labs by name pattern so the server
+  // can feed them into buildScenarioFromInputs without needing the full
+  // FHIR Observation shape.
+  const numLabs = (l) => (typeof l.value === 'number' ? l.value : parseFloat(l.value));
+  const glucoseReadings = labs
+    .filter(l => /glucose/i.test(l.name || ''))
+    .map(l => ({ date: l.date, value: numLabs(l), fasting: /fasting/i.test(l.name || '') }))
+    .filter(g => Number.isFinite(g.value));
+  const a1cReadings = labs
+    .filter(l => /(a1c|hemoglobin a1c|glycated)/i.test(l.name || ''))
+    .map(l => ({ date: l.date, value: numLabs(l) }))
+    .filter(a => Number.isFinite(a.value));
+  const egfrReadings = labs
+    .filter(l => /(egfr|glomerular)/i.test(l.name || ''))
+    .map(l => ({ date: l.date, value: numLabs(l) }))
+    .filter(e => Number.isFinite(e.value));
   // Send the latest BP reading explicitly so the model has it as a single
   // structured field, not buried in a labs sequence.
   const latestBpStruct = latestBp
@@ -80,6 +109,10 @@ function buildPatientContext(patient, patientData) {
     medications,
     labs,
     latestBp: latestBpStruct,
+    bpReadings,
+    glucoseReadings,
+    a1cReadings,
+    egfrReadings,
   };
 }
 

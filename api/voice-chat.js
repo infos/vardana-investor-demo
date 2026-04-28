@@ -398,21 +398,59 @@ export default async function handler(req, res) {
     //       baseline (BP 158/98 trending up from 142/88, glucose 186, missed
     //       Lisinopril); the in-call signals override the baseline.
     const isMarcusContext = patientContext && /marcus/i.test(patientContext.name || '');
-    const baselineBp = isMarcusContext
-      ? [
-          { date: today(0), systolic: parsed.systolic ?? 158, diastolic: parsed.diastolic ?? 98 },
-          { date: today(-1), systolic: 156, diastolic: 96 },
-          { date: today(-2), systolic: 152, diastolic: 94 },
-          { date: today(-4), systolic: 142, diastolic: 88 },
-          { date: today(-6), systolic: 138, diastolic: 86 },
-        ]
-      : parsed.systolic
-      ? [{ date: today(0), systolic: parsed.systolic, diastolic: parsed.diastolic }]
+
+    // Prefer client-supplied bundle data (every chat patient now sends BP /
+    // glucose / A1c / eGFR history via patientContext). Fall back to whatever
+    // the patient mentioned in chat text. Marcus's hardcoded baseline only
+    // kicks in when neither source is present -- it anchors the scripted
+    // voice demo, not live chat with bundle data.
+    const ctxBpReadings = Array.isArray(patientContext?.bpReadings) ? patientContext.bpReadings : [];
+    const ctxGlucose = Array.isArray(patientContext?.glucoseReadings) ? patientContext.glucoseReadings : [];
+    const ctxA1c = Array.isArray(patientContext?.a1cReadings) ? patientContext.a1cReadings : [];
+    const ctxEgfr = Array.isArray(patientContext?.egfrReadings) ? patientContext.egfrReadings : [];
+
+    let baselineBp;
+    if (ctxBpReadings.length > 0) {
+      // Augment with the value the patient just spoke, if any.
+      baselineBp = parsed.systolic
+        ? [{ date: today(0), systolic: parsed.systolic, diastolic: parsed.diastolic }, ...ctxBpReadings]
+        : ctxBpReadings;
+    } else if (isMarcusContext) {
+      baselineBp = [
+        { date: today(0), systolic: parsed.systolic ?? 158, diastolic: parsed.diastolic ?? 98 },
+        { date: today(-1), systolic: 156, diastolic: 96 },
+        { date: today(-2), systolic: 152, diastolic: 94 },
+        { date: today(-4), systolic: 142, diastolic: 88 },
+        { date: today(-6), systolic: 138, diastolic: 86 },
+      ];
+    } else if (parsed.systolic) {
+      baselineBp = [{ date: today(0), systolic: parsed.systolic, diastolic: parsed.diastolic }];
+    } else {
+      baselineBp = [];
+    }
+
+    let baselineGlucose;
+    if (ctxGlucose.length > 0) {
+      baselineGlucose = parsed.glucose
+        ? [{ date: today(0), value: parsed.glucose, fasting: true }, ...ctxGlucose]
+        : ctxGlucose;
+    } else if (isMarcusContext) {
+      baselineGlucose = [{ date: today(0), value: parsed.glucose ?? 186, fasting: true }];
+    } else if (parsed.glucose) {
+      baselineGlucose = [{ date: today(0), value: parsed.glucose, fasting: true }];
+    } else {
+      baselineGlucose = [];
+    }
+
+    const a1cReadings = ctxA1c.length > 0
+      ? ctxA1c
+      : isMarcusContext
+      ? [{ date: today(-7), value: 8.4 }, { date: today(-90), value: 7.4 }]
       : [];
-    const baselineGlucose = isMarcusContext
-      ? [{ date: today(0), value: parsed.glucose ?? 186, fasting: true }]
-      : parsed.glucose
-      ? [{ date: today(0), value: parsed.glucose, fasting: true }]
+    const egfrReadings = ctxEgfr.length > 0
+      ? ctxEgfr
+      : isMarcusContext
+      ? [{ date: today(-7), value: 72 }]
       : [];
 
     const conditionsTags = isMarcusContext ? ['HTN', 'T2DM', 'HLD'] : extractConditionTags(patientContext);
@@ -425,8 +463,8 @@ export default async function handler(req, res) {
       patient: patientForRules,
       bpReadings: baselineBp,
       glucoseReadings: baselineGlucose,
-      a1cReadings: isMarcusContext ? [{ date: today(-7), value: 8.4 }, { date: today(-90), value: 7.4 }] : [],
-      egfrReadings: isMarcusContext ? [{ date: today(-7), value: 72 }] : [],
+      a1cReadings,
+      egfrReadings,
       symptoms,
       context: {
         call_type: chatMode ? 'chat_check_in' : 'voice_check_in',
