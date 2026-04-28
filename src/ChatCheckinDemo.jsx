@@ -499,6 +499,7 @@ export default function ChatCheckinDemo({
 
   const threadRef = useRef(null);
   const cancelledRef = useRef(false);
+  const inputRef = useRef(null);
 
   const patientContext = useMemo(
     () => buildPatientContext(patient, patientData),
@@ -521,6 +522,20 @@ export default function ChatCheckinDemo({
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
   }, [messages.length, isTyping]);
+
+  // Auto-focus the input when the AI finishes a turn so the coordinator
+  // can keep typing without clicking. Live mode only -- replay has no input.
+  useEffect(() => {
+    if (isReplay) return;
+    if (!liveReady) return;
+    if (isTyping) return;
+    // Avoid stealing focus while the user is interacting with something else
+    // outside the chat overlay (defensive -- normally focus stays in the
+    // overlay via the disabled-input pattern while the AI is "typing").
+    if (inputRef.current && !inputRef.current.disabled) {
+      inputRef.current.focus();
+    }
+  }, [isTyping, liveReady, isReplay, messages.length]);
 
   // ── LIVE MODE: greet patient via /api/voice-chat on mount ──
   // No EC2, no session_id — the Vercel function is stateless. Conversation
@@ -772,10 +787,15 @@ export default function ChatCheckinDemo({
             }
             onClose?.();
           }} style={{
-            fontSize: 13, ...css.sans, background: "transparent",
-            color: S.textMed, border: `1px solid ${S.border}`,
-            padding: "6px 12px", borderRadius: 4, cursor: "pointer",
-          }}>Close</button>
+            // Prominent end-session button — same visual weight as Initiate
+            // chat / call so coordinators don't miss it.
+            fontSize: 14, fontWeight: 700, ...css.sans,
+            background: S.red, color: "#FFFFFF",
+            border: "none", padding: "10px 20px", borderRadius: 6,
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(239, 68, 68, 0.35)",
+            letterSpacing: "0.02em",
+          }}>End Call</button>
         </div>
 
         {error && (
@@ -845,12 +865,14 @@ export default function ChatCheckinDemo({
                 padding: "10px 16px", display: "flex", alignItems: "center", gap: 8,
               }}>
                 <input
+                  ref={inputRef}
                   type="text"
                   value={input}
                   placeholder={liveReady ? "Type a message…" : "Connecting…"}
                   disabled={!liveReady || isTyping}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") handleSendLive(); }}
+                  autoFocus
                   style={{
                     flex: 1, fontSize: 14, ...css.sans,
                     padding: "8px 12px", borderRadius: 6,
