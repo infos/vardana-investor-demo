@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import HomePage from './HomePage.jsx'
 import DemoPage from './DemoPage.jsx'
-import ScriptedDemoPage from './demo/ScriptedDemoPage.jsx'
 import RecordedDemoPage from './demo/RecordedDemoPage.jsx'
 import LiveDemoPage from './demo/LiveDemoPage.jsx'
 import ROICalculator from './ROICalculator.jsx'
@@ -60,14 +59,15 @@ function Router() {
   // Gated routes — require valid token (query param or session cookie).
   // Unauthorized access renders HomePage silently (soft 404, doesn't
   // advertise that the route exists).
-  const gatedRoutes = ['/coordinator', '/patient', '/checkin'];
+  // /patient was the legacy Sarah CHF patient view; removed when CHF was
+  // decommissioned. /demo/{token}/scripted likewise — Sarah's Loom video
+  // is gone; the recorded Marcus demo lives at /demo/{token}/recorded.
+  const gatedRoutes = ['/coordinator', '/checkin'];
   if (gatedRoutes.includes(pathname) && !isTokenValid()) {
     return <HomePage navigate={navigate} />;
   }
 
   if (pathname === '/coordinator') return <CoordinatorDashboard />;
-  if (pathname === '/patient') return <App initialRole="patient" navigate={navigate} />;
-  if (pathname === `${DEMO_BASE}/scripted`) return <ScriptedDemoPage navigate={navigate} />;
   if (pathname === `${DEMO_BASE}/recorded`) return <RecordedDemoPage navigate={navigate} />;
   if (pathname === `${DEMO_BASE}/live`) return <LiveDemoPage navigate={navigate} />;
   if (pathname === `${DEMO_BASE}/clinical`) return <ClinicalDemoPage navigate={navigate} />;
