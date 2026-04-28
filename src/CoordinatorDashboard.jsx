@@ -489,6 +489,7 @@ function PostCallSummary({ summary, status, onDismiss, onViewSessions }) {
   let statusColor = S.textLight;
   if (status === "saving") { statusText = "Saving to Medplum…"; statusColor = S.textMed; }
   else if (status === "saved") { statusText = "Saved to Medplum."; statusColor = S.green; }
+  else if (status === "demo") { statusText = "Demo mode — this summary is NOT saved to Medplum."; statusColor = S.amber; }
   else if (typeof status === "string" && status.startsWith("error:")) { statusText = `Medplum write failed: ${status.slice(6)}`; statusColor = S.red; }
   return (
     <div style={{ background: S.card, border: `1px solid ${S.navy}`, borderLeft: `4px solid ${S.amber}`, borderRadius: 8, padding: 14, marginBottom: 14 }}>
@@ -1666,30 +1667,15 @@ export default function CoordinatorDashboard() {
     return () => { cancelled = true; };
   }, [selectedPatientId, sessionLogStatus]);
 
-  // Called by VoiceCallDemo when the call ends. Persists the encounter to
-  // Medplum (when the patient has a real Medplum id) and flashes the summary
-  // onto the Overview tab so the coordinator sees it immediately.
-  const handleCallComplete = async (payload) => {
+  // Called by VoiceCallDemo when the call ends. Pins the summary on Overview
+  // and flags it as demo mode -- Medplum persistence is intentionally
+  // disabled in this build so the shared test deploy doesn't accumulate
+  // Encounters every time someone runs a demo call.
+  const handleCallComplete = (payload) => {
     setCallOpen(false);
     const name = patientData?.patient?.name || roster.find(r => r.id === selectedPatientId)?.name || "Patient";
     setLastCallSummary({ ...payload, patientName: name, patientId: selectedPatientId });
-    // Don't POST for any local fixture patient (no Medplum Patient resource).
-    if (!selectedPatientId || LOCAL_PATIENT_BY_ID.has(selectedPatientId)) return;
-    setSessionLogStatus("saving");
-    try {
-      const res = await fetch("/api/medplum-fhir?action=log-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId: selectedPatientId, ...payload }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `Log session failed: ${res.status}`);
-      }
-      setSessionLogStatus("saved");
-    } catch (err) {
-      setSessionLogStatus(`error:${err.message}`);
-    }
+    setSessionLogStatus("demo");
   };
 
   const selectedRosterItem = useMemo(() => roster.find(r => r.id === selectedPatientId), [roster, selectedPatientId]);
@@ -1812,29 +1798,17 @@ export default function CoordinatorDashboard() {
 
   // Mirrors handleCallComplete (voice). Pinned to the Overview tab via
   // PostCallSummary so the coordinator sees the chat outcome the same way
-  // they see a voice-call outcome. Persistence to Medplum is skipped for
-  // local-bundle patients (Marcus); other patients get an Encounter logged.
-  const handleChatComplete = async (payload) => {
+  // they see a voice-call outcome. Persistence to Medplum is intentionally
+  // SKIPPED in this demo build to keep the test deploy non-destructive --
+  // every chat run otherwise wrote a fresh Encounter to the shared Medplum
+  // tenant. The summary still pins on Overview; the status note tells the
+  // coordinator nothing was persisted.
+  const handleChatComplete = (payload) => {
     setChatOpen(false);
     setChatScenario(null);
     const name = patientData?.patient?.name || roster.find(r => r.id === selectedPatientId)?.name || "Patient";
     setLastCallSummary({ ...payload, patientName: name, patientId: selectedPatientId });
-    if (!selectedPatientId || LOCAL_PATIENT_BY_ID.has(selectedPatientId)) return;
-    setSessionLogStatus("saving");
-    try {
-      const res = await fetch("/api/medplum-fhir?action=log-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId: selectedPatientId, ...payload }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `Log session failed: ${res.status}`);
-      }
-      setSessionLogStatus("saved");
-    } catch (err) {
-      setSessionLogStatus(`error:${err.message}`);
-    }
+    setSessionLogStatus("demo");
   };
 
   // Only show the post-session card on the patient it belongs to. Without
