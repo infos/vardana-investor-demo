@@ -1,0 +1,87 @@
+{
+  "_comment": "Adversarial / regression scenarios. These are intentionally edge cases not in the calibration set. Use to test rule robustness beyond the canonical 8.",
+  "scenarios": [
+    {
+      "id": "ADV01",
+      "patient_id": "marcus_williams",
+      "title": "Severe HTN at 198/126 but ZERO end-organ symptoms (urgency, not emergency)",
+      "_design_intent": "Tests that the IMMEDIATE rule requires end-organ symptoms, not just BP threshold. Correct answer is SAME-DAY (urgency), not IMMEDIATE (emergency). If this scenario triggers IMMEDIATE, the rule is over-eager.",
+      "journey_day": 30,
+      "ground_truth": "SAME-DAY",
+      "ground_truth_subtype": "hypertensive_urgency",
+      "vitals": {
+        "current_bp_systolic": 198,
+        "current_bp_diastolic": 126,
+        "bp_7day_avg_systolic": 142,
+        "bp_7day_avg_diastolic": 88
+      },
+      "symptoms": {
+        "severe_headache": false,
+        "vision_changes": false,
+        "chest_pain": false,
+        "focal_neuro_deficit": false,
+        "kussmaul_breathing": false,
+        "neuroglycopenic": false,
+        "osmotic_symptoms": false
+      },
+      "context": {
+        "call_type": "patient_initiated_unscheduled",
+        "adherence_gap": false,
+        "post_activity": false,
+        "concurrent_steroid": false
+      }
+    },
+    {
+      "id": "ADV02",
+      "patient_id": "linda_patel",
+      "title": "Glucose 51 but NO neuroglycopenic symptoms (Level 2 by number, asymptomatic)",
+      "_design_intent": "Tests the symptom requirement on Level 2 hypoglycemia. ADA defines Level 2 by glucose alone but the IMMEDIATE escalation requires neuroglycopenic features. This should be SAME-DAY (clinically significant but not an emergency yet).",
+      "journey_day": 50,
+      "ground_truth": "SAME-DAY",
+      "ground_truth_subtype": "asymptomatic_level2_hypoglycemia",
+      "vitals": {
+        "current_glucose_mgdl": 51,
+        "glucose_verified_twice": true
+      },
+      "symptoms": {
+        "neuroglycopenic": false,
+        "confusion": false,
+        "slurred_speech": false,
+        "altered_mental_status": false
+      },
+      "context": {
+        "call_type": "scheduled_weekly",
+        "adherence_gap": false,
+        "post_activity": false,
+        "concurrent_steroid": false
+      }
+    },
+    {
+      "id": "ADV03",
+      "patient_id": "marcus_williams",
+      "title": "Stage 2 BP sustained but adherence is fully verified",
+      "_design_intent": "Tests that without an adherence gap, sustained Stage 2 BP still warrants attention but at WATCH (not SAME-DAY). The SAME-DAY escalation in S04 hinges on the adherence gap.",
+      "journey_day": 45,
+      "ground_truth": "WATCH",
+      "ground_truth_subtype": "stage2_sustained_adherent",
+      "vitals": {
+        "current_bp_systolic": 148,
+        "current_bp_diastolic": 92,
+        "bp_7day_avg_systolic": 146,
+        "bp_7day_avg_diastolic": 91
+      },
+      "symptoms": {
+        "severe_headache": false,
+        "vision_changes": false,
+        "chest_pain": false
+      },
+      "context": {
+        "call_type": "scheduled_weekly",
+        "adherence_gap": false,
+        "adherence_verified": "pharmacy_refill_timing",
+        "post_activity": false,
+        "concurrent_steroid": false
+      }
+    }
+  ]
+}

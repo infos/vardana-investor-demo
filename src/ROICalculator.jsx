@@ -133,12 +133,12 @@ export default function ROICalculator() {
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
             <h1 style={{ margin: "0 0 8px", fontSize: 34, lineHeight: 1.1, letterSpacing: "-0.02em", fontWeight: 800 }}>
-              Vardana CHF ROI Calculator
+              Vardana Cardiometabolic ROI Calculator
             </h1>
           </div>
           <p style={{ color: "#667085", fontSize: 16, maxWidth: 880, lineHeight: 1.5, margin: 0 }}>
-            Estimate the financial impact of Vardana's remote cardiac monitoring program on hospital readmissions,
-            emergency visits, and overall cost of care for your CHF patient population.
+            Estimate the financial impact of Vardana's continuous cardiometabolic care program on hospital readmissions,
+            emergency visits, and overall cost of care for your hypertension + type 2 diabetes patient population.
           </p>
         </div>
 
@@ -165,8 +165,8 @@ export default function ROICalculator() {
               Patient Population
             </div>
             <Slider
-              label="Annual CHF Patients"
-              hint="Total number of CHF patients discharged from your facility each year."
+              label="Annual Cardiometabolic Patients"
+              hint="Total number of cardiometabolic (HTN + T2DM) patients managed by your facility each year."
               value={patients}
               min={50}
               max={5000}
@@ -186,7 +186,7 @@ export default function ROICalculator() {
             />
             <Slider
               label="Average Readmission Cost"
-              hint="All-in cost per CHF readmission episode (direct + indirect). National average ~$15,000."
+              hint="All-in cost per cardiometabolic readmission episode (direct + indirect). National average ~$15,000."
               value={readmitCost}
               min={5000}
               max={40000}
@@ -209,8 +209,8 @@ export default function ROICalculator() {
               onChange={setReductionPct}
             />
             <Slider
-              label="Annual ED/ER Visits (CHF)"
-              hint="Number of emergency visits per year from your CHF population."
+              label="Annual ED/ER Visits (Cardiometabolic)"
+              hint="Number of emergency visits per year from your cardiometabolic population."
               value={erVisits}
               min={0}
               max={1000}
@@ -230,7 +230,7 @@ export default function ROICalculator() {
             />
             <Slider
               label="ED Visit Reduction"
-              hint="RPM programs typically reduce CHF-related ED visits by 30–50%."
+              hint="RPM programs typically reduce cardiometabolic-related ED visits by 30–50%."
               value={erReductionPct}
               min={10}
               max={70}
@@ -360,7 +360,7 @@ export default function ROICalculator() {
               <div style={{ border: "1px solid #e6eaf2", borderRadius: 18, background: "#fff", padding: 16 }}>
                 <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700 }}>The Story</h3>
                 <p style={{ margin: "0 0 10px", color: "#162033", lineHeight: 1.6, fontSize: 14 }}>
-                  With <strong>{fmt(patients)} CHF patients</strong> and a{" "}
+                  With <strong>{fmt(patients)} cardiometabolic patients</strong> and a{" "}
                   <strong>{readmitRate}%</strong> readmission rate, your facility currently manages{" "}
                   <strong>~{fmt(Math.round(metrics.baseReadmits))} readmissions per year</strong>.
                 </p>
@@ -396,7 +396,7 @@ export default function ROICalculator() {
                   </span>
                 </div>
                 <p style={{ marginTop: 16, color: "#667085", fontSize: 12, lineHeight: 1.5 }}>
-                  Estimates based on published CHF RPM literature and CMS cost benchmarks.
+                  Estimates based on published cardiometabolic RPM literature and CMS cost benchmarks.
                   Actual results will vary by patient population and program implementation.
                   Not a guarantee of specific financial outcomes.
                 </p>

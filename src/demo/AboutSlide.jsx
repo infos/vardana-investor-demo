@@ -51,7 +51,7 @@ export default function AboutSlide({ onBack, onSkip, onNext }) {
           margin: '0 0 32px',
         }}>
           Vardana's AI care concierge calls patients daily, detects early warning signs
-          of decompensation, and alerts their care team before a crisis &mdash; not after.
+          of escalation, and alerts their care team before a crisis &mdash; not after.
         </p>
 
         {/* 3-column stat block */}

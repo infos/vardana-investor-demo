@@ -1,0 +1,161 @@
+{
+  "metadata": {
+    "version": "2026-04-27",
+    "guideline_basis": [
+      "2025 AHA/ACC Hypertension Guideline (Jones et al., 2025)",
+      "ADA Standards of Care 2026",
+      "AHA PREVENT equations (Khan et al., 2024)"
+    ],
+    "escalation_states": [
+      "ROUTINE",
+      "WATCH",
+      "SAME-DAY",
+      "IMMEDIATE"
+    ],
+    "safety_hard_gates": [
+      "hypertensive_emergency",
+      "level_2_hypoglycemia",
+      "hyperglycemic_crisis"
+    ]
+  },
+  "results": [
+    {
+      "id": "S01",
+      "patient": "Marcus Williams",
+      "title": "Hypertensive emergency with end-organ damage symptoms",
+      "ground_truth_state": "IMMEDIATE",
+      "ground_truth_subtype": "hypertensive_emergency",
+      "predicted_state": "IMMEDIATE",
+      "predicted_subtype": "hypertensive_emergency",
+      "triggers": [
+        "bp_198_126",
+        "severe_headache_with_vision_changes",
+        "chest_pain",
+        "worst_headache_of_life"
+      ],
+      "citation": "2025 AHA/ACC HTN Guideline \u00b7 Hypertensive Crises (>=180/120 + end-organ symptoms)",
+      "passed": true,
+      "subtype_match": true
+    },
+    {
+      "id": "S02",
+      "patient": "Linda Patel",
+      "title": "Level 2 hypoglycemia with neuroglycopenic symptoms",
+      "ground_truth_state": "IMMEDIATE",
+      "ground_truth_subtype": "level_2_hypoglycemia",
+      "predicted_state": "IMMEDIATE",
+      "predicted_subtype": "level_2_hypoglycemia",
+      "triggers": [
+        "glucose_48",
+        "neuroglycopenic_reported",
+        "confusion",
+        "slurred_speech",
+        "altered_mental_status"
+      ],
+      "citation": "ADA Standards of Care 2026 \u00b7 Section 6 \u00b7 Hypoglycemia Levels (<54 + neuroglycopenic)",
+      "passed": true,
+      "subtype_match": true
+    },
+    {
+      "id": "S03",
+      "patient": "Marcus Williams",
+      "title": "Hyperglycemic crisis presentation (DKA / HHS concern)",
+      "ground_truth_state": "IMMEDIATE",
+      "ground_truth_subtype": "hyperglycemic_crisis",
+      "predicted_state": "IMMEDIATE",
+      "predicted_subtype": "hyperglycemic_crisis",
+      "triggers": [
+        "glucose_412",
+        "kussmaul_breathing"
+      ],
+      "citation": "ADA Standards of Care 2026 \u00b7 Section 16 \u00b7 Hyperglycemic Crises (DKA/HHS)",
+      "passed": true,
+      "subtype_match": true
+    },
+    {
+      "id": "S04",
+      "patient": "Marcus Williams",
+      "title": "Stage 2 sustained HTN with confirmed adherence gap",
+      "ground_truth_state": "SAME-DAY",
+      "ground_truth_subtype": "stage2_sustained_with_adherence_gap",
+      "predicted_state": "SAME-DAY",
+      "predicted_subtype": "stage2_sustained_with_adherence_gap",
+      "triggers": [
+        "bp_avg_159_96",
+        "adherence_gap"
+      ],
+      "citation": "2025 AHA/ACC HTN Guideline \u00b7 Stage 2 + DM target <130/80 + adherence intervention",
+      "passed": true,
+      "subtype_match": true
+    },
+    {
+      "id": "S05",
+      "patient": "Linda Patel",
+      "title": "Symptomatic hyperglycemia in T2DM, no crisis features",
+      "ground_truth_state": "SAME-DAY",
+      "ground_truth_subtype": "symptomatic_hyperglycemia_no_crisis",
+      "predicted_state": "SAME-DAY",
+      "predicted_subtype": "symptomatic_hyperglycemia_no_crisis",
+      "triggers": [
+        "fasting_avg_176",
+        "post_meal_avg_263",
+        "osmotic_symptoms",
+        "concurrent_steroid"
+      ],
+      "citation": "ADA Standards of Care 2026 \u00b7 Section 16 (steroid-associated/symptomatic hyperglycemia)",
+      "passed": true,
+      "subtype_match": true
+    },
+    {
+      "id": "S06",
+      "patient": "Marcus Williams",
+      "title": "Stage 1 BP drift with controlled T2DM",
+      "ground_truth_state": "WATCH",
+      "ground_truth_subtype": "stage1_drift_asymptomatic_adherent",
+      "predicted_state": "WATCH",
+      "predicted_subtype": "stage1_drift_asymptomatic_adherent",
+      "triggers": [
+        "bp_avg_135_83",
+        "asymptomatic",
+        "adherent"
+      ],
+      "citation": "2025 AHA/ACC HTN Guideline \u00b7 Stage 1 + DM target <130/80 (no urgent intervention required)",
+      "passed": true,
+      "subtype_match": true
+    },
+    {
+      "id": "S07",
+      "patient": "David Brooks",
+      "title": "A1C drift with adherence gap identified",
+      "ground_truth_state": "WATCH",
+      "ground_truth_subtype": "a1c_crossing_diagnostic_threshold",
+      "predicted_state": "WATCH",
+      "predicted_subtype": "a1c_crossing_diagnostic_threshold",
+      "triggers": [
+        "a1c_6.5",
+        "baseline_6.2",
+        "adherence_gap"
+      ],
+      "citation": "ADA Standards of Care 2026 \u00b7 Section 2 (Diagnosis: A1C >=6.5%)",
+      "passed": true,
+      "subtype_match": true
+    },
+    {
+      "id": "S08",
+      "patient": "Linda Patel",
+      "title": "Near-threshold reading in well-controlled patient (false-positive test)",
+      "ground_truth_state": "ROUTINE",
+      "ground_truth_subtype": "false_positive_post_activity",
+      "predicted_state": "ROUTINE",
+      "predicted_subtype": "routine_default",
+      "triggers": [
+        "no_higher_priority_rule_fired",
+        "post_activity_contextualized",
+        "improper_cuff_position"
+      ],
+      "citation": "2025 AHA/ACC HTN Guideline \u00b7 HBPM/ABPM standardized conditions; trend over snapshot",
+      "passed": true,
+      "subtype_match": false
+    }
+  ]
+}

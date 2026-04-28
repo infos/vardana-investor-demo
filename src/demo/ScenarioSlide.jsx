@@ -5,27 +5,8 @@ import { AlertIcon, CheckIcon } from './icons';
 import { useIsMobile } from './useIsMobile';
 
 const SCENARIOS = {
-  sarah: {
-    header: 'Scenario 1',
-    badge: 'Congestive Heart Failure',
-    badgeColor: DT.amber.hover,
-    accentColor: DT.amber.hover,
-    name: 'Sarah Chen',
-    demo: '67F',
-    journey: 'Day 15 · Recovery',
-    condition: 'CHF HFrEF \u00b7 NYHA Class III',
-    warnings: [
-      { color: DT.amber.hover, text: 'Weight +2.3 lbs / 48hrs, exceeded 2 lb threshold' },
-      { color: DT.amber.hover, text: 'BP reversed, 136/86 (best was 126/78)' },
-      { color: DT.crimson, text: 'Patient reported fatigue + ankle swelling this morning' },
-    ],
-    riskLabel: 'Decompensation Risk',
-    riskArc: '68 \u2192 84',
-    riskStart: 72,
-    param: 'sarah',
-  },
   marcus: {
-    header: 'Scenario 2',
+    header: 'Scenario 1',
     badge: 'Hypertension + Type 2 Diabetes',
     badgeColor: DT.jade.hover,
     accentColor: DT.jade.hover,
@@ -34,7 +15,7 @@ const SCENARIOS = {
     journey: 'Day 22 · Continuous Care',
     condition: 'HTN + T2DM \u00b7 Missed medication',
     warnings: [
-      { color: DT.jade.hover, text: 'BP 158/98, 4-day worsening trend (was 129/80)' },
+      { color: DT.jade.hover, text: 'BP 158/98, 4-day worsening trend (was 142/88)' },
       { color: DT.jade.hover, text: 'Missed Lisinopril refill for a few days' },
       { color: DT.crimson, text: 'Patient reports morning headache' },
     ],
@@ -160,7 +141,7 @@ function ScenarioCard({ scenario, selected, onSelect, onStart, isMobile }) {
   );
 }
 
-export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Demo', ctaSlot, onPatientSelect, defaultPatient = 'sarah' }) {
+export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Demo', ctaSlot, onPatientSelect, defaultPatient = 'marcus' }) {
   const isMobile = useIsMobile();
   const [selected, setSelected] = useState(defaultPatient);
 
@@ -177,7 +158,7 @@ export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Dem
     'AI concierge calls the patient and detects a clinical warning pattern',
     'Risk score escalates in real time as the conversation unfolds',
     'Priority alert fires to the care coordinator with full clinical context',
-    'The same platform works across CHF, hypertension, diabetes, and beyond',
+    'The same platform extends across other cardiometabolic patients',
   ];
 
   return (
@@ -213,7 +194,6 @@ export default function ScenarioSlide({ onBack, onEnter, enterLabel = 'Enter Dem
         gap: 12,
         marginBottom: 20,
       }}>
-        <ScenarioCard scenario="sarah" selected={selected === 'sarah'} onSelect={() => handleSelect('sarah')} onStart={(p) => onEnter && onEnter(p)} isMobile={isMobile} />
         <ScenarioCard scenario="marcus" selected={selected === 'marcus'} onSelect={() => handleSelect('marcus')} onStart={(p) => onEnter && onEnter(p)} isMobile={isMobile} />
       </div>
 

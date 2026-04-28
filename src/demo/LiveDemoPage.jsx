@@ -7,14 +7,11 @@ import { DEMO_BASE } from '../demoPath';
 import { useIsMobile } from './useIsMobile';
 
 export default function LiveDemoPage({ navigate }) {
-  const conditionParam = new URLSearchParams(window.location.search).get('condition') || '';
-  const defaultPatient = conditionParam.toLowerCase().startsWith('hyp') ? 'marcus' : 'sarah';
-
+  // Sole cardiometabolic patient post CHF decommission. Patient picker / Sarah
+  // path collapsed; query param retained for back-compat.
   const [step, setStep] = useState('about');
-  const [selectedPatient, setSelectedPatient] = useState(defaultPatient);
+  const [selectedPatient, setSelectedPatient] = useState('marcus');
   const isMobile = useIsMobile();
-
-  const patientParam = selectedPatient === 'marcus' ? '&patient=marcus' : '';
 
   const ctaSlot = (
     <div style={{
@@ -24,11 +21,8 @@ export default function LiveDemoPage({ navigate }) {
       flexDirection: isMobile ? 'column' : 'row',
     }}>
       <GhostButton onClick={() => setStep('about')}>&larr; Back</GhostButton>
-      <PrimaryButton onClick={() => navigate(`/coordinator?demo=live${patientParam}`)} color={DT.amber.default} textColor={DT.bg.page}>
+      <PrimaryButton onClick={() => navigate(`/coordinator?demo=live&patient=marcus`)} color={DT.amber.default} textColor={DT.bg.page}>
         Open Coordinator View &rarr;
-      </PrimaryButton>
-      <PrimaryButton onClick={() => navigate(`/patient${selectedPatient === 'marcus' ? '?patient=marcus' : ''}`)} color={DT.jade.default} textColor="white">
-        Open Patient Portal &rarr;
       </PrimaryButton>
     </div>
   );

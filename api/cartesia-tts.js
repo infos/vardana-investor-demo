@@ -8,7 +8,6 @@ const CARTESIA_KEY = (process.env.CARTESIA_API_KEY || '').trim();
 // Canonical Cartesia voice IDs — kept in sync with api/tts.js
 const CARTESIA_VOICES = {
   AI: 'f9836c6e-a0bd-460e-9d3c-f7299fa60f94',
-  Sarah: 'e07c00bc-4134-4eae-9ea4-1a55fb45746b',
   Marcus: 'a5136bf9-224c-4d76-b823-52bd5efcffcc',
 };
 
