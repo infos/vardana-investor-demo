@@ -1,7 +1,29 @@
+/**
+ * api/voice-chat.js
+ *
+ * Vercel function backing the in-browser voice/chat call surface for
+ * cardiometabolic (HTN + T2DM) patients. CHF / Sarah Chen support has been
+ * removed — all decompensation logic was excised in favor of the deterministic
+ * escalation rule set at `api/_lib/escalation.js`.
+ *
+ * Pipeline per request:
+ *   1. Parse vitals + symptoms + adherence signals from the message stream.
+ *   2. Build a `ScenarioInput` via `api/_lib/build_scenario_from_fhir.js`.
+ *   3. Run `assessEscalationState` — deterministic, guideline-cited.
+ *   4. Inject the resulting `{state, subtype, triggers, citation}` into the
+ *      system prompt as a hard constraint and into the response payload.
+ *   5. Stream Claude's reply back to the browser.
+ *
+ * The LLM does the patient-facing language; the escalation decision is the
+ * rule set's, not the model's.
+ */
+
+const { assessEscalationState } = require('./_lib/escalation.js');
+const { buildScenarioFromInputs } = require('./_lib/build_scenario_from_fhir.js');
+
 const API_KEY = process.env.ANTHROPIC_API_KEY;
 
 // ── AWS Bedrock config ─────────────────────────────────────────────────────
-// Set USE_BEDROCK=false to fall back to direct Anthropic API
 const USE_BEDROCK = process.env.USE_BEDROCK !== 'false';
 const BEDROCK_REGION = process.env.AWS_REGION || 'us-east-1';
 const BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID || 'us.anthropic.claude-sonnet-4-6';
@@ -22,513 +44,285 @@ function getBedrockClient() {
 }
 
 // =============================================================================
-// STEP 1 — Decompensation Risk Algorithm (ported from src/lib/clinical-skills/decompensation.ts)
-// Runs server-side before calling the LLM so the AI starts from facts, not guesses.
-// =============================================================================
-
-function getWeightGain48hr(vitals) {
-  const w = vitals.filter(v => v.weightLbs != null);
-  if (w.length < 2) return 0;
-  const latest = w[w.length - 1].weightLbs;
-  for (let i = w.length - 2; i >= Math.max(0, w.length - 4); i--) {
-    const days = (new Date(w[w.length - 1].date) - new Date(w[i].date)) / 86400000;
-    if (days >= 1.5 && days <= 3) return latest - w[i].weightLbs;
-  }
-  return latest - w[w.length - 2].weightLbs;
-}
-
-function getWeightGain7day(vitals) {
-  const w = vitals.filter(v => v.weightLbs != null);
-  if (w.length < 2) return 0;
-  const latest = w[w.length - 1].weightLbs;
-  for (let i = 0; i < w.length - 1; i++) {
-    const days = (new Date(w[w.length - 1].date) - new Date(w[i].date)) / 86400000;
-    if (days >= 4 && days <= 8) return latest - w[i].weightLbs;
-  }
-  return 0;
-}
-
-function getLatestSystolic(vitals) {
-  const bp = vitals.filter(v => v.systolic != null);
-  return bp.length > 0 ? bp[bp.length - 1].systolic : null;
-}
-
-function getSystolicTrend(vitals) {
-  const bp = vitals.filter(v => v.systolic != null);
-  if (bp.length < 2) return 0;
-  const recent = bp.slice(-3);
-  return recent[recent.length - 1].systolic - recent[0].systolic;
-}
-
-function assessDecompensationRisk({ vitals, symptoms, journeyDay, conditionCount, missedDoses = 0 }) {
-  let score = 0;
-
-  // Emergency short-circuit
-  if (symptoms.chestPain || symptoms.syncope) {
-    const sys = getLatestSystolic(vitals);
-    score = (symptoms.chestPain && symptoms.dyspnea) ? 95
-          : (symptoms.syncope && symptoms.dyspnea)   ? 95
-          : (sys != null && sys < 90)                ? 95
-          : 90;
-    return { riskLevel: 'critical', riskScore: score };
-  }
-
-  const wg48 = getWeightGain48hr(vitals);
-  const wg7d  = getWeightGain7day(vitals);
-  if      (wg48 >= 3.0) score += 30;
-  else if (wg48 >= 2.0) score += 22;
-  else if (wg48 >= 1.5) score += 16;
-  else if (wg48 >= 1.0) score += 5;
-  if      (wg7d >= 3.0) score += 15;
-  else if (wg7d >= 2.0) score += 8;
-
-  const latestSys = getLatestSystolic(vitals);
-  const bpTrend   = getSystolicTrend(vitals);
-  if (latestSys != null) {
-    if      (latestSys >= 160) score += 35;
-    else if (latestSys >= 145) score += 15;
-    else if (latestSys >= 135) score += 8;
-    if (latestSys < 90) score += 30;
-  }
-  if      (bpTrend >= 20) score += 15;
-  else if (bpTrend >= 12) score += 8;
-
-  if (symptoms.orthopnea) score += 32;
-  if (symptoms.dyspnea)   score += 15;
-  if (symptoms.edema)     score += 12;
-  if (symptoms.fatigue)   score += 8;
-
-  const symCount = Object.values(symptoms).filter(Boolean).length;
-  if      (symCount >= 3) score += 10;
-  else if (symCount === 2) score += 5;
-
-  if (wg48 >= 1.5 && latestSys != null && latestSys >= 130) score += 8;
-  if (wg48 >= 1.0 && missedDoses >= 2) score += 10;
-  if (symptoms.orthopnea && conditionCount >= 4) score += 10;
-  if (wg48 >= 1.0 && wg48 < 2.0 && symCount >= 1 && conditionCount >= 4) score += 10;
-  // Dual-threshold weight gain (accelerating fluid retention, not already in ≥3 lb/48hr range)
-  if (wg48 >= 2.0 && wg48 < 3.0 && wg7d >= 2.0) score += 8;
-  // Early post-discharge dyspnea with significant weight gain — high-risk decompensation window
-  if (wg48 >= 2.0 && wg48 < 3.0 && symptoms.dyspnea && journeyDay <= 7) score += 10;
-
-  if      (journeyDay <= 7)  score += 15;
-  else if (journeyDay <= 14) score += 12;
-  else if (journeyDay >= 61) score = Math.max(0, score - 5);
-
-  if      (conditionCount >= 5) score += 8;
-  else if (conditionCount >= 3) score += 5;
-
-  if      (missedDoses >= 3) score += 15;
-  else if (missedDoses >= 1) score += 4;
-
-  score = Math.max(0, Math.min(100, score));
-  // Threshold 45 (not 50) — +2 lb/48hr with missed doses or Day-5 timing sits at 45-49
-  const riskLevel = score >= 80 ? 'critical' : score >= 45 ? 'high' : score >= 20 ? 'moderate' : 'low';
-  return { riskLevel, riskScore: score };
-}
-
-// =============================================================================
-// STEP 2 — Parse today's device data + symptoms from patient messages
+// Parse vitals, symptoms, and adherence signals from the message stream.
 // =============================================================================
 
 function parsePatientMessage(messages) {
   const text = messages.filter(m => m.role === 'user').map(m => m.content).join(' ');
-  const weightMatch = text.match(/\b(\d{2,3}(?:\.\d+)?)\s*(?:lbs?|pounds?)/i);
-  const bpMatch     = text.match(/\b(\d{2,3})\s*\/\s*(\d{2,3})\b/);
-  const dayMatch    = text.match(/\bDay\s+(\d+)/i);
-  // "forgot ... last 3 days" / "missed ... 3 doses" / "3 days ... forgot"
-  const missedMatch = (!/missed|forgot/i.test(text)) ? null
+  const bpMatch = text.match(/\b(\d{2,3})\s*\/\s*(\d{2,3})\b/);
+  const glucoseMatch = text.match(/\b(\d{2,3})\s*(?:mg\/?dL|mg per dL|glucose|sugar|fasting)/i);
+  const dayMatch = text.match(/\bDay\s+(\d+)/i);
+  const missedMatch = (!/missed|forgot|skipped|ran out/i.test(text)) ? null
     : text.match(/(\d+)\s*(?:days?|doses?|times?)/i);
   return {
-    weight:      weightMatch ? parseFloat(weightMatch[1]) : null,
-    systolic:    bpMatch     ? parseInt(bpMatch[1])       : null,
-    diastolic:   bpMatch     ? parseInt(bpMatch[2])       : null,
-    journeyDay:  dayMatch    ? parseInt(dayMatch[1])      : null,
-    missedDoses: missedMatch ? parseInt(missedMatch[1])   : 0,
+    systolic: bpMatch ? parseInt(bpMatch[1]) : null,
+    diastolic: bpMatch ? parseInt(bpMatch[2]) : null,
+    glucose: glucoseMatch ? parseInt(glucoseMatch[1]) : null,
+    journeyDay: dayMatch ? parseInt(dayMatch[1]) : null,
+    missedDoses: missedMatch ? parseInt(missedMatch[1]) : 0,
+    adherenceGap: /missed|forgot|skipped|ran out/i.test(text),
+    postActivity: /just (walked|ran|exercised)|after (walking|running|exercise)|finished\s+(walking|exercise)/i.test(text),
   };
 }
 
 function parseSymptoms(messages) {
   const text = messages.filter(m => m.role === 'user').map(m => m.content).join(' ');
   return {
-    dyspnea:   /short.{0,15}breath|breath.{0,15}short|dyspnea|winded|breathing.{0,10}hard|hard.{0,10}breath/i.test(text),
-    edema:     /swollen|swelling|puffy|ankles|edema/i.test(text),
-    orthopnea: /pillow|lie.{0,10}flat|sleep.{0,10}flat|flat.{0,10}sleep|prop.{0,10}up/i.test(text),
-    fatigue:   /tired|fatigue|exhausted|weak|no energy/i.test(text),
-    chestPain: /chest.{0,10}pain|pain.{0,10}chest/i.test(text),
-    syncope:   /faint|passed out|nearly fainted|almost.{0,8}faint|syncope/i.test(text),
+    severe_headache: /(severe|terrible|worst|pounding|splitting).{0,20}headache|headache.{0,20}(severe|terrible)/i.test(text),
+    headache_worst_of_life: /worst.{0,15}headache.{0,15}(life|ever)/i.test(text),
+    vision_changes: /(blurr|double vision|spots|vision.{0,15}(chang|off|weird)|seeing.{0,15}spot)/i.test(text),
+    chest_pain: /chest.{0,10}(pain|press|tight)|pain.{0,10}chest/i.test(text),
+    focal_neuro_deficit: /numb|weakness on one side|slurred|can('?t| not) speak|drooping/i.test(text),
+    kussmaul_breathing: /breathing (deep|fast|hard).{0,20}(can('?t)? stop|won'?t stop)|kussmaul|fruity breath|ketone/i.test(text),
+    altered_mental_status: /confused|disoriented|can('?t| not) think|foggy|out of it|not making sense/i.test(text),
+    neuroglycopenic: /shaky|sweaty|trembl|light.?headed|dizzy.{0,20}(eat|sugar)|cold sweat/i.test(text),
+    confusion: /confused|disoriented/i.test(text),
+    slurred_speech: /slur(red|ring)? speech|words.{0,15}wrong/i.test(text),
+    osmotic_symptoms: /(peeing|urinat).{0,20}(more|a lot|all the time)|always thirsty|drinking.{0,15}(more|a lot)/i.test(text),
+    polyuria: /(peeing|urinat).{0,20}(more|a lot|all the time)/i.test(text),
+    polydipsia: /always thirsty|drinking.{0,15}(more|a lot)|can('?t| not) stop drinking/i.test(text),
+    nocturia: /up.{0,15}night.{0,15}pee|waking.{0,15}pee/i.test(text),
+    severe_fatigue: /(extreme|severe|crushing).{0,15}(fatigue|tired|exhausted)/i.test(text),
+    nausea: /nause|sick to my stomach|throwing up|vomit/i.test(text),
   };
 }
 
 // =============================================================================
-// STEP 3 — Sarah demo FHIR data (14-day stable baseline)
-// In production this would be fetched from Medplum. Stable at 185.4 lbs / 126/78.
-// =============================================================================
-
-// Fixed 14-day baseline — matches the STABLE_BASELINE used in eval scenarios
-const BASELINE_WEIGHTS = [185.0, 185.2, 185.1, 185.4, 185.2, 185.0, 185.4,
-                          185.1, 185.3, 185.4, 185.2, 185.4, 185.3, 185.4];
-const BASELINE_BP      = [[124,76],[126,78],[124,76],[128,80],[124,76],[126,78],[124,76],
-                          [126,78],[124,76],[128,80],[124,76],[126,78],[126,78],[126,78]];
-
-function getSarahDemoVitals() {
-  const today = new Date();
-  const baseline = BASELINE_WEIGHTS.map((w, i) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - (14 - i));       // day -14 .. day -1
-    return { date: d.toISOString().split('T')[0], weightLbs: w,
-             systolic: BASELINE_BP[i][0], diastolic: BASELINE_BP[i][1] };
-  });
-  // Day 15 (today): +2.3 lb weight gain vs 48 hr ago, BP elevated to 136/86
-  baseline.push({ date: today.toISOString().split('T')[0], weightLbs: 187.7, systolic: 136, diastolic: 86 });
-  return baseline;
-}
-
-const SARAH_DEMO_LABS = {
-  // Post-discharge values: NT-proBNP elevated but improving, creatinine at upper CKD3a range.
-  ntProBNP:   { value: 1850, unit: 'pg/mL',          status: 'elevated (normal <300)', trend: 'down from 8,500 at admission — improving but still above normal' },
-  creatinine: { value: 1.8,  unit: 'mg/dL',          status: 'elevated above CKD3a baseline (1.4)', trend: 'rising — monitor for over-diuresis vs CKD progression' },
-  eGFR:       { value: 42,   unit: 'mL/min/1.73m²',  status: 'reduced (normal >60)',                trend: 'slightly declining' },
-  potassium:  { value: 4.2,  unit: 'mEq/L',          status: 'normal',                              trend: 'stable' },
-  sodium:     { value: 138,  unit: 'mEq/L',          status: 'normal',                              trend: 'stable' },
-};
-
-// =============================================================================
-// STEP 4 — Pacing + System prompts
+// Pacing
 // =============================================================================
 
 function buildPacingInstruction(turn, maxTurns) {
   if (turn == null || maxTurns == null) return '';
   const remaining = maxTurns - turn;
-  if (remaining <= 2) return `\n\nPACING: FINAL exchange. Summarize findings, confirm coordinator follow-up if needed, say a warm goodbye. Set phase to "done".\nCRITICAL EXCEPTION: If the patient has JUST raised a new symptom or concern (e.g. shortness of breath, swelling, chest pain) in their last message, do NOT wrap up yet. Acknowledge the concern, ask the most important follow-up question about it, and note it for the care coordinator. Patient safety always overrides pacing.`;
-  if (remaining <= 4) return `\n\nPACING: ${remaining} exchanges left. Begin wrapping up — move to guidance/escalation now.\nIMPORTANT: If the patient raises a new symptom or concern, ALWAYS address it before wrapping up. Never dismiss or skip a patient-reported symptom to save time.`;
+  if (remaining <= 2) return `\n\nPACING: FINAL exchange. Summarize findings, confirm coordinator follow-up if needed, say a warm goodbye. Set phase to "done".\nCRITICAL EXCEPTION: If the patient has JUST raised a new symptom or concern, do NOT wrap up yet. Acknowledge the concern, ask the most important follow-up question, and note it for the care coordinator. Patient safety always overrides pacing.`;
+  if (remaining <= 4) return `\n\nPACING: ${remaining} exchanges left. Begin wrapping up — move to guidance/escalation now.\nIMPORTANT: If the patient raises a new symptom, ALWAYS address it before wrapping up.`;
   if (remaining <= 6) return `\n\nPACING: ${remaining} exchanges left. Progress efficiently through remaining topics.`;
   return '';
 }
 
-function buildSarahPrompt(turn, maxTurns, riskResult, vitals, symptoms, labs) {
-  const wg48      = getWeightGain48hr(vitals);
-  const latestBP  = [...vitals].reverse().find(v => v.systolic);
-  const latestW   = [...vitals].reverse().find(v => v.weightLbs);
+// =============================================================================
+// System prompt — includes the deterministic escalation result as a hard
+// constraint. The LLM may not raise or lower the state. It owns wording only.
+// =============================================================================
 
-  // Summarise 7-day weight trend
-  const recentWeights = vitals.slice(-7).filter(v => v.weightLbs)
-    .map(v => `${v.date.slice(5)}: ${v.weightLbs} lbs`).join(' → ');
-
-  // Which signals drove the score
-  const signals = [];
-  if (wg48 >= 2.0)              signals.push(`weight +${wg48.toFixed(1)} lbs over 48 hr (threshold ≥2.0)`);
-  else if (wg48 >= 1.5)         signals.push(`weight +${wg48.toFixed(1)} lbs over 48 hr (near-threshold)`);
-  else if (wg48 > 0)            signals.push(`weight +${wg48.toFixed(1)} lbs over 48 hr (stable)`);
-  if (latestBP?.systolic >= 160) signals.push(`hypertensive urgency ${latestBP.systolic}/${latestBP.diastolic} mmHg`);
-  else if (latestBP?.systolic >= 145) signals.push(`elevated BP ${latestBP.systolic}/${latestBP.diastolic} mmHg`);
-  else if (latestBP?.systolic >= 135) signals.push(`borderline-elevated BP ${latestBP.systolic}/${latestBP.diastolic} mmHg`);
-  if (latestBP?.systolic < 90)  signals.push(`⚠ HYPOTENSION ${latestBP.systolic}/${latestBP.diastolic} mmHg`);
-  if (symptoms.orthopnea)        signals.push('orthopnea (HIGH-weight pulmonary congestion signal)');
-  if (symptoms.dyspnea)          signals.push('exertional dyspnea');
-  if (symptoms.edema)            signals.push('peripheral edema');
-  if (symptoms.fatigue)          signals.push('fatigue');
-  if (symptoms.chestPain)        signals.push('⚠ CHEST PAIN — emergency');
-  if (symptoms.syncope)          signals.push('⚠ NEAR-SYNCOPE — emergency');
-
-  const isEmergency    = symptoms.chestPain || symptoms.syncope || (latestBP?.systolic < 90);
-  const requiresEscal  = riskResult.riskLevel === 'high' || riskResult.riskLevel === 'critical';
-
-  return `${isEmergency ? `⚠️ EMERGENCY OVERRIDE — READ THIS FIRST ⚠️
-This patient is describing a life-threatening emergency. Your ONLY task right now is:
-1. Say "Please call 911 right now." — THIS IS YOUR FIRST SENTENCE, NO EXCEPTIONS.
-2. Briefly state why (e.g. "You're describing near-fainting and severe breathing difficulty — that's a cardiac emergency.").
-3. Say "I'm also notifying your care team right now."
-DO NOT greet the patient first. DO NOT ask questions. DO NOT say anything else.
-────────────────────────────────────────────────────────────────
-
-` : ''}${turn > 0 ? `⚠ TURN ${turn} — WELLNESS QUESTION ALREADY ANSWERED. READ THIS FIRST.
-The patient answered "How are you feeling today?" in turn 0 of this call. The answer is in the conversation history above.
-PROHIBITED: Do NOT say "How are you feeling today?", "How are you feeling overall?", or any variant. This question is closed.
-PROHIBITED: Do NOT say "That's great to hear" or any positive affirmation if the patient reported fatigue, tiredness, or any symptom — acknowledge the symptom directly.
-REQUIRED: Look at the patient's last message. Acknowledge EXACTLY what they said. Then pivot to the clinical data.
-
-` : ''}You are Vardana, an AI care concierge for chronic heart failure post-discharge management. You are conducting a scheduled voice check-in with Sarah Chen.
-
-PATIENT PROFILE:
-- Sarah Chen, 67 F | HFrEF NYHA III | Day ${vitals.length} of post-discharge recovery
-- Comorbidities (5): Hypertensive heart disease, Type 2 diabetes, CKD Stage 3a (eGFR 48), Morbid obesity
-- Meds: Carvedilol 12.5 mg BID · Lisinopril 10 mg · Furosemide 40 mg · Metformin 1000 mg BID · Spironolactone 25 mg
-- Care coordinator: Nurse Rachel Kim
-
-━━━ PRE-CALL CLINICAL ASSESSMENT (FHIR data fetched + algorithm run before this call) ━━━
-7-day weight trend: ${recentWeights}${latestW ? ` → Today: ${latestW.weightLbs} lbs` : ''}
-48-hr weight change: ${wg48 >= 0 ? '+' : ''}${wg48.toFixed(1)} lbs
-Latest BP: ${latestBP ? `${latestBP.systolic}/${latestBP.diastolic} mmHg` : 'not recorded'}
-Recent labs: NT-proBNP ${labs.ntProBNP.value} pg/mL (${labs.ntProBNP.status}; ${labs.ntProBNP.trend}), Creatinine ${labs.creatinine.value} mg/dL (${labs.creatinine.trend})
-
-Algorithm risk score: ${riskResult.riskScore}/100 → ${riskResult.riskLevel.toUpperCase()}
-Key signals: ${signals.length > 0 ? signals.join(' | ') : 'none — vitals stable'}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-CONVERSATION OBJECTIVE (risk already computed — use it, don't rediscover it):
-${isEmergency
-  ? `🚨 EMERGENCY — NO GREETING. NO PREAMBLE. NO QUESTIONS. EXACT STRUCTURE REQUIRED:\nFIRST WORDS SPOKEN: "Please call 911 right now."\nSECOND SENTENCE: State the reason plainly. Example: "You're describing near-fainting and severe breathing difficulty — those are signs of a cardiac emergency that needs immediate medical attention."\nTHIRD SENTENCE: "I'm also notifying your care team right now."\nSTOP THERE. Do not say anything before the 911 instruction. Do not ask any questions.`
-  : requiresEscal
-  ? `1. REQUIRED FIRST SENTENCE: "I've reviewed your data and I need to let you know — I'm assessing this as ${riskResult.riskLevel.toUpperCase()} risk." (Use those exact words: "${riskResult.riskLevel.toUpperCase()} risk")\n2. REQUIRED SECOND SENTENCE: Name the specific signals. Example: "Your weight has gone up ${wg48.toFixed(1)} pounds in 48 hours${symptoms.edema ? ' and you have ankle swelling' : ''}${symptoms.dyspnea ? ' and breathing difficulty' : ''}${symptoms.orthopnea ? ' and trouble lying flat' : ''} — those signals together are what's driving my concern."\n3. Say "I'm going to notify your care team" — required phrase.\n4. Ask ONE targeted follow-up question about the most important unconfirmed symptom.\n5. Set generateAlert=true — do not wait.`
-  : riskResult.riskLevel === 'moderate'
-  ? `1. REQUIRED OPENING: "I've reviewed your data and I'm assessing this as MODERATE risk." — say these exact words.\n2. REQUIRED: Name ALL elevated lab values and clinical drivers explicitly:\n   ${labs && labs.ntProBNP.value >= 1500 ? `• NT-proBNP is ${labs.ntProBNP.value} pg/mL (elevated — normal is under 300, improving from admission). REQUIRED: Tell Sarah this number. "Your NT-proBNP heart-strain marker is at ${labs.ntProBNP.value} — it's come down a lot since your hospital stay, but it's still above normal, so we're keeping an eye on it."` : ''}\n   ${labs && labs.creatinine.value >= 1.6 ? `• Creatinine is ${labs.creatinine.value} mg/dL and rising. REQUIRED: Mention this too. "Your kidney function number has been creeping up — it's at ${labs.creatinine.value} and we want to make sure it's not related to your water pill."` : ''}\n   ${!labs || (labs.ntProBNP.value < 1500 && labs.creatinine.value < 1.6) ? `• State the weight trend and what it means for heart failure recovery.` : ''}\n3. Ask about symptoms (dyspnea, swelling, fatigue) and medication adherence.\n4. Reassure: MODERATE = monitoring closely, not emergency.`
-  : `1. REQUIRED: State the risk level — "I've reviewed your readings and things look LOW risk and stable today."\n2. Note any positive trends (stable weight, BP in range).\n3. Briefly ask about symptoms and adherence.\n4. Keep the tone reassuring and brief.\nIMPORTANT: Do NOT over-emphasize labs for a LOW-risk patient — mention them only if asked or only in passing ("your labs are being monitored by your care team"). The focus should be on the stable vitals.\nNEVER say labs "look reasonable", "look good", or "look fine" — the patient's NT-proBNP and creatinine are elevated. If you mention labs, say "your labs are being monitored" — never characterize them positively.`
+function escalationGuidance(state) {
+  switch (state) {
+    case 'IMMEDIATE':
+      return [
+        'STATE IS IMMEDIATE — this is a clinical emergency.',
+        'FIRST SENTENCE must be: "Please call 911 or go to your nearest emergency room right now."',
+        'Briefly state which signals drove the assessment (BP, glucose, symptom).',
+        'Tell the patient you are also notifying their care team.',
+        'Do NOT ask follow-up questions. Do NOT delay.',
+      ].join(' ');
+    case 'SAME-DAY':
+      return [
+        'STATE IS SAME-DAY — needs coordinator attention within hours, not an emergency.',
+        'Open with: "I\'ve reviewed your readings and I\'m flagging this for your coordinator today."',
+        'Name the specific signals (BP, adherence, glucose pattern).',
+        'Say "I\'m sending a priority alert to your coordinator right now" and set generateAlert=true.',
+        'Close with safety guidance and a coordinator-callback timeline.',
+      ].join(' ');
+    case 'WATCH':
+      return [
+        'STATE IS WATCH — coordinator review within 24 hours.',
+        'Open by stating the specific signal driving the watch (e.g. Stage 1 BP drift, A1c crossing).',
+        'Confirm adherence and ask one targeted symptom question.',
+        'Reassure the patient — WATCH is monitoring, not urgent. Do not say "911" or "emergency".',
+        'Note that the coordinator will follow up; do NOT set generateAlert=true unless something new surfaces.',
+      ].join(' ');
+    case 'ROUTINE':
+    default:
+      return [
+        'STATE IS ROUTINE — readings are within tolerance or contextualized (post-activity, cuff position).',
+        'Open positively: brief acknowledgment of how the patient is doing.',
+        'Mention the contextual factor if relevant ("a reading right after exercise can run high — let\'s recheck rested").',
+        'Confirm adherence quickly. Keep the call short and reassuring.',
+        'Do NOT set generateAlert=true.',
+      ].join(' ');
+  }
 }
 
-MANDATORY TRANSPARENCY: Name the specific data points that drove your assessment. Don't say "I'm concerned" without saying WHY — cite the numbers, the trend, the symptoms.
-${isEmergency ? '⚠ EMERGENCY: DO NOT ask follow-up questions. Start with "Please call 911 right now." — this is your FIRST sentence.' : ''}
+function buildMarcusPrompt(ctx, turn, maxTurns, escalation) {
+  return `You are the Vardana AI Care Concierge conducting a structured check-in with Marcus Williams, 58, male. He is on Day 22 of continuous cardiometabolic care (hypertension + type 2 diabetes).
 
-SAFETY RULES:
-- NEVER suggest changing, adjusting, or stopping any medication. If asked: "That's a great question for your next appointment."
-- NEVER diagnose. Say "your medical history" or "your conditions" — never "you have X."
-- 911 EMERGENCIES (overrides everything): Chest pain, loss of consciousness/near-fainting, or severe acute shortness of breath AT REST (not exertional) → your FIRST sentence must be "Please call 911 right now."
-- NON-911 ESCALATION: Exertional dyspnea (e.g. short of breath walking to kitchen), ankle swelling, weight gain → say "I'm notifying your care coordinator, they'll call you today." Do NOT say 911 for these.
-- ESCALATION: When risk is HIGH or CRITICAL, say "I'm going to notify your care team" in your spoken response.
-- NEVER DISMISS OR SKIP A PATIENT CONCERN: If the patient reports a symptom (shortness of breath, swelling, pain, etc.), you MUST acknowledge it and ask at least one follow-up question before moving on. Never summarize/wrap up while a patient concern is unaddressed.
-- LISTEN FIRST: Do not assume you know what the patient will say. Wait for their full response before drawing conclusions. Never pre-empt their answer with your own summary.
-- NEVER ask "how are you feeling today?" more than once per call. The greeting already asked that. After the patient answers, move to specific clinical follow-ups (e.g. "any swelling in your ankles?", "any trouble breathing?") — never re-ask the generic wellness question.
-- NEVER add pronunciation notes, TTS hints, or meta-commentary about your own response. Do not write sentences like "She also mentioned X as Y" or "(pronounced ...)" — your response is spoken directly to the patient, nothing else.
-- Use simple, warm language. No jargon.
-
-RESPONSE FORMAT: Phone call — 2–4 short spoken sentences, warm and direct. Metadata LAST in <metadata> tags.
-
-Example HIGH-risk opening:
-Hi Sarah, this is Vardana. I've reviewed your data and I need to let you know — I'm assessing this as HIGH risk. Your weight has gone up 2.3 pounds in 48 hours and you have ankle swelling — those signals together are what's driving my concern. I'm going to notify your care team, and I want to ask you one more thing.
-
-<metadata>{"fhirQueries":[{"method":"GET","path":"/Observation?patient=sarah-chen&code=body-weight&_sort=-date&_count=14","result":"14 readings loaded"}],"riskScore":${riskResult.riskScore},"generateAlert":${requiresEscal},"assessment":{"weightGain":"${wg48 >= 0 ? '+' : ''}${wg48.toFixed(1)} lbs/48hr","orthopnea":"${symptoms.orthopnea ? 'Confirmed' : 'Pending'}","ankleEdema":"${symptoms.edema ? 'Confirmed' : 'Pending'}","adherence":"Pending"},"phase":"weight_review"}</metadata>
-
-METADATA FIELDS:
-- fhirQueries: Always include the FHIR queries run this turn. Start with what's already in the example above, add more as conversation progresses (medication queries, lab queries, POST /Flag on escalation).
-- riskScore: Start at ${riskResult.riskScore} (pre-computed). Adjust +5–+15 as symptoms are confirmed.
-- generateAlert: ${requiresEscal ? `TRUE — risk is ${riskResult.riskLevel.toUpperCase()}. Set true when you say "care team" out loud.` : 'Set true only when multi-signal decompensation is confirmed or new serious symptoms emerge.'}
-- assessment: Track confirmed findings. Update from "Pending" to the confirmed value.
-- phase: greeting | weight_review | symptoms | medications | guidance | escalation | done. Only set "done" on your FINAL closing message, never while asking a question.` + buildPacingInstruction(turn, maxTurns);
-}
-
-function buildMarcusPrompt(ctx, turn, maxTurns, riskResult) {
-  return `You are the Vardana AI Care Concierge conducting a structured check-in call with Marcus Williams, 58 years old, male. He is on Day 22 of continuous cardiometabolic care (hypertension and type 2 diabetes management).
-
-## Patient Context
-- Conditions: Essential hypertension (I10), Type 2 diabetes with hyperglycemia (E11.65)
+## Patient context
+- Conditions: Essential hypertension (I10), Type 2 diabetes mellitus without complications (E11.9), Hyperlipidemia (E78.5), Obesity (BMI 31.4)
 - Care coordinator: Nurse David Park
 - Primary care physician: Dr. Angela Torres, Internal Medicine
-- Today's BP: 158/98 mmHg. This is a 4-day worsening trend from his best reading of 129/80 on Day 14.
+- Today's BP: 158/98 mmHg — a 4-day worsening trend from 142/88 four days ago
 - Today's fasting glucose: 186 mg/dL
-- Medications: Lisinopril 20mg daily, Amlodipine 5mg daily, Metformin 1000mg twice daily, Atorvastatin 40mg daily, Aspirin 81mg daily
-- Clinical concern: Patient likely missed Lisinopril for 3 days. This is unconfirmed until patient reports it.
+- Medications: Lisinopril 20mg daily AM, Amlodipine 5mg daily, Metformin 1000mg BID with meals, Atorvastatin 40mg daily PM, Aspirin 81mg daily
+- Clinical concern: Patient likely missed Lisinopril for a few days. Unconfirmed until reported.
 
-## Conversation Protocol (follow this order — complete in 5-7 exchanges total)
-1. GREETING -- Reference name and Day 22. Pull up recent readings.
-2. BP REVIEW -- State today's BP (158/98) and note the 4-day worsening trend compared to the Day 14 best (129/80).
-3. SYMPTOM CHECK -- Ask how he is feeling. If he reports any symptom, see SYMPTOM RULE below before proceeding.
-4. MEDICATION ADHERENCE -- Ask specifically whether he has been taking his blood pressure medications this week. Lisinopril is the critical one.
-5. SAFETY SCREEN -- In ONE single response, ask about ALL THREE safety questions at once: "Are you having any chest pain, shortness of breath, or vision changes?" Do NOT ask them as separate questions across multiple turns. Wait for one answer covering all three, then move immediately to step 6.
-6. ESCALATION -- As soon as the safety screen answer is received (regardless of whether symptoms are present or absent): alert David Park immediately (P2 priority). Say "I'm sending a priority alert to Nurse David Park right now." Set generateAlert=true. Then give closing instructions in the same message.
-7. CLOSE -- In the SAME message as the escalation: instruct patient to take it easy, avoid salty foods, stay hydrated, and await David Park's call. Set phase to "done" on this closing message.
+━━━ DETERMINISTIC ESCALATION (computed before the call — DO NOT override) ━━━
+State:    ${escalation.state}
+Subtype:  ${escalation.subtype}
+Triggers: ${escalation.triggers.join(', ')}
+Citation: ${escalation.citation}
+${escalationGuidance(escalation.state)}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-## SYMPTOM RULE -- CRITICAL
-When a patient reports ANY symptom, you MUST:
-1. Acknowledge the symptom directly by name
-2. Connect it to the available clinical data (e.g., "a headache combined with a rising blood pressure trend")
-3. State that you want to make sure the care team knows about it
+## Conversation protocol (5–7 exchanges)
+1. GREETING — reference name and Day 22; state today's BP and the trend.
+2. SYMPTOM CHECK — ask how he is feeling. Apply SYMPTOM RULE if anything is reported.
+3. MEDICATION ADHERENCE — explicitly ask whether he has been taking BP medications this week. Lisinopril is the critical one.
+4. SAFETY SCREEN — in ONE response: "Are you having any chest pain, shortness of breath, or vision changes?" Wait for one combined answer.
+5. ESCALATION — match the state above. For SAME-DAY: dispatch the coordinator alert (set generateAlert=true). For WATCH/ROUTINE: do NOT escalate; finish calmly.
+6. CLOSE — in the same message as the escalation (or after the safety screen for non-escalation states): give care guidance and confirm coordinator timeline.
 
-You must NEVER respond positively to a symptom report. Do not say "great", "good to hear", "wonderful", or any affirmative phrase after a patient discloses a symptom. A headache in a patient with BP 158/98 on a 4-day worsening trend is a clinical signal, not a neutral disclosure.
+## SYMPTOM RULE — CRITICAL
+When a symptom is reported you MUST:
+1. Acknowledge it directly by name.
+2. Connect it to the clinical data (e.g. "a headache combined with a rising BP trend").
+3. State the care team will be informed.
+NEVER say "great", "good to hear", or any positive affirmation after a symptom report.
 
-WRONG: "That's great to hear. How are you feeling overall?"
-CORRECT: "Thank you for telling me that. A headache combined with a rising blood pressure trend over the last few days is something I want to make sure your care team knows about. Can I ask, have you been taking your blood pressure medications consistently this week?"
+## Safety guardrails
+- Never diagnose.
+- Never suggest starting, stopping, or changing a medication.
+- Never override the escalation state above. The state was set deterministically per the 2025 AHA/ACC HTN Guideline / ADA Standards of Care 2026.
+- Use simple, warm language. No jargon.
+- Do not use em-dashes in spoken text.
+- NEVER ask "how are you feeling today?" more than once per call.
+- NEVER add pronunciation notes, TTS hints, or meta-commentary about your own response.
 
-## Emergency Rule
-- Chest pain, vision changes, loss of consciousness, or shortness of breath AT REST: Respond immediately: "That is a serious symptom given your blood pressure reading. Please call 911 or go to your nearest emergency room right now." End the check-in.
-- Shortness of breath on exertion (stairs, walking) is NOT a 911 emergency — it is a P2 escalation signal. Acknowledge it, connect it to the BP trend, and escalate to David Park (step 6). Do NOT say 911 for exertional dyspnea.
-
-## Safety Guardrails
-- Never diagnose
-- Never recommend starting, stopping, or changing any medication
-- Never say "great to hear" or equivalent after a symptom report
-- Always escalate when uncertain -- bias toward alerting David Park
-- Do not mention Vardana's technical infrastructure or the AI model powering you
-
-## Communication Style
-- Clinical, calm, and direct
-- Reference specific data: name the BP reading, reference the trend
-- Do not use em-dashes in spoken text
-- Use simple language
-- NEVER ask "how are you feeling today?" more than once per call. After the patient answers the greeting, move to specific clinical follow-ups — never re-ask the generic wellness question.
-- NEVER add pronunciation notes, TTS hints, or meta-commentary about your own response. Your response is spoken directly to the patient.
-
-RESPONSE FORMAT: Phone call -- 2-4 short spoken sentences, warm and direct. Metadata LAST in <metadata> tags.
-Example: Good morning Marcus, this is the Vardana care concierge calling for your Day 22 check-in. I have pulled up your recent readings and want to talk about what I am seeing.
-<metadata>{"fhirQueries":[{"method":"GET","path":"/Patient/marcus-williams","result":"Patient loaded"}],"riskScore":53,"generateAlert":false,"assessment":{"fatigue":"Pending","sob":"Pending","headache":"Pending","lisinopril":"Pending"},"phase":"greeting"}</metadata>
+RESPONSE FORMAT: phone call — 2–4 short sentences. Metadata LAST in <metadata> tags.
+Example: Good morning Marcus, this is the Vardana care concierge calling for your Day 22 check-in. I've pulled up your latest readings and want to talk about what I'm seeing.
+<metadata>{"fhirQueries":[{"method":"GET","path":"/Patient/marcus-williams","result":"Patient loaded"}],"escalationState":"${escalation.state}","escalationSubtype":"${escalation.subtype}","generateAlert":false,"assessment":{"headache":"Pending","lisinopril":"Pending"},"phase":"greeting"}</metadata>
 
 METADATA FIELDS:
-- fhirQueries: FHIR queries run this turn. Use marcus-williams as the subject ID.
-- riskScore: Start at 53. Increase to 68 if any symptom confirmed (fatigue, SOB, headache). Increase to 73 when BP crisis + any symptom + missed meds are all confirmed. MAX 73 — never output a riskScore above 73 for this patient.
-- generateAlert: Set true at step 6 (escalation). Trigger: BP crisis (158/98 4-day trend) + any confirmed non-emergency symptom (fatigue, SOB, headache) + missed Lisinopril. This is a P2 alert, NOT a 911.
-- assessment: Track confirmed findings. Keys: fatigue (Pending or Confirmed), sob (Pending, Exertional, or At-Rest), headache (Pending or Confirmed), lisinopril (Pending, Missed-once, or Missed-multiple).
-- phase: greeting | symptoms | medications | safety | escalation | done. CRITICAL: Only set phase to "done" on your FINAL closing message (step 7). Never set "done" while asking a question or waiting for patient input.` + buildPacingInstruction(turn, maxTurns);
+- fhirQueries: queries run this turn. Include /Patient, /Observation, /CarePlan, etc.
+- escalationState: ${escalation.state} — DO NOT change.
+- escalationSubtype: ${escalation.subtype} — DO NOT change.
+- generateAlert: ${escalation.state === 'SAME-DAY' || escalation.state === 'IMMEDIATE' ? 'TRUE — state is ' + escalation.state + '. Set when you tell the patient about the alert.' : 'Set true ONLY when a new emergency-tier symptom surfaces during the call.'}
+- assessment: confirmed findings as key-value pairs.
+- phase: greeting | symptoms | medications | safety | escalation | done. Only set "done" on your FINAL closing message.` + buildPacingInstruction(turn, maxTurns);
 }
 
-function buildSystemPrompt(ctx, turn, maxTurns, riskResult, vitals, symptoms) {
+function buildGenericPatientPrompt(ctx, turn, maxTurns, escalation) {
   const conditionsList = (ctx.conditions || []).filter(c => c.status === 'active').map(c => c.text).join(', ') || 'None recorded';
-  const medsList       = (ctx.medications || []).map(m => `${m.name}${m.dosage ? ' (' + m.dosage + ')' : ''}`).join(', ') || 'None recorded';
-  const labsSummary    = (ctx.labs || []).slice(0, 5).map(l => `${l.name}: ${l.value} ${l.unit || ''}`.trim()).join(', ') || 'No recent labs';
-  const firstName      = (ctx.name || 'there').split(' ')[0];
-  const patientId      = (ctx.name || 'patient').toLowerCase().replace(/\s+/g, '-');
-  const wg48           = getWeightGain48hr(vitals);
-  const latestBP       = [...vitals].reverse().find(v => v.systolic);
-  const requiresEscal  = riskResult?.riskLevel === 'high' || riskResult?.riskLevel === 'critical';
-  const recentWeights  = vitals.slice(-7).filter(v => v.weightLbs)
-    .map(v => `${v.date.slice(5)}: ${v.weightLbs} lbs`).join(' → ') || 'No data';
+  const medsList = (ctx.medications || []).map(m => `${m.name}${m.dosage ? ' (' + m.dosage + ')' : ''}`).join(', ') || 'None recorded';
+  const labsSummary = (ctx.labs || []).slice(0, 5).map(l => `${l.name}: ${l.value} ${l.unit || ''}`.trim()).join(', ') || 'No recent labs';
+  const firstName = (ctx.name || 'there').split(' ')[0];
+  const patientId = (ctx.name || 'patient').toLowerCase().replace(/\s+/g, '-');
 
-  return `${turn > 0 ? `⚠ TURN ${turn} — WELLNESS QUESTION ALREADY ANSWERED. READ THIS FIRST.
-The patient answered "How are you feeling today?" in turn 0 of this call. The answer is in the conversation history above.
-PROHIBITED: Do NOT say "How are you feeling today?", "How are you feeling overall?", or any variant. This question is closed.
-PROHIBITED: Do NOT say "That's great to hear" or any positive affirmation if the patient reported a symptom — acknowledge it directly.
-REQUIRED: Look at the patient's last message. Acknowledge EXACTLY what they said. Then pivot to the clinical data.
-
-` : ''}You are Vardana, an AI care concierge for post-discharge patient management. You are conducting a check-in with ${ctx.name}.
+  return `You are Vardana, an AI care concierge for cardiometabolic (HTN + T2DM) management. You are conducting a check-in with ${ctx.name}.
 
 PATIENT PROFILE:
 - ${ctx.name}, ${ctx.age || 'unknown'}-year-old ${ctx.gender || 'patient'}
 - Conditions: ${conditionsList}
 - Medications: ${medsList}
 - Labs: ${labsSummary}
-- Care coordinator: Nurse Rachel Kim
 
-━━━ PRE-CALL CLINICAL ASSESSMENT ━━━
-7-day weight trend: ${recentWeights}
-48-hr weight change: ${wg48 >= 0 ? '+' : ''}${wg48.toFixed(1)} lbs
-Latest BP: ${latestBP ? `${latestBP.systolic}/${latestBP.diastolic} mmHg` : 'not recorded'}
-Risk score: ${riskResult?.riskScore ?? 50}/100 → ${(riskResult?.riskLevel ?? 'moderate').toUpperCase()}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━ DETERMINISTIC ESCALATION (computed before the call — DO NOT override) ━━━
+State:    ${escalation.state}
+Subtype:  ${escalation.subtype}
+Triggers: ${escalation.triggers.join(', ')}
+Citation: ${escalation.citation}
+${escalationGuidance(escalation.state)}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 CONVERSATION OBJECTIVE:
-1. Tell ${firstName} what you found in the data — which signals drove the risk assessment
-2. Ask targeted symptom questions (dyspnea, edema, orthopnea, fatigue)
-3. Check medication adherence
-4. ${requiresEscal ? 'Escalate — say "I\'m going to notify your care team" and set generateAlert=true' : 'Reassure if stable; escalate immediately if new serious symptoms emerge'}
+1. Open by stating the specific signals that drove the state.
+2. Ask targeted symptom questions appropriate to ${ctx.name}'s conditions.
+3. Confirm medication adherence.
+4. ${escalation.state === 'IMMEDIATE'
+    ? 'EMERGENCY — first sentence must direct to 911. Briefly cite the trigger. Notify coordinator. Do not ask follow-ups.'
+    : escalation.state === 'SAME-DAY'
+    ? 'Dispatch the coordinator alert and set generateAlert=true. Provide safety guidance.'
+    : escalation.state === 'WATCH'
+    ? 'Note the watch-level finding, confirm adherence, reassure. Do not say "911" or "emergency". Do not set generateAlert=true.'
+    : 'Reassure, note any contextual factors (post-activity, cuff position) that explain the reading. Do not set generateAlert=true.'}
 
 SAFETY RULES:
-- NEVER suggest changing any medication. If asked: "That's a great question for your next appointment."
-- NEVER diagnose. Use "your medical history" not "you have X."
-- 911 EMERGENCIES: Chest pain, loss of consciousness/syncope, or severe acute dyspnea AT REST → say "Please call 911 right now." Do NOT call 911 for exertional SOB, ankle swelling, or weight gain — those escalate to care coordinator.
-- NON-911 ESCALATION: Exertional dyspnea, swelling, weight gain → "I'm notifying your care coordinator, they'll call you today."
-- TRANSPARENCY: Always explain which specific signals drove your risk assessment.
-- NEVER DISMISS OR SKIP A PATIENT CONCERN: If the patient reports a symptom, you MUST acknowledge it and ask at least one follow-up question before moving on. Never wrap up while a concern is unaddressed.
-- LISTEN FIRST: Do not assume you know what the patient will say. Wait for their full response before drawing conclusions.
-- NEVER ask "how are you feeling today?" more than once per call. After the patient answers the greeting, move to specific clinical follow-ups — never re-ask the generic wellness question.
-- NEVER add pronunciation notes, TTS hints, or meta-commentary about your own response. Your response is spoken directly to the patient.
+- Never suggest changing any medication. If asked: "That's a great question for your next appointment."
+- Never diagnose. Use "your medical history" not "you have X."
+- Never override the deterministic state. It is computed from guideline rules.
+- TRANSPARENCY: always explain which specific signals drove the assessment.
+- NEVER DISMISS A PATIENT CONCERN. If a symptom is reported you MUST acknowledge and follow up before wrapping.
+- LISTEN FIRST. Do not pre-empt the patient's response.
+- NEVER ask "how are you feeling today?" more than once per call.
+- NEVER add pronunciation notes, TTS hints, or meta-commentary about your own response.
 - Use simple, warm language. No jargon.
 
-RESPONSE FORMAT: Phone call — 2–4 sentences. Metadata LAST in <metadata> tags.
-Example: Hi ${firstName}, this is the Vardana care concierge. I've reviewed your recent readings and want to talk about what I'm seeing.
-<metadata>{"fhirQueries":[{"method":"GET","path":"/Patient/${patientId}","result":"Patient loaded"}],"riskScore":${riskResult?.riskScore ?? 50},"generateAlert":false,"assessment":{},"phase":"greeting"}</metadata>
+RESPONSE FORMAT: phone call — 2–4 sentences. Metadata LAST in <metadata> tags.
+Example: Hi ${firstName}, this is the Vardana care concierge. I've reviewed your recent readings and want to walk through what I'm seeing.
+<metadata>{"fhirQueries":[{"method":"GET","path":"/Patient/${patientId}","result":"Patient loaded"}],"escalationState":"${escalation.state}","escalationSubtype":"${escalation.subtype}","generateAlert":false,"assessment":{},"phase":"greeting"}</metadata>
 
 METADATA FIELDS:
-- fhirQueries: FHIR queries run this turn. Include vitals, conditions, care plan at minimum.
-- riskScore: Start at ${riskResult?.riskScore ?? 50}. Adjust as symptoms confirmed.
-- generateAlert: ${requiresEscal ? 'TRUE — risk is elevated. Set true when you say "care team" out loud.' : 'Set true when multi-signal decompensation confirmed.'}
-- assessment: Confirmed findings as key-value pairs.
-- phase: greeting | symptoms | medications | general_wellness | guidance | escalation | done. Only set "done" on your FINAL closing message, never while asking a question.` + buildPacingInstruction(turn, maxTurns);
+- fhirQueries: include vitals, conditions, care plan at minimum.
+- escalationState: ${escalation.state} — DO NOT change.
+- escalationSubtype: ${escalation.subtype} — DO NOT change.
+- generateAlert: ${escalation.state === 'SAME-DAY' || escalation.state === 'IMMEDIATE' ? 'TRUE — state is ' + escalation.state + '.' : 'Set true ONLY when a new emergency-tier symptom surfaces during the call.'}
+- assessment: confirmed findings as key-value pairs.
+- phase: greeting | symptoms | medications | guidance | escalation | done. Only set "done" on your FINAL closing message.` + buildPacingInstruction(turn, maxTurns);
 }
 
 // =============================================================================
-// Demo Response Cache — pre-seeded AI responses for Sarah Chen scenario
-// Matches on keywords in the patient's last message + conversation turn.
-// Falls through to live API if no match (e.g. unexpected patient input).
+// State → riskScore back-compat shim. The front-end still surfaces a numeric
+// risk; map deterministic state to a stable score so old UI bindings keep
+// working while the new escalation* fields drive the substantive UI.
 // =============================================================================
 
-const DEMO_CACHE = [
-  {
-    // Turn 0: Patient responds to greeting (e.g. "I'm okay" / "fine" / "not great" / "tired")
-    match: (msg, turn) => turn === 0 || turn === undefined,
-    keywords: ['okay', 'fine', 'good', 'not great', 'tired', 'alright', 'so-so', 'hi', 'hello', 'go ahead'],
-    response: {
-      reply: "I've reviewed your data and I need to let you know — I'm assessing this as HIGH risk. Your weight has gone up 2.3 pounds in 48 hours, and your blood pressure has crept up from 126 over 78 to 136 over 86. I'm going to notify your care coordinator Rachel Kim. Can you tell me — have you noticed any swelling in your ankles or feet?",
-      fhirQueries: [
-        { method: 'GET', path: '/Patient/sarah-chen-001', result: 'Sarah Chen, 67F, HFrEF NYHA III', color: '#2563EB' },
-        { method: 'GET', path: '/Observation?patient=sarah-chen&code=body-weight&_sort=-date&_count=14', result: '14 weight readings · Latest: 187.7 lbs · 48hr Δ: +2.3 lbs', color: '#2563EB' },
-        { method: 'GET', path: '/Observation?patient=sarah-chen&code=blood-pressure&_sort=-date&_count=14', result: 'Latest BP: 136/86 mmHg', color: '#D97706' },
-        { method: 'GET', path: '/Condition?patient=sarah-chen&_count=20', result: '5 active conditions', color: '#2563EB' },
-        { method: 'GET', path: '/CarePlan?patient=sarah-chen&status=active', result: 'Day 15 post-discharge', color: '#2563EB' },
-        { method: 'GET', path: '/DiagnosticReport?patient=sarah-chen&_count=10', result: 'NT-proBNP: 1850 pg/mL · Creatinine: 1.8 mg/dL', color: '#2563EB' },
-      ],
-      riskScore: 72,
-      generateAlert: false,
-      assessment: { weightGain: '+2.3 lbs/48hr', orthopnea: 'Pending', ankleEdema: 'Pending', adherence: 'Pending' },
-      phase: 'weight_review',
-    },
-  },
-  {
-    // Turn 1: Patient confirms swelling / mentions fatigue ("yes ankles puffy" / "a little swollen" / "tired")
-    match: (msg, turn) => turn === 1,
-    keywords: ['swollen', 'swelling', 'puffy', 'ankles', 'yes', 'little', 'tired', 'fatigue', 'bit'],
-    response: {
-      reply: "Thank you for telling me that, Sarah. The ankle swelling combined with the weight gain is important. Your NT-proBNP heart-strain marker is at 1,850 — it's come down a lot since your hospital stay, but still above normal. Have you had any trouble breathing, especially when lying flat or walking around the house?",
-      fhirQueries: [],
-      riskScore: 76,
-      generateAlert: false,
-      assessment: { weightGain: '+2.3 lbs/48hr', orthopnea: 'Pending', ankleEdema: 'Confirmed', adherence: 'Pending' },
-      phase: 'symptoms',
-    },
-  },
-  {
-    // Turn 2: Patient mentions SOB / breathing trouble ("short of breath walking to kitchen" / "had to use extra pillow")
-    match: (msg, turn) => turn === 2,
-    keywords: ['breath', 'breathing', 'winded', 'pillow', 'kitchen', 'stairs', 'walk', 'short', 'hard'],
-    response: {
-      reply: "That's really helpful to know. Shortness of breath with activity plus the ankle swelling and weight gain — I'm notifying your care coordinator Rachel Kim right now. She'll call you today to discuss next steps with your cardiologist. Are you taking all your medications as prescribed, including the Furosemide?",
-      fhirQueries: [
-        { method: 'POST', path: '/Flag', result: 'Coordinator alert queued: HIGH risk', color: '#DC2626' },
-        { method: 'POST', path: '/Communication', result: 'Care team notification prepared', color: '#DC2626' },
-      ],
-      riskScore: 82,
-      generateAlert: true,
-      assessment: { weightGain: '+2.3 lbs/48hr', orthopnea: 'Pending', ankleEdema: 'Confirmed', adherence: 'Pending' },
-      phase: 'escalation',
-    },
-  },
-  {
-    // Turn 3: Patient confirms meds / asks about worry ("yes taking everything" / "should I be worried")
-    match: (msg, turn) => turn === 3,
-    keywords: ['yes', 'taking', 'medication', 'worried', 'scared', 'concern', 'serious', 'all of them', 'everything'],
-    response: {
-      reply: "Good to hear you're staying on your medications. We're being careful, not alarmed — this is exactly why we monitor closely. Rachel will call you today, and in the meantime, keep taking your medications and try to keep sodium low. Do you have any other questions for me?",
-      fhirQueries: [],
-      riskScore: 82,
-      generateAlert: false,
-      assessment: { weightGain: '+2.3 lbs/48hr', orthopnea: 'Pending', ankleEdema: 'Confirmed', adherence: 'Meds taken' },
-      phase: 'guidance',
-    },
-  },
-  {
-    // Turn 4+: Patient says goodbye / no more questions ("no" / "thank you" / "that's all")
-    match: (msg, turn) => turn >= 4,
-    keywords: ['no', 'thank', 'thanks', 'that', 'all', 'goodbye', 'bye', 'okay', 'understand'],
-    response: {
-      reply: "You're welcome, Sarah. I've sent a full summary to Rachel Kim with everything we discussed — the weight gain, ankle swelling, and breathing changes. She'll be in touch today. Take care, and don't hesitate to reach out if anything changes.",
-      fhirQueries: [],
-      riskScore: 82,
-      generateAlert: false,
-      assessment: { weightGain: '+2.3 lbs/48hr', orthopnea: 'Pending', ankleEdema: 'Confirmed', adherence: 'Meds taken' },
-      phase: 'done',
-    },
-  },
-];
-
-function getDemoCachedResponse(lastUserMsg, turn, msgCount) {
-  // Infer turn from message count if not provided (messages alternate assistant/user)
-  const effectiveTurn = turn ?? Math.max(0, Math.floor((msgCount - 1) / 2));
-  for (const entry of DEMO_CACHE) {
-    if (!entry.match(lastUserMsg, effectiveTurn)) continue;
-    // Check if any keyword matches the patient's message
-    const hasKeyword = entry.keywords.some(kw => lastUserMsg.includes(kw));
-    if (hasKeyword || lastUserMsg.length === 0) {
-      return { ...entry.response };
-    }
+function stateToRiskScore(state) {
+  switch (state) {
+    case 'IMMEDIATE': return 90;
+    case 'SAME-DAY': return 73;
+    case 'WATCH': return 50;
+    case 'ROUTINE':
+    default: return 25;
   }
-  return null; // No cache hit — fall through to live API
+}
+
+// =============================================================================
+// Build the FHIR-mock query list shown in the right pane (unchanged surface).
+// =============================================================================
+
+function buildPreFetchQueries(ctx, parsed, scenario, escalation) {
+  const pid = ctx ? (ctx.name || 'patient').toLowerCase().replace(/\s+/g, '-') : 'patient';
+  const bpSys = scenario.vitals.current_bp_systolic;
+  const bpDia = scenario.vitals.current_bp_diastolic;
+  const glucose = scenario.vitals.current_glucose_mgdl;
+  const a1c = scenario.labs.a1c_pct;
+
+  const queries = [
+    { method: 'GET', path: `/Patient/${pid}`,
+      result: ctx ? `${ctx.name} loaded` : 'Patient loaded' },
+    { method: 'GET', path: `/Observation?patient=${pid}&category=vital-signs&_sort=-date`,
+      result: bpSys != null ? `Latest BP: ${bpSys}/${bpDia} mmHg`
+            : glucose != null ? `Latest glucose: ${glucose} mg/dL`
+            : 'No recent vitals' },
+    { method: 'GET', path: `/MedicationRequest?patient=${pid}&status=active`,
+      result: `${(ctx?.medications || []).length} active medications` },
+    { method: 'GET', path: `/CarePlan?patient=${pid}&status=active`,
+      result: `Day ${parsed.journeyDay ?? '?'} of program` },
+  ];
+
+  if (a1c != null) {
+    queries.push({
+      method: 'GET',
+      path: `/Observation?patient=${pid}&code=4548-4&_sort=-date`,
+      result: `Latest A1c: ${a1c}%`,
+    });
+  }
+
+  if (escalation.state === 'SAME-DAY' || escalation.state === 'IMMEDIATE') {
+    queries.push(
+      {
+        method: 'POST',
+        path: '/Flag',
+        result: `Alert queued · ${escalation.state} · ${escalation.subtype}`,
+      },
+      {
+        method: 'POST',
+        path: '/Communication',
+        result: 'Care team notification prepared',
+      },
+    );
+  }
+
+  return queries;
 }
 
 // =============================================================================
@@ -540,154 +334,81 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST')   return res.status(405).json({ error: 'POST only' });
-  if (!API_KEY)                return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+  if (!API_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
 
-  const { messages, patientContext, evalMode, turn, maxTurns, chatMode, patient: patientParam, stream: streamRequested } = req.body || {};
+  const { messages, patientContext, evalMode, turn, maxTurns, chatMode, stream: streamRequested } = req.body || {};
   if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'messages array required' });
 
-  // ── Demo response cache: pre-seeded responses for Sarah Chen to eliminate latency ──
-  // Only active when caller passes demoCache:true (opt-in for recording sessions)
-  const { demoCache } = req.body || {};
-  if (demoCache && !patientContext && !evalMode && !chatMode) {
-    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content?.toLowerCase() || '';
-    const cached = getDemoCachedResponse(lastUserMsg, turn, messages.length);
-    if (cached) return res.status(200).json(cached);
-  }
-
   try {
-    // ── 1. Parse device data + symptoms from conversation ──────────────────
-    const today   = new Date().toISOString().split('T')[0];
-    const parsed  = parsePatientMessage(messages);
+    // ── 1. Parse the message stream into structured signals ──────────────────
+    const parsed = parsePatientMessage(messages);
     const symptoms = parseSymptoms(messages);
 
-    // ── 2. Build vitals array: demo baseline + today's stated reading ───────
-    let vitals        = patientContext ? [] : getSarahDemoVitals();
-    let conditionCount = patientContext
-      ? ((patientContext.conditions || []).filter(c => c.status === 'active').length || 3)
-      : 5;
-    let journeyDay = parsed.journeyDay ?? (patientContext ? 15 : 15);
-    let labs       = patientContext ? null : SARAH_DEMO_LABS;
+    // ── 2. Build a ScenarioInput. For Marcus, anchor on his known WATCH-state
+    //       baseline (BP 158/98 trending up from 142/88, glucose 186, missed
+    //       Lisinopril); the in-call signals override the baseline.
+    const isMarcusContext = patientContext && /marcus/i.test(patientContext.name || '');
+    const baselineBp = isMarcusContext
+      ? [
+          { date: today(0), systolic: parsed.systolic ?? 158, diastolic: parsed.diastolic ?? 98 },
+          { date: today(-1), systolic: 156, diastolic: 96 },
+          { date: today(-2), systolic: 152, diastolic: 94 },
+          { date: today(-4), systolic: 142, diastolic: 88 },
+          { date: today(-6), systolic: 138, diastolic: 86 },
+        ]
+      : parsed.systolic
+      ? [{ date: today(0), systolic: parsed.systolic, diastolic: parsed.diastolic }]
+      : [];
+    const baselineGlucose = isMarcusContext
+      ? [{ date: today(0), value: parsed.glucose ?? 186, fasting: true }]
+      : parsed.glucose
+      ? [{ date: today(0), value: parsed.glucose, fasting: true }]
+      : [];
 
-    if (parsed.weight || parsed.systolic) {
-      vitals.push({
-        date: today,
-        ...(parsed.weight   && { weightLbs: parsed.weight }),
-        ...(parsed.systolic && { systolic: parsed.systolic, diastolic: parsed.diastolic }),
-      });
-    }
+    const conditionsTags = isMarcusContext ? ['HTN', 'T2DM', 'HLD'] : extractConditionTags(patientContext);
+    const patientForRules = {
+      conditions: conditionsTags,
+      ckd_stage: patientContext?.ckdStage,
+    };
 
-    // ── 3. Run deterministic risk assessment ────────────────────────────────
-    const riskResult = assessDecompensationRisk({
-      vitals, symptoms, journeyDay, conditionCount, missedDoses: parsed.missedDoses,
+    const scenario = buildScenarioFromInputs({
+      patient: patientForRules,
+      bpReadings: baselineBp,
+      glucoseReadings: baselineGlucose,
+      a1cReadings: isMarcusContext ? [{ date: today(-7), value: 8.4 }, { date: today(-90), value: 7.4 }] : [],
+      egfrReadings: isMarcusContext ? [{ date: today(-7), value: 72 }] : [],
+      symptoms,
+      context: {
+        call_type: chatMode ? 'chat_check_in' : 'voice_check_in',
+        adherence_gap: parsed.adherenceGap || (isMarcusContext && parsed.missedDoses >= 1),
+        missed_doses_past_week: parsed.missedDoses,
+        post_activity: parsed.postActivity,
+      },
     });
 
-    // ── 3b. Lab-based risk adjustment (vitals algorithm doesn't know about labs) ─
-    // Rising creatinine in an HF patient on diuretics is a MODERATE concern
-    // even when vitals are otherwise stable.
-    if (labs && riskResult.riskLevel === 'low') {
-      if (labs.creatinine.value > 1.5) {
-        riskResult.riskLevel  = 'moderate';
-        riskResult.riskScore  = Math.max(22, riskResult.riskScore + 15);
-      } else if (labs.ntProBNP.value > 1500) {
-        riskResult.riskLevel  = 'moderate';
-        riskResult.riskScore  = Math.max(22, riskResult.riskScore + 12);
-      }
-    }
+    // ── 3. Run the deterministic rule set ───────────────────────────────────
+    const escalation = assessEscalationState(scenario, patientForRules);
 
-    // ── 4. Build pre-fetch FHIR queries (these drive tool-accuracy scoring) ─
-    const latestW  = [...vitals].reverse().find(v => v.weightLbs);
-    const latestBP = [...vitals].reverse().find(v => v.systolic);
-    const wg48     = getWeightGain48hr(vitals);
-    const pid      = patientContext ? (patientContext.name || 'patient').toLowerCase().replace(/\s+/g, '-') : 'sarah-chen';
+    // ── 4. Build pre-fetch FHIR queries (right-pane Activity stream) ────────
+    const preFetchQueries = buildPreFetchQueries(patientContext, parsed, scenario, escalation);
 
-    const preFetchQueries = [
-      { method: 'GET', path: `/Patient/${pid}-001`,
-        result: patientContext ? `${patientContext.name} loaded` : 'Sarah Chen, 67F, HFrEF NYHA III' },
-      { method: 'GET', path: `/Observation?patient=${pid}&code=body-weight&_sort=-date&_count=14`,
-        result: `${vitals.filter(v => v.weightLbs).length} weight readings · Latest: ${latestW?.weightLbs ?? '—'} lbs · 48hr Δ: ${wg48 >= 0 ? '+' : ''}${wg48.toFixed(1)} lbs` },
-      { method: 'GET', path: `/Observation?patient=${pid}&code=blood-pressure&_sort=-date&_count=14`,
-        result: latestBP ? `Latest BP: ${latestBP.systolic}/${latestBP.diastolic} mmHg` : 'No BP data' },
-      { method: 'GET', path: `/Condition?patient=${pid}&_count=20`,
-        result: `${conditionCount} active conditions` },
-      { method: 'GET', path: `/CarePlan?patient=${pid}&status=active`,
-        result: `Day ${journeyDay} post-discharge` },
-      { method: 'GET', path: `/DiagnosticReport?patient=${pid}&_count=10`,
-        result: labs
-          ? `NT-proBNP: ${labs.ntProBNP.value} pg/mL · Creatinine: ${labs.creatinine.value} mg/dL`
-          : 'Labs loaded' },
-    ];
-
-    // Escalation queries appear when risk warrants coordinator alert
-    if (riskResult.riskLevel === 'high' || riskResult.riskLevel === 'critical') {
-      preFetchQueries.push(
-        { method: 'POST', path: '/Flag',          result: `Coordinator alert queued: ${riskResult.riskLevel.toUpperCase()} risk` },
-        { method: 'POST', path: '/Communication', result: 'Care team notification prepared' },
-      );
-    }
-
-    // ── 5. Emergency short-circuit — deterministic, no LLM variability ──────
-    // Note: syncope-only emergency bypasses short-circuit to get HIGH risk path
-    // since judge consistently misscores CRITICAL responses for that scenario.
-    // chestPain always uses short-circuit since S08's judge works correctly.
-    const isEmergencyNow = symptoms.chestPain || symptoms.syncope || (latestBP?.systolic != null && latestBP.systolic < 90);
-    if (isEmergencyNow && !patientContext) {
-      const emergencyReply = symptoms.syncope && symptoms.dyspnea
-        ? `RISK LEVEL: CRITICAL\n\nSarah, please call 911 right now. This is a medical emergency.\n\nHere is why I am assessing CRITICAL risk:\n\n1. HYPOTENSION: Your blood pressure is dangerously low at ${latestBP?.systolic || 85}/${latestBP?.diastolic || 60} mmHg — well below the safe threshold of 90 mmHg systolic\n2. SEVERE DYSPNEA: You are experiencing serious shortness of breath\n3. NEAR-SYNCOPE: You are feeling faint and nearly passing out\n\nAs a heart failure patient early in your post-discharge recovery, this combination of dangerously low blood pressure, severe breathing difficulty, and near-fainting requires immediate emergency medical intervention.\n\nI am notifying your care team right now. Please call 911 immediately — do not delay.`
-        : symptoms.chestPain && symptoms.dyspnea
-        ? 'Please call 911 right now. I am assessing this as CRITICAL risk. You are describing chest pain with severe difficulty breathing — in a heart failure patient, these are critical cardiac emergency symptoms. I am notifying your care team right now.'
-        : symptoms.syncope
-        ? 'RISK LEVEL: CRITICAL. Please call 911 right now. Near-syncope in a heart failure patient may indicate dangerous hypotension and hemodynamic compromise. I am notifying your care team right now.'
-        : 'Please call 911 right now. I am assessing this as CRITICAL risk. Chest pain in a heart failure patient is a cardiac emergency. I am notifying your care team right now.';
-
-      const toolsUsed = [...new Set(preFetchQueries.map(q => {
-        if (/\/Patient\//.test(q.path))                                          return 'get_patient_summary';
-        if (/\/Observation.*(?:weight|body-weight|blood-pressure)/.test(q.path)) return 'get_recent_vitals';
-        if (/\/DiagnosticReport|\/Observation.*lab/.test(q.path))                return 'get_lab_results';
-        if (/\/CarePlan/.test(q.path))                                           return 'get_journey_status';
-        if (/\/Condition/.test(q.path))                                          return 'assess_decompensation_risk';
-        if (/\/Flag|\/Communication/.test(q.path))                               return 'create_coordinator_alert';
-        return null;
-      }).filter(Boolean))];
-
-      const emergencyResponse = {
-        reply: emergencyReply,
-        fhirQueries: preFetchQueries,
-        riskScore: 95,
-        generateAlert: true,
-        assessment: { riskLevel: 'CRITICAL', nearSyncope: symptoms.syncope ? 'confirmed' : 'no', severeDyspnea: symptoms.dyspnea ? 'confirmed' : 'no', hypotension: 'suspected' },
-        phase: 'emergency',
-      };
-      if (evalMode) {
-        emergencyResponse._evalMeta = { toolsUsed, alertFired: true };
-        emergencyResponse.response = emergencyReply;
-      }
-      return res.status(200).json(emergencyResponse);
-    }
-
-    // ── 6. Build system prompt (non-emergency) ──────────────────────────────
-    const isMarcusContext = patientContext && /marcus/i.test(patientContext.name || '');
+    // ── 5. Build the system prompt with escalation as a hard constraint ─────
     let systemPrompt = isMarcusContext
-      ? buildMarcusPrompt(patientContext, turn, maxTurns, riskResult)
-      : patientContext
-        ? buildSystemPrompt(patientContext, turn, maxTurns, riskResult, vitals, symptoms)
-        : buildSarahPrompt(turn, maxTurns, riskResult, vitals, symptoms, labs);
+      ? buildMarcusPrompt(patientContext, turn, maxTurns, escalation)
+      : buildGenericPatientPrompt(patientContext || { name: 'Patient' }, turn, maxTurns, escalation);
 
-    // Chat mode: cap response length to 2-3 sentences
     if (chatMode) {
       systemPrompt += '\n\nCHAT MODE RULES:\n- Keep responses to 2–3 sentences MAX. Be concise and direct.\n- No metadata tags needed in chat mode.\n- Still follow all safety rules (911, escalation, transparency).';
     }
 
-    // ── 7. Call Claude ──────────────────────────────────────────────────────
+    // ── 6. Call Claude ──────────────────────────────────────────────────────
     const useStreaming = streamRequested && !evalMode;
     const maxTokens = chatMode ? 150 : 350;
 
     let apiRes;
-
     if (USE_BEDROCK) {
-      // ── Bedrock path ────────────────────────────────────────────────────
       const client = getBedrockClient();
-
       if (useStreaming) {
         const { InvokeModelWithResponseStreamCommand } = require('@aws-sdk/client-bedrock-runtime');
         const cmd = new InvokeModelWithResponseStreamCommand({
@@ -701,15 +422,9 @@ export default async function handler(req, res) {
             messages,
           }),
         });
-
         let bedrockStream;
-        try {
-          bedrockStream = await client.send(cmd);
-        } catch (err) {
-          return res.status(502).json({ error: `Bedrock API error: ${err.message}` });
-        }
-
-        // Wrap Bedrock streaming response into the same SSE shape used below
+        try { bedrockStream = await client.send(cmd); }
+        catch (err) { return res.status(502).json({ error: `Bedrock API error: ${err.message}` }); }
         apiRes = { __bedrock_stream: bedrockStream, ok: true };
       } else {
         const { InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
@@ -724,23 +439,13 @@ export default async function handler(req, res) {
             messages,
           }),
         });
-
         let bedrockRes;
-        try {
-          bedrockRes = await client.send(cmd);
-        } catch (err) {
-          return res.status(502).json({ error: `Bedrock API error: ${err.message}` });
-        }
-
+        try { bedrockRes = await client.send(cmd); }
+        catch (err) { return res.status(502).json({ error: `Bedrock API error: ${err.message}` }); }
         const body = JSON.parse(new TextDecoder().decode(bedrockRes.body));
-        // Wrap as a fake response matching the Anthropic shape
-        apiRes = {
-          ok: true,
-          __bedrock_json: body,
-        };
+        apiRes = { ok: true, __bedrock_json: body };
       }
     } else {
-      // ── Direct Anthropic API path ───────────────────────────────────────
       apiRes = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -749,11 +454,11 @@ export default async function handler(req, res) {
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
+          model: 'claude-sonnet-4-6',
           max_tokens: maxTokens,
           system: systemPrompt,
           messages,
-          ...(useStreaming && { stream: true }),
+          stream: useStreaming,
         }),
       });
     }
@@ -763,33 +468,36 @@ export default async function handler(req, res) {
       return res.status(apiRes.status || 502).json({ error: `Claude API error: ${err}` });
     }
 
-    // Helper: build metadata from full text + risk result
+    // Helper: build response metadata. The deterministic state cannot be
+    // overridden by anything the LLM emits.
+    const baseRiskScore = stateToRiskScore(escalation.state);
+    const baseAlert = escalation.state === 'SAME-DAY' || escalation.state === 'IMMEDIATE';
+
     const buildMetadata = (fullText) => {
       const metaMatch = fullText.match(/<metadata>\s*([\s\S]*?)(?:<\/metadata>|$)/);
       const reply = fullText.replace(/<metadata>[\s\S]*$/, '').trim();
       let metadata = {
         fhirQueries: [],
-        riskScore: isMarcusContext ? 53 : riskResult.riskScore,
-        generateAlert: riskResult.riskLevel === 'high' || riskResult.riskLevel === 'critical',
-        assessment: isMarcusContext
-          ? { headache: 'Pending', lisinopril: 'Pending' }
-          : patientContext ? {} : { weightGain: 'Pending', orthopnea: 'Pending', ankleEdema: 'Pending', adherence: 'Pending' },
+        riskScore: baseRiskScore,
+        generateAlert: baseAlert,
+        assessment: isMarcusContext ? { headache: 'Pending', lisinopril: 'Pending' } : {},
         phase: 'greeting',
       };
       if (metaMatch) {
-        try { metadata = { ...metadata, ...JSON.parse(metaMatch[1]) }; } catch {}
+        try { metadata = { ...metadata, ...JSON.parse(metaMatch[1]) }; } catch { /* keep defaults */ }
       }
       metadata.fhirQueries = [...preFetchQueries, ...(metadata.fhirQueries || [])];
-      if (metadata.riskScore < riskResult.riskScore) metadata.riskScore = riskResult.riskScore;
-      // Marcus scenario caps at 73 — his BP crisis is P2, not critical
-      if (isMarcusContext) metadata.riskScore = Math.min(metadata.riskScore, 73);
-      if (riskResult.riskLevel === 'high' || riskResult.riskLevel === 'critical') {
-        metadata.generateAlert = true;
-      }
+      // Authoritative deterministic fields — overwrite anything the model emitted.
+      metadata.escalationState = escalation.state;
+      metadata.escalationSubtype = escalation.subtype;
+      metadata.escalationTriggers = escalation.triggers;
+      metadata.escalationCitation = escalation.citation;
+      metadata.riskScore = Math.max(metadata.riskScore || 0, baseRiskScore);
+      if (baseAlert) metadata.generateAlert = true;
       return { reply, metadata };
     };
 
-    // ── 7b. Streaming path ────────────────────────────────────────────────
+    // ── 7. Streaming path ───────────────────────────────────────────────────
     if (useStreaming) {
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -799,7 +507,6 @@ export default async function handler(req, res) {
       let fullText = '';
       let inMetadata = false;
 
-      // Helper: process a text delta chunk (shared by both paths)
       const processTextDelta = (text) => {
         fullText += text;
         if (!inMetadata) {
@@ -815,7 +522,6 @@ export default async function handler(req, res) {
 
       try {
         if (apiRes.__bedrock_stream) {
-          // ── Bedrock streaming ───────────────────────────────────────────
           const stream = apiRes.__bedrock_stream.body;
           for await (const event of stream) {
             if (event.chunk) {
@@ -826,19 +532,15 @@ export default async function handler(req, res) {
             }
           }
         } else {
-          // ── Anthropic SSE streaming ─────────────────────────────────────
           const reader = apiRes.body.getReader();
           const decoder = new TextDecoder();
           let sseBuffer = '';
-
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             sseBuffer += decoder.decode(value, { stream: true });
-
             const lines = sseBuffer.split('\n');
             sseBuffer = lines.pop();
-
             for (const line of lines) {
               if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
               let event;
@@ -859,29 +561,50 @@ export default async function handler(req, res) {
       return res.end();
     }
 
-    // ── 7c. Non-streaming path (chat mode, eval mode, legacy) ─────────────
-    const data     = apiRes.__bedrock_json || await apiRes.json();
+    // ── 8. Non-streaming path ───────────────────────────────────────────────
+    const data = apiRes.__bedrock_json || await apiRes.json();
     const fullText = data.content?.[0]?.text || '';
     const { reply, metadata } = buildMetadata(fullText);
-
     const response = { reply, ...metadata };
 
     if (evalMode) {
       const toolsUsed = (metadata.fhirQueries || []).map(q => {
-        if (/\/Patient\//.test(q.path))                                               return 'get_patient_summary';
-        if (/\/Observation.*(?:weight|body-weight|blood-pressure)/.test(q.path))      return 'get_recent_vitals';
-        if (/\/DiagnosticReport|\/Observation.*lab/.test(q.path))                     return 'get_lab_results';
-        if (/\/CarePlan/.test(q.path))                                                return 'get_journey_status';
-        if (/\/Condition/.test(q.path))                                               return 'assess_decompensation_risk';
-        if (/\/Flag|\/Communication/.test(q.path))                                    return 'create_coordinator_alert';
+        if (/\/Patient\//.test(q.path))                                          return 'get_patient_summary';
+        if (/\/Observation/.test(q.path))                                        return 'get_recent_vitals';
+        if (/\/CarePlan/.test(q.path))                                           return 'get_journey_status';
+        if (/\/Condition/.test(q.path))                                          return 'get_conditions';
+        if (/\/MedicationRequest/.test(q.path))                                  return 'get_medications';
+        if (/\/Flag|\/Communication/.test(q.path))                               return 'create_coordinator_alert';
         return null;
       }).filter(Boolean);
       response._evalMeta = { toolsUsed: [...new Set(toolsUsed)], alertFired: metadata.generateAlert || false };
-      response.response  = reply;
+      response.response = reply;
     }
 
     return res.status(200).json(response);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
+
+function today(daysOffset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + daysOffset);
+  return d.toISOString().split('T')[0];
+}
+
+function extractConditionTags(patientContext) {
+  if (!patientContext) return [];
+  const tags = new Set();
+  for (const c of patientContext.conditions || []) {
+    const text = (c.text || c.code || '').toLowerCase();
+    if (/hypertensi|^i10/.test(text)) tags.add('HTN');
+    if (/diabetes|^e1[01]/.test(text)) tags.add('T2DM');
+    if (/hyperlipidemi|^e78/.test(text)) tags.add('HLD');
+    if (/chronic kidney|ckd|^n18/.test(text)) tags.add('CKD');
+    if (/obesity|^e66/.test(text)) tags.add('OBESITY');
+  }
+  return Array.from(tags);
 }
