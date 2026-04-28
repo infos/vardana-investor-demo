@@ -1765,16 +1765,22 @@ export default function CoordinatorDashboard() {
 
   // ── Chat eligibility & handlers ──
   // Live chat is gated on: patient has a CarePlan AND at least one Encounter
-  // (sessions.length > 0). Recorded chat is gated on: at least one scenario in
-  // the manifest matches this patient's name. Voice eligibility is unchanged.
-  const chatPatient = (patientData?.patient && patientData.patient.id)
+  // (sessions.length > 0) — these come from patientData and require Medplum
+  // detail to have resolved. Recorded chat only needs a patient name (matched
+  // against the scenario manifest) and never hits the network, so it must open
+  // even when patientData is still loading or Medplum is unavailable.
+  const chatPatientFromData = (patientData?.patient && patientData.patient.id)
     ? { id: patientData.patient.id, name: patientData.patient.name || selectedRosterItem?.name || "Patient" }
     : null;
-  const chatLiveEligible = !!(chatPatient && patientData?.carePlan && (sessions?.length || 0) > 0);
-  const chatScenariosAvailable = scenariosForPatient(chatPatient?.name || selectedRosterItem?.name || "");
+  // Replay-only fallback: roster item alone is enough for the header label;
+  // ChatCheckinDemo never uses patient.id in replay mode.
+  const chatPatientForReplay = chatPatientFromData
+    || (selectedRosterItem ? { id: selectedRosterItem.id, name: selectedRosterItem.name } : null);
+  const chatLiveEligible = !!(chatPatientFromData && patientData?.carePlan && (sessions?.length || 0) > 0);
+  const chatScenariosAvailable = scenariosForPatient(chatPatientFromData?.name || selectedRosterItem?.name || "");
 
   const handleInitiateChat = () => {
-    if (!chatLiveEligible || !chatPatient) {
+    if (!chatLiveEligible || !chatPatientFromData) {
       setChatError("Live chat requires a CarePlan and at least one Encounter for this patient.");
       return;
     }
@@ -1915,7 +1921,7 @@ export default function CoordinatorDashboard() {
           )}
 
           {/* Live chat — gated on CarePlan + ≥1 Encounter */}
-          {chatPatient && (
+          {chatPatientFromData && (
             <button
               onClick={handleInitiateChat}
               disabled={!chatLiveEligible}
@@ -2034,10 +2040,12 @@ export default function CoordinatorDashboard() {
       )}
 
       {/* Chat overlay — additive to voice. Replay mode never persists an
-          Encounter (no /session/end); live mode persists on close. */}
-      {chatOpen && chatPatient && (
+          Encounter (no /session/end); live mode persists on close.
+          Replay uses the roster-fallback patient so the overlay opens even
+          while patientData (Medplum/local bundle) is still loading. */}
+      {chatOpen && (chatMode === "replay" ? chatPatientForReplay : chatPatientFromData) && (
         <ChatCheckinDemo
-          patient={chatPatient}
+          patient={chatMode === "replay" ? chatPatientForReplay : chatPatientFromData}
           mode={chatMode}
           scenario={chatScenario}
           onClose={handleCloseChat}

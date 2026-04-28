@@ -166,6 +166,13 @@ export default function ChatCheckinDemo({
   const threadRef = useRef(null);
   const cancelledRef = useRef(false);
   const sessionIdRef = useRef(null);
+  // Tracks the scenario_id last handled by the replay-reset effect. Used to
+  // distinguish "initial mount" (state is already at its initial values, no
+  // reset needed) from "scenario actually swapped mid-flight" (must reset).
+  // Without this guard, the reset effect runs after the play useEffect on
+  // mount and resetReplay() calls clearTimeout() on the timer the play
+  // effect just scheduled — so the first turn never fires and replay stalls.
+  const lastScenarioIdRef = useRef(null);
 
   // Auto-scroll to newest message
   useEffect(() => {
@@ -331,10 +338,19 @@ export default function ChatCheckinDemo({
     };
   }, [isReplay, scenario, replayIdx, paused, replayDone]);
 
-  // Reset state when scenario changes (different recorded conversation picked)
+  // Reset state when the scenario is swapped to a *different* recording.
+  // On initial mount, state is already at its replay defaults and the play
+  // effect has just scheduled the first turn's timer — calling resetReplay()
+  // here would clearTimeout() that timer and stall the playback. So the
+  // first observed scenario_id is recorded without resetting; only a true
+  // swap (different scenario_id) triggers the reset.
   useEffect(() => {
     if (!isReplay) return;
-    resetReplay();
+    const sid = scenario?.scenario_id ?? null;
+    if (lastScenarioIdRef.current !== null && lastScenarioIdRef.current !== sid) {
+      resetReplay();
+    }
+    lastScenarioIdRef.current = sid;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scenario?.scenario_id, isReplay]);
 
