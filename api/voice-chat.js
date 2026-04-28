@@ -71,7 +71,10 @@ function parseSymptoms(messages) {
     severe_headache: /(severe|terrible|worst|pounding|splitting).{0,20}headache|headache.{0,20}(severe|terrible)/i.test(text),
     headache_worst_of_life: /worst.{0,15}headache.{0,15}(life|ever)/i.test(text),
     vision_changes: /(blurr|double vision|spots|vision.{0,15}(chang|off|weird)|seeing.{0,15}spot)/i.test(text),
-    chest_pain: /chest.{0,10}(pain|press|tight)|pain.{0,10}chest/i.test(text),
+    // Broadened from the original (pain|press|tight) set so common patient
+    // wording lands. "Some chest discomfort" was missing the trigger and the
+    // SAME-DAY chest-pain-in-cardiometabolic rule never fired.
+    chest_pain: /chest.{0,15}(pain|press|tight|discomfort|ache|heav|squeez|hurt|flutter)|(pain|pressure|squeez|tight|discomfort)\w*.{0,10}chest/i.test(text),
     focal_neuro_deficit: /numb|weakness on one side|slurred|can('?t| not) speak|drooping/i.test(text),
     kussmaul_breathing: /breathing (deep|fast|hard).{0,20}(can('?t)? stop|won'?t stop)|kussmaul|fruity breath|ketone/i.test(text),
     altered_mental_status: /confused|disoriented|can('?t| not) think|foggy|out of it|not making sense/i.test(text),

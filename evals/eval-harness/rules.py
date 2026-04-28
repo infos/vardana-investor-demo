@@ -115,6 +115,39 @@ def rule_hyperglycemic_crisis(s: dict) -> RuleResult | None:
 
 # ─── SAME-DAY — high priority within 4 hours ────────────────────────────────
 
+def rule_chest_pain_in_cardiometabolic(s: dict) -> RuleResult | None:
+    """Chest pain in a known HTN or T2DM patient -> SAME-DAY (regardless of BP).
+
+    Hypertensive emergency (BP >=180/120 + chest pain) is caught earlier in
+    the order and produces IMMEDIATE. This rule fills the gap between that
+    threshold and the existing Stage-2 + adherence rule: chest pain in this
+    population always warrants same-day evaluation, even when BP is in
+    Stage 1/Stage 2 range without an adherence gap.
+    """
+    sym = s.get("symptoms", {})
+    if not sym.get("chest_pain"):
+        return None
+    conditions = s.get("_patient_conditions", [])
+    if "HTN" not in conditions and "T2DM" not in conditions:
+        return None
+    v = s.get("vitals", {})
+    sbp = v.get("current_bp_systolic")
+    dbp = v.get("current_bp_diastolic")
+    triggers = ["chest_pain"]
+    if "HTN" in conditions:
+        triggers.append("htn")
+    if "T2DM" in conditions:
+        triggers.append("t2dm")
+    if sbp is not None and dbp is not None:
+        triggers.append(f"bp_{sbp}_{dbp}")
+    return RuleResult(
+        "SAME-DAY",
+        "chest_pain_with_cardiometabolic_risk",
+        triggers,
+        "2025 AHA/ACC HTN Guideline · New chest pain in HTN/T2DM warrants same-day evaluation",
+    )
+
+
 def rule_stage2_sustained_with_adherence(s: dict) -> RuleResult | None:
     """Sustained Stage 2 BP (>=140/90 7-day avg) + adherence gap evidence."""
     v = s.get("vitals", {})
@@ -250,6 +283,7 @@ RULE_ORDER = [
     rule_level2_hypoglycemia,
     rule_hyperglycemic_crisis,
     # SAME-DAY
+    rule_chest_pain_in_cardiometabolic,
     rule_stage2_sustained_with_adherence,
     rule_symptomatic_hyperglycemia_no_crisis,
     # WATCH

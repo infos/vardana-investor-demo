@@ -107,6 +107,31 @@ function ruleHyperglycemicCrisis(s) {
 
 // ─── SAME-DAY ─────────────────────────────────────────────────────────────
 
+function ruleChestPainInCardiometabolic(s) {
+  // Chest pain in a known HTN or T2DM patient -> SAME-DAY (regardless of BP).
+  // Fills the gap between hypertensive_emergency (BP >=180/120 + symptoms,
+  // IMMEDIATE) and stage2_sustained_with_adherence (Stage 2 + adherence gap).
+  // Chest pain in this population always warrants same-day evaluation.
+  const sym = s.symptoms;
+  if (!sym.chest_pain) return null;
+  const conditions = s._patient_conditions || [];
+  if (!conditions.includes('HTN') && !conditions.includes('T2DM')) return null;
+  const v = s.vitals;
+  const sbp = v.current_bp_systolic;
+  const dbp = v.current_bp_diastolic;
+  const triggers = ['chest_pain'];
+  if (conditions.includes('HTN')) triggers.push('htn');
+  if (conditions.includes('T2DM')) triggers.push('t2dm');
+  if (sbp != null && dbp != null) triggers.push(`bp_${sbp}_${dbp}`);
+  return {
+    state: 'SAME-DAY',
+    subtype: 'chest_pain_with_cardiometabolic_risk',
+    triggers,
+    citation:
+      '2025 AHA/ACC HTN Guideline · New chest pain in HTN/T2DM warrants same-day evaluation',
+  };
+}
+
 function ruleStage2SustainedWithAdherence(s) {
   const v = s.vitals;
   const ctx = s.context;
@@ -225,6 +250,7 @@ const RULE_ORDER = [
   ruleHypertensiveEmergency,
   ruleLevel2Hypoglycemia,
   ruleHyperglycemicCrisis,
+  ruleChestPainInCardiometabolic,
   ruleStage2SustainedWithAdherence,
   ruleSymptomaticHyperglycemiaNoCrisis,
   ruleA1cDiagnosticThreshold,
