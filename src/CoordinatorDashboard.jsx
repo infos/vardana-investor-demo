@@ -1765,13 +1765,12 @@ export default function CoordinatorDashboard() {
   const riskDot = (r) => ({ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: r === "high" ? S.red : r === "mod" ? S.amber : S.green, boxShadow: r === "high" ? "0 0 5px rgba(239,68,68,0.5)" : "none" });
 
   // ── Chat eligibility & handlers ──
-  // Live chat needs: a CarePlan (so the AI has a plan to anchor against) and
-  // some prior care signal (Encounters from Medplum, OR a local-bundle patient
-  // like Marcus who ships with rich fixture history). The bundle path always
-  // satisfies both — Medplum is short-circuited to sessions=[] for local
-  // patients on purpose. Recorded chat only needs a patient name (matched
-  // against the scenario manifest) and never hits the network, so it must open
-  // even when patientData is still loading or Medplum is unavailable.
+  // Live chat just needs a patient with an ID and a name. /api/voice-chat is
+  // stateless and builds the AI's context from whatever conditions /
+  // medications / labs the bundle (or Medplum detail) returned -- no
+  // CarePlan or prior-Encounter requirement. Recorded chat only needs a
+  // patient name (matched against the scenario manifest) and never hits the
+  // network, so it must open even when patientData is still loading.
   const chatPatientFromData = (patientData?.patient && patientData.patient.id)
     ? { id: patientData.patient.id, name: patientData.patient.name || selectedRosterItem?.name || "Patient" }
     : null;
@@ -1779,14 +1778,12 @@ export default function CoordinatorDashboard() {
   // ChatCheckinDemo never uses patient.id in replay mode.
   const chatPatientForReplay = chatPatientFromData
     || (selectedRosterItem ? { id: selectedRosterItem.id, name: selectedRosterItem.name } : null);
-  const isLocalSelected = !!(selectedPatientId && LOCAL_PATIENT_BY_ID.has(selectedPatientId));
-  const hasPriorCareSignal = isLocalSelected || (sessions?.length || 0) > 0;
-  const chatLiveEligible = !!(chatPatientFromData && patientData?.carePlan && hasPriorCareSignal);
+  const chatLiveEligible = !!chatPatientFromData;
   const chatScenariosAvailable = scenariosForPatient(chatPatientFromData?.name || selectedRosterItem?.name || "");
 
   const handleInitiateChat = () => {
     if (!chatLiveEligible || !chatPatientFromData) {
-      setChatError("Live chat requires a patient with a CarePlan and prior care history.");
+      setChatError("Select a patient before starting a live chat.");
       return;
     }
     setChatError("");
@@ -1959,7 +1956,7 @@ export default function CoordinatorDashboard() {
               disabled={!chatLiveEligible}
               title={chatLiveEligible
                 ? "Start a live AI chat check-in"
-                : "Live chat requires a patient with a CarePlan and prior care history."}
+                : "Select a patient to enable live chat."}
               style={{
                 padding: "10px 20px", borderRadius: 6, fontSize: 14, ...css.sans,
                 background: chatLiveEligible ? S.navy : "#CBD5E1",
