@@ -2050,6 +2050,7 @@ export default function CoordinatorDashboard() {
       {chatOpen && (chatMode === "replay" ? chatPatientForReplay : chatPatientFromData) && (
         <ChatCheckinDemo
           patient={chatMode === "replay" ? chatPatientForReplay : chatPatientFromData}
+          patientData={patientData}
           mode={chatMode}
           scenario={chatScenario}
           onClose={handleCloseChat}

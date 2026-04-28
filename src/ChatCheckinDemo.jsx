@@ -1,14 +1,13 @@
 /**
  * ChatCheckinDemo
  *
- * Two-pane chat surface used inside the Care Console — same brain as voice,
- * different transport. Live mode talks to the EC2 voice service via:
- *   POST /session/start { patient_id, mode: "chat" } -> { session_id }
- *   POST /chat/turn     { session_id, patient_id, message }
- *   POST /session/end   { session_id }   (skipped in replay mode)
+ * Two-pane chat surface used inside the Care Console — same deterministic
+ * brain as voice. Live mode talks to /api/voice-chat (the existing Vercel
+ * function). The function runs assessEscalationState server-side and
+ * returns reply, escalationState, fhirQueries, and a brief assessment.
  *
  * Replay mode plays back a static JSON scenario at recorded delays — no
- * backend traffic, no Encounter persistence.
+ * backend traffic.
  *
  * Design system: reuses the CoordinatorDashboard palette (S object). No new
  * tokens introduced.
@@ -33,13 +32,62 @@ const css = {
   serif: { fontFamily: "'DM Serif Display', Georgia, serif" },
 };
 
-const VOICE_BASE_URL = (import.meta.env.VITE_VOICE_BASE_URL || "https://voice.vardana.ai").replace(/\/+$/, "");
-const VOICE_SESSION_TOKEN = import.meta.env.VITE_VOICE_SESSION_TOKEN || "";
+const VOICE_CHAT_ENDPOINT = "/api/voice-chat";
+// Cap how many turns the model expects so its prompt stays focused.
+const MAX_TURNS = 12;
 
-function authHeaders() {
-  const h = { "Content-Type": "application/json" };
-  if (VOICE_SESSION_TOKEN) h["Authorization"] = `Bearer ${VOICE_SESSION_TOKEN}`;
-  return h;
+// Build the patientContext payload that /api/voice-chat expects. Mirrors the
+// shape App.jsx's VoiceCallDemo sends. Conditions / medications / labs come
+// straight from the parsed FHIR bundle so the model sees real clinical data.
+function buildPatientContext(patient, patientData) {
+  if (!patient) return undefined;
+  const age = patientData?.patient?.birthDate
+    ? Math.floor((Date.now() - new Date(patientData.patient.birthDate).getTime()) / (365.25 * 24 * 3600 * 1000))
+    : undefined;
+  const gender = patientData?.patient?.gender || undefined;
+  const conditions = (patientData?.conditions || [])
+    .filter(c => !c.status || c.status === "active")
+    .map(c => ({ text: c.text, status: c.status || "active" }));
+  const medications = (patientData?.medications || [])
+    .filter(m => !m.status || m.status === "active")
+    .map(m => ({ name: m.name, dosage: m.dosage }));
+  const labs = (patientData?.labs || [])
+    .slice(0, 12)
+    .map(l => ({ name: l.name, value: l.value, unit: l.unit }));
+  return {
+    name: patient.name,
+    age,
+    gender,
+    conditions,
+    medications,
+    labs,
+  };
+}
+
+// Static demo risk values for Marcus — match the recorded voice demo panel.
+// Other patients render only what's actually in their FHIR bundle.
+const MARCUS_RISK_PANEL = [
+  { label: "ACC/AHA PCE",   value: "17.3%",  note: "10-year ASCVD risk" },
+  { label: "AHA/ACC 2017 HTN", value: "Stage 1", note: "BP 130-139/80-89" },
+  { label: "ADA 2024 CV Risk", value: "High",    note: "T2DM + HTN + Hyperlipidemia" },
+];
+
+// Lab status thresholds for the right-pane summary. Marcus-specific demo
+// values dominate; for other patients we fall back to the bundle's labs.
+const LAB_STATUS = {
+  HbA1c: (v) => (v >= 7 ? "high" : v >= 6.5 ? "elevated" : "ok"),
+  "Fasting Glucose": (v) => (v >= 126 ? "high" : v >= 100 ? "elevated" : "ok"),
+  LDL: (v) => (v >= 130 ? "high" : v >= 100 ? "elevated" : "ok"),
+  Creatinine: (v) => (v > 1.3 ? "high" : v >= 1.1 ? "elevated" : "ok"),
+  eGFR: (v) => (v < 60 ? "high" : v < 90 ? "elevated" : "ok"),
+  "Microalbumin/Cr": (v) => (v >= 30 ? "high" : "ok"),
+};
+const LAB_DOT = { ok: S.green, elevated: S.amber, high: S.red };
+
+function classifyLab(name, value) {
+  const fn = LAB_STATUS[name];
+  if (!fn || value == null) return "ok";
+  return fn(value);
 }
 
 const ESCALATION_BADGE_COLORS = {
@@ -141,31 +189,284 @@ function FhirCallRow({ method, path, result }) {
   );
 }
 
+// ── Right-pane summary cards ──────────────────────────────────────────────
+// Mirrors the "patient summary" panel from the recorded voice demo so the
+// chat surface tells the same story at a glance: vitals, recent labs, risk
+// scores, plus the deterministic escalation badge and FHIR activity stream.
+
+function SectionHead({ children }) {
+  return (
+    <div style={{
+      fontSize: 11, letterSpacing: "0.10em", textTransform: "uppercase",
+      color: S.textLight, marginBottom: 8, fontWeight: 700, ...css.sans,
+    }}>{children}</div>
+  );
+}
+
+function MetricTile({ label, value, sub, tone = "neutral" }) {
+  const colorByTone = {
+    high: S.red, elevated: S.amber, ok: S.green, neutral: S.text,
+  };
+  return (
+    <div style={{
+      flex: 1, minWidth: 0,
+      background: "#FFFFFF", border: `1px solid ${S.border}`,
+      borderRadius: 8, padding: "9px 11px",
+    }}>
+      <div style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
+        color: S.textLight, fontWeight: 700, ...css.sans }}>{label}</div>
+      <div style={{ fontSize: 19, ...css.serif, color: colorByTone[tone] || S.text, marginTop: 2 }}>
+        {value}
+      </div>
+      {sub && <div style={{ fontSize: 11, color: S.textLight, ...css.sans, marginTop: 1 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function LabRow({ name, value, unit, status, date }) {
+  const dotColor = LAB_DOT[status] || S.green;
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "4px 0" }}>
+      <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0, marginTop: 4 }} />
+      <span style={{ fontSize: 13, ...css.sans, color: S.text, fontWeight: 500 }}>{name}</span>
+      <span style={{ fontSize: 13, ...css.sans, color: S.textMed, marginLeft: 4 }}>
+        {value}{unit ? ` ${unit}` : ""}
+      </span>
+      <span style={{ flex: 1 }} />
+      {date && <span style={{ fontSize: 11, ...css.mono, color: S.textLight }}>{date}</span>}
+    </div>
+  );
+}
+
+function RiskRow({ label, value, note }) {
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", padding: "5px 0", gap: 10 }}>
+      <span style={{ fontSize: 13, ...css.sans, color: S.text, fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: 13, ...css.sans, color: S.text }}>{value}</span>
+      <span style={{ flex: 1 }} />
+      {note && <span style={{ fontSize: 11, ...css.sans, color: S.textLight, textAlign: "right" }}>{note}</span>}
+    </div>
+  );
+}
+
+// Marcus's bundle ships rich vitals/labs but no HR / SpO2 observations, so
+// the demo reuses the same baseline numbers shown in the voice demo. This
+// stays narrow to Marcus on purpose — other patients render only what's in
+// their bundle, no fabricated values.
+const MARCUS_DEMO_VITALS = {
+  glucose: { value: "186", unit: "mg/dL", sub: "Fasting, elevated", tone: "high" },
+  bp:      { value: "158/98", sub: "4-day worsening, was 142/88 on Day 18", tone: "high" },
+  hr:      { value: "78", unit: "bpm", sub: null, tone: "ok" },
+  spo2:    { value: "97", unit: "%", sub: null, tone: "ok" },
+};
+
+const MARCUS_DEMO_LABS = [
+  { name: "HbA1c",            value: "8.4",  unit: "%",     status: "high",     date: "Feb 25" },
+  { name: "Fasting Glucose",  value: "182",  unit: "mg/dL", status: "high",     date: "Feb 25" },
+  { name: "LDL",              value: "118",  unit: "mg/dL", status: "elevated", date: "Feb 25" },
+  { name: "Creatinine",       value: "1.1",  unit: "mg/dL", status: "elevated", date: "Feb 25" },
+  { name: "eGFR",             value: "72",   unit: "mL/min",status: "elevated", date: "Feb 25" },
+  { name: "Microalbumin/Cr",  value: "42",   unit: "mg/g",  status: "high",     date: "Feb 25" },
+];
+
+function PatientSummaryPane({
+  patient, patientData, isMarcus,
+  escalationState, escalationSubtype,
+  synthesis, riskScore,
+  fhirActivity,
+}) {
+  // Active medications (from bundle); deduped, capped to keep the column compact.
+  const meds = useMemo(() => {
+    const list = (patientData?.medications || [])
+      .filter(m => m?.name && (!m.status || m.status === "active"))
+      .map(m => ({
+        name: m.name.replace(/\s+\d.*$/, "").trim(),
+        dose: (m.dosage || "").replace(/.*?(\d+\s*(mg|mcg|g|units?))(?:\b|\W).*/i, "$1") || "",
+      }));
+    const seen = new Set();
+    return list.filter(m => { if (seen.has(m.name)) return false; seen.add(m.name); return true; }).slice(0, 6);
+  }, [patientData]);
+
+  // Vitals: prefer bundle values when present, fall back to Marcus demo numbers.
+  const latestBp = patientData?.latestBP;
+  const vitals = isMarcus ? MARCUS_DEMO_VITALS : {
+    glucose: null,
+    bp: latestBp ? { value: `${latestBp.systolic}/${latestBp.diastolic}`, sub: null, tone: "neutral" } : null,
+    hr: null, spo2: null,
+  };
+
+  // Labs: prefer bundle (sorted, classified). Marcus uses the demo set when
+  // his bundle doesn't expose all six rows the voice demo shows.
+  const labRows = useMemo(() => {
+    const fromBundle = (patientData?.labs || [])
+      .filter(l => l?.name && l.value != null)
+      .slice(0, 6)
+      .map(l => ({
+        name: l.name,
+        value: typeof l.value === "number" ? l.value : l.value,
+        unit: l.unit || "",
+        status: classifyLab(l.name, parseFloat(l.value)),
+        date: l.date ? new Date(l.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "",
+      }));
+    if (isMarcus && fromBundle.length < 4) return MARCUS_DEMO_LABS;
+    return fromBundle;
+  }, [patientData, isMarcus]);
+
+  return (
+    <div style={{
+      width: 340, flexShrink: 0, display: "flex", flexDirection: "column",
+      background: S.card, overflowY: "auto",
+    }}>
+      {/* Escalation + synthesis */}
+      <div style={{ padding: "16px 18px 4px" }}>
+        <SectionHead>Escalation state</SectionHead>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <EscalationBadge state={escalationState} />
+          {escalationSubtype && (
+            <span style={{ fontSize: 11, ...css.mono, color: S.textLight }}>
+              {escalationSubtype.replace(/_/g, " ")}
+            </span>
+          )}
+          {typeof riskScore === "number" && (
+            <span style={{
+              fontSize: 11, ...css.mono, color: S.textLight,
+              marginLeft: "auto",
+            }}>
+              risk {riskScore}
+            </span>
+          )}
+        </div>
+      </div>
+      <div style={{ padding: "10px 18px 12px" }}>
+        <SectionHead>Synthesis</SectionHead>
+        <div style={{
+          fontSize: 13, color: S.text, lineHeight: 1.55,
+          background: S.bg, padding: "9px 11px",
+          borderRadius: 6, border: `1px solid ${S.border}`,
+        }}>
+          {synthesis}
+        </div>
+      </div>
+
+      {/* Active meds */}
+      {meds.length > 0 && (
+        <div style={{ padding: "10px 18px 6px", borderTop: `1px solid ${S.border}` }}>
+          <SectionHead>Active medications</SectionHead>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {meds.map((m, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "baseline", padding: "3px 0" }}>
+                <span style={{ fontSize: 13, ...css.sans, color: S.text, fontWeight: 500 }}>{m.name}</span>
+                <span style={{ flex: 1 }} />
+                <span style={{ fontSize: 12, ...css.mono, color: S.textMed }}>{m.dose}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Current vitals */}
+      <div style={{ padding: "12px 18px 6px", borderTop: `1px solid ${S.border}` }}>
+        <SectionHead>Current vitals</SectionHead>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          {vitals.glucose && (
+            <MetricTile label="Glucose" value={`${vitals.glucose.value} ${vitals.glucose.unit || ""}`.trim()} sub={vitals.glucose.sub} tone={vitals.glucose.tone} />
+          )}
+          {vitals.bp && (
+            <MetricTile label="Blood pressure" value={vitals.bp.value} sub={vitals.bp.sub} tone={vitals.bp.tone} />
+          )}
+          {vitals.hr && (
+            <MetricTile label="Heart rate" value={`${vitals.hr.value} ${vitals.hr.unit || ""}`.trim()} sub={vitals.hr.sub} tone={vitals.hr.tone} />
+          )}
+          {vitals.spo2 && (
+            <MetricTile label="SpO₂" value={`${vitals.spo2.value} ${vitals.spo2.unit || ""}`.trim()} sub={vitals.spo2.sub} tone={vitals.spo2.tone} />
+          )}
+        </div>
+      </div>
+
+      {/* Recent labs */}
+      {labRows.length > 0 && (
+        <div style={{ padding: "12px 18px 6px", borderTop: `1px solid ${S.border}` }}>
+          <SectionHead>Recent labs</SectionHead>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {labRows.map((l, i) => <LabRow key={i} {...l} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Risk assessment — Marcus only for now (matches recorded voice demo) */}
+      {isMarcus && (
+        <div style={{ padding: "12px 18px 6px", borderTop: `1px solid ${S.border}` }}>
+          <SectionHead>Risk assessment</SectionHead>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {MARCUS_RISK_PANEL.map((r, i) => <RiskRow key={i} {...r} />)}
+          </div>
+        </div>
+      )}
+
+      {/* FHIR activity — same as before */}
+      <div style={{ padding: "12px 18px 6px", borderTop: `1px solid ${S.border}` }}>
+        <SectionHead>FHIR activity</SectionHead>
+      </div>
+      <div style={{ padding: "0 14px 18px", display: "flex", flexDirection: "column", gap: 6 }}>
+        {fhirActivity.length === 0 ? (
+          <div style={{ fontSize: 13, color: S.textLight, textAlign: "center", padding: "10px 0", lineHeight: 1.5 }}>
+            No FHIR calls yet.
+          </div>
+        ) : (
+          fhirActivity.slice().reverse().map((q, i) => (
+            <FhirCallRow key={fhirActivity.length - 1 - i} {...q} />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 const KICKOFF_PATIENT_MESSAGE = "Hi, I just opened the chat for my check-in.";
 
 export default function ChatCheckinDemo({
   patient,             // { id, name } — id is the FHIR Patient.id
+  patientData = null,  // parsed FHIR bundle from CoordinatorDashboard (live mode)
   mode = "live",       // "live" | "replay"
   scenario = null,     // required for mode="replay"; the parsed scenario JSON
   onClose,
 }) {
   const isReplay = mode === "replay";
 
-  const [sessionId, setSessionId] = useState(null);
-  const [messages, setMessages] = useState([]);            // [{ role, text }]
+  // The /api/voice-chat function expects messages in Anthropic's role format
+  // ("user" | "assistant"). UI bubbles use "patient" | "ai" — we keep the two
+  // separate so the API payload stays clean while the UI layer is free to
+  // restyle without API churn.
+  const [messages, setMessages] = useState([]);            // [{ role: 'patient'|'ai', text }]
+  const [conversation, setConversation] = useState([]);    // [{ role: 'user'|'assistant', content }] for the API
   const [fhirActivity, setFhirActivity] = useState([]);    // [{ method, path, result }]
   const [escalationState, setEscalationState] = useState("STABLE");
+  const [escalationSubtype, setEscalationSubtype] = useState(null);
   const [synthesis, setSynthesis] = useState("Conversation starting.");
+  const [riskScore, setRiskScore] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [paused, setPaused] = useState(false);
   const [replayDone, setReplayDone] = useState(false);
   const [sessionStartedAt] = useState(() => new Date());
+  // Live-mode "session readiness" — flips true after the first AI greeting
+  // returns so the input field becomes editable. Replaces the old EC2
+  // session_id gate (we no longer hold a server-side session).
+  const [liveReady, setLiveReady] = useState(false);
 
   const threadRef = useRef(null);
   const cancelledRef = useRef(false);
-  const sessionIdRef = useRef(null);
+
+  const patientContext = useMemo(
+    () => buildPatientContext(patient, patientData),
+    [patient, patientData],
+  );
+  // Drives the Marcus-specific demo prompt + risk panel.
+  const isMarcus = useMemo(
+    () => /marcus/i.test(patient?.name || "") && /williams/i.test(patient?.name || ""),
+    [patient],
+  );
   // Tracks the scenario_id last handled by the replay-reset effect. Used to
   // distinguish "initial mount" (state is already at its initial values, no
   // reset needed) from "scenario actually swapped mid-flight" (must reset).
@@ -179,74 +480,87 @@ export default function ChatCheckinDemo({
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
   }, [messages.length, isTyping]);
 
-  // Track sessionId in a ref so async cleanup can reach it
-  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
-
-  // ── LIVE MODE: open session on mount, send kickoff to elicit greeting ──
+  // ── LIVE MODE: greet patient via /api/voice-chat on mount ──
+  // No EC2, no session_id — the Vercel function is stateless. Conversation
+  // history is replayed in full on every turn so the model has context.
   useEffect(() => {
     if (isReplay) return;
     cancelledRef.current = false;
 
     (async () => {
       try {
-        const startRes = await fetch(`${VOICE_BASE_URL}/session/start`, {
-          method: "POST",
-          headers: authHeaders(),
-          body: JSON.stringify({ patient_id: patient.id, mode: "chat" }),
-        });
-        if (!startRes.ok) throw new Error(`/session/start failed: ${startRes.status}`);
-        const { session_id } = await startRes.json();
-        if (cancelledRef.current) return;
-        setSessionId(session_id);
-        await sendTurnLive(session_id, KICKOFF_PATIENT_MESSAGE, /*hideUserBubble=*/ true);
+        // Kickoff turn: a synthetic patient message that prompts the AI
+        // to introduce itself and read the patient's vitals. Hidden in the
+        // UI so the AI's first reply *looks* unprompted to the coordinator.
+        const kickoffConv = [{ role: "user", content: KICKOFF_PATIENT_MESSAGE }];
+        await sendTurnViaApi(kickoffConv, /*hideUserBubble=*/ true);
+        if (!cancelledRef.current) setLiveReady(true);
       } catch (e) {
         if (!cancelledRef.current) setError(`Could not start chat: ${e.message}`);
       }
     })();
 
-    return () => {
-      cancelledRef.current = true;
-      const sid = sessionIdRef.current;
-      if (sid) {
-        // Fire-and-forget /session/end — best-effort Encounter persistence
-        fetch(`${VOICE_BASE_URL}/session/end`, {
-          method: "POST",
-          headers: authHeaders(),
-          body: JSON.stringify({ session_id: sid }),
-        }).catch(() => {});
-      }
-    };
+    return () => { cancelledRef.current = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReplay, patient.id]);
 
-  async function sendTurnLive(sid, text, hideUserBubble = false) {
-    if (!sid) return;
-    if (!hideUserBubble) {
-      setMessages(prev => [...prev, { role: "patient", text }]);
+  // POST a full conversation slice to /api/voice-chat. Updates UI bubbles,
+  // FHIR activity, escalation, synthesis, and risk score from the response.
+  async function sendTurnViaApi(conv, hideUserBubble = false) {
+    const lastUser = conv[conv.length - 1];
+    const isUserTurn = lastUser?.role === "user";
+    if (isUserTurn && !hideUserBubble) {
+      setMessages(prev => [...prev, { role: "patient", text: lastUser.content }]);
     }
     setIsTyping(true);
     try {
-      const res = await fetch(`${VOICE_BASE_URL}/chat/turn`, {
+      const res = await fetch(VOICE_CHAT_ENDPOINT, {
         method: "POST",
-        headers: authHeaders(),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          session_id: sid,
-          patient_id: patient.id,
-          message: text,
+          messages: conv,
+          patientContext,
+          turn: Math.floor(conv.length / 2),
+          maxTurns: MAX_TURNS,
+          chatMode: true,
+          // The voice-chat function uses this hint to pick Marcus-specific
+          // priors (BP/A1c baselines, system prompt). Other patients fall
+          // through to the generic prompt path.
+          ...(isMarcus && { patient: "marcus" }),
         }),
       });
-      if (!res.ok) throw new Error(`/chat/turn failed: ${res.status}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Chat API ${res.status}`);
+      }
       const data = await res.json();
       if (cancelledRef.current) return;
       setIsTyping(false);
-      if (data.fhir_calls?.length) {
-        setFhirActivity(prev => [...prev, ...data.fhir_calls]);
+
+      // Strip the trailing <metadata>{...}</metadata> block the voice prompt
+      // appends in voice mode. Chat mode tells the model not to emit it but
+      // we defensively strip just in case (matches voice-chat.js client logic).
+      const replyText = (data.reply || data.text || "").replace(/<metadata>[\s\S]*?<\/metadata>\s*$/i, "").trim();
+      if (replyText) {
+        setMessages(prev => [...prev, { role: "ai", text: replyText }]);
+        setConversation(prev => [...prev, ...conv.slice(prev.length), { role: "assistant", content: replyText }]);
       }
-      if (data.escalation_state) setEscalationState(data.escalation_state);
-      if (data.synthesis) setSynthesis(data.synthesis);
-      if (data.reply) {
-        setMessages(prev => [...prev, { role: "ai", text: data.reply }]);
+      if (data.fhirQueries?.length) {
+        setFhirActivity(prev => [...prev, ...data.fhirQueries.map(q => ({
+          method: q.method,
+          path: q.path,
+          result: q.result || q.summary || "",
+        }))]);
       }
+      if (data.escalationState) setEscalationState(data.escalationState);
+      if (data.escalationSubtype) setEscalationSubtype(data.escalationSubtype);
+      if (data.assessment && Object.keys(data.assessment).length) {
+        const lines = Object.entries(data.assessment)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(" · ");
+        setSynthesis(lines);
+      }
+      if (typeof data.riskScore === "number") setRiskScore(data.riskScore);
     } catch (e) {
       if (!cancelledRef.current) {
         setIsTyping(false);
@@ -257,9 +571,11 @@ export default function ChatCheckinDemo({
 
   function handleSendLive() {
     const text = input.trim();
-    if (!text || isTyping || !sessionId) return;
+    if (!text || isTyping || !liveReady) return;
     setInput("");
-    sendTurnLive(sessionId, text);
+    const nextConv = [...conversation, { role: "user", content: text }];
+    setConversation(nextConv);
+    sendTurnViaApi(nextConv);
   }
 
   // ── REPLAY MODE: iterate scenario.turns at recorded pacing ──
@@ -483,8 +799,8 @@ export default function ChatCheckinDemo({
                 <input
                   type="text"
                   value={input}
-                  placeholder={sessionId ? "Type a message…" : "Connecting…"}
-                  disabled={!sessionId || isTyping}
+                  placeholder={liveReady ? "Type a message…" : "Connecting…"}
+                  disabled={!liveReady || isTyping}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") handleSendLive(); }}
                   style={{
@@ -496,10 +812,10 @@ export default function ChatCheckinDemo({
                 />
                 <button
                   onClick={handleSendLive}
-                  disabled={!sessionId || isTyping || !input.trim()}
+                  disabled={!liveReady || isTyping || !input.trim()}
                   style={{
                     padding: "8px 16px", borderRadius: 6,
-                    background: (!sessionId || isTyping || !input.trim()) ? "#CBD5E1" : S.navy,
+                    background: (!liveReady || isTyping || !input.trim()) ? "#CBD5E1" : S.navy,
                     color: "#FFFFFF", fontWeight: 700, fontSize: 13,
                     border: "none", cursor: "pointer",
                     ...css.sans,
@@ -509,51 +825,17 @@ export default function ChatCheckinDemo({
             )}
           </div>
 
-          {/* Right pane: clinical context */}
-          <div style={{
-            width: 340, flexShrink: 0, display: "flex", flexDirection: "column",
-            background: S.card, overflowY: "auto",
-          }}>
-            <div style={{ padding: "16px 18px 8px" }}>
-              <div style={{ fontSize: 12, letterSpacing: 1, textTransform: "uppercase", color: S.textLight, marginBottom: 8 }}>
-                Escalation state
-              </div>
-              <EscalationBadge state={escalationState} />
-            </div>
-
-            <div style={{ padding: "8px 18px 14px" }}>
-              <div style={{ fontSize: 12, letterSpacing: 1, textTransform: "uppercase", color: S.textLight, marginBottom: 8 }}>
-                Synthesis
-              </div>
-              <div style={{
-                fontSize: 13, color: S.text, lineHeight: 1.55,
-                background: S.bg, padding: "9px 11px",
-                borderRadius: 6, border: `1px solid ${S.border}`,
-              }}>
-                {synthesis}
-              </div>
-            </div>
-
-            <div style={{
-              padding: "10px 18px 6px",
-              borderTop: `1px solid ${S.border}`,
-            }}>
-              <div style={{ fontSize: 12, letterSpacing: 1, textTransform: "uppercase", color: S.textLight }}>
-                FHIR Activity
-              </div>
-            </div>
-            <div style={{ padding: "4px 14px 18px", display: "flex", flexDirection: "column", gap: 6 }}>
-              {fhirActivity.length === 0 ? (
-                <div style={{ fontSize: 13, color: S.textLight, textAlign: "center", padding: "16px 0", lineHeight: 1.5 }}>
-                  No FHIR calls yet.
-                </div>
-              ) : (
-                fhirActivity.slice().reverse().map((q, i) => (
-                  <FhirCallRow key={fhirActivity.length - 1 - i} {...q} />
-                ))
-              )}
-            </div>
-          </div>
+          {/* Right pane: clinical context — mirrors the recorded voice demo */}
+          <PatientSummaryPane
+            patient={patient}
+            patientData={patientData}
+            isMarcus={isMarcus}
+            escalationState={escalationState}
+            escalationSubtype={escalationSubtype}
+            synthesis={synthesis}
+            riskScore={riskScore}
+            fhirActivity={fhirActivity}
+          />
         </div>
 
         <style>{`
