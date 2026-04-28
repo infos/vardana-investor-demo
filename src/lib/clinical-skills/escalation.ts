@@ -191,6 +191,32 @@ function ruleSymptomaticHyperglycemiaNoCrisis(s: ScenarioWithPatient): Escalatio
 
 // ─── WATCH — coordinator review within 24h ───────────────────────────────
 
+function ruleStage2SustainedAdherent(s: ScenarioWithPatient): EscalationResult | null {
+  // Sustained Stage 2 BP (>=140/90 7-day avg), no adherence gap, asymptomatic.
+  // Closes the gap between stage2_sustained_with_adherence (SAME-DAY) and
+  // stage1_drift (WATCH). Without this rule, Stage 2 BP without an adherence
+  // gap falls through to ROUTINE, which understates clinical risk in a known
+  // HTN/T2DM patient. Matches adversarial scenario ADV03.
+  const v = s.vitals;
+  const ctx = s.context;
+  const sym = s.symptoms;
+  const sbpAvg = v.bp_7day_avg_systolic ?? 0;
+  const dbpAvg = v.bp_7day_avg_diastolic ?? 0;
+  const inStage2 = sbpAvg >= 140 || dbpAvg >= 90;
+  if (!inStage2) return null;
+  if (ctx.adherence_gap) return null;
+  if (sym.severe_headache || sym.vision_changes || sym.chest_pain || sym.focal_neuro_deficit) {
+    return null;
+  }
+  return {
+    state: "WATCH",
+    subtype: "stage2_sustained_adherent",
+    triggers: [`bp_avg_${sbpAvg}_${dbpAvg}`, "asymptomatic", "adherent"],
+    citation:
+      "2025 AHA/ACC HTN Guideline · Sustained Stage 2 BP without adherence gap warrants 24h coordinator review",
+  };
+}
+
 function ruleA1cDiagnosticThreshold(s: ScenarioWithPatient): EscalationResult | null {
   const labs = s.labs;
   const a1c = labs.a1c_pct;
@@ -271,6 +297,7 @@ const RULE_ORDER: Array<(s: ScenarioWithPatient) => EscalationResult | null> = [
   ruleStage2SustainedWithAdherence,
   ruleSymptomaticHyperglycemiaNoCrisis,
   // WATCH
+  ruleStage2SustainedAdherent,
   ruleA1cDiagnosticThreshold,
   ruleStage1Drift,
 ];
