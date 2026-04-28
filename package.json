@@ -6,18 +6,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "eval": "npx tsx evals/run-evals.ts",
-    "eval:decompensation": "npx tsx evals/run-evals.ts --suite decompensation",
-    "eval:reasoning": "npx tsx evals/run-evals.ts --suite reasoning",
-    "eval:safety": "npx tsx evals/run-evals.ts --suite safety",
-    "test:e2e": "npx playwright test --config=tests/playwright.config.ts --project=chromium",
-    "test:e2e:firefox": "npx playwright test --config=tests/playwright.config.ts --project=firefox",
-    "test:e2e:webkit": "npx playwright test --config=tests/playwright.config.ts --project=webkit",
-    "test:responsive": "npx playwright test --config=tests/playwright.config.ts --project=ipad-pro --project=iphone-14 --project=pixel-7",
-    "test:api": "npx playwright test --config=tests/playwright.config.ts --project=api-tests",
-    "qa": "npx tsx tests/qa-runner.ts",
-    "qa:quick": "npx tsx tests/qa-runner.ts --quick",
-    "playwright:install": "npx playwright install chromium firefox webkit"
+    "eval:harness": "python3 evals/eval-harness/harness.py",
+    "eval:harness:adversarial": "python3 evals/eval-harness/harness.py --scenarios scenarios_adversarial.json",
+    "eval:escalation:ts": "npx tsx src/lib/clinical-skills/escalation.test.ts",
+    "test:harness": "python3 evals/eval-harness/harness.py"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1024.0",

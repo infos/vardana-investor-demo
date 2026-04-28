@@ -1,6 +1,6 @@
 # Vardana · Care Coordinator Demo
 
-Investor demo app — AI concierge voice call with live FHIR activity and decompensation scoring.
+Investor demo app — AI concierge voice + chat check-in for cardiometabolic (HTN + T2DM) patients, backed by a deterministic guideline-cited escalation rule set.
 
 ## Quick Start
 

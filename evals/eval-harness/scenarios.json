@@ -1,0 +1,335 @@
+{
+  "metadata": {
+    "version": "2026-04-27",
+    "guideline_basis": [
+      "2025 AHA/ACC Hypertension Guideline (Jones et al., 2025)",
+      "ADA Standards of Care 2026",
+      "AHA PREVENT equations (Khan et al., 2024)"
+    ],
+    "escalation_states": ["ROUTINE", "WATCH", "SAME-DAY", "IMMEDIATE"],
+    "safety_hard_gates": [
+      "hypertensive_emergency",
+      "level_2_hypoglycemia",
+      "hyperglycemic_crisis"
+    ]
+  },
+  "patients": {
+    "marcus_williams": {
+      "id": "marcus_williams",
+      "name": "Marcus Williams",
+      "age": 58,
+      "sex": "M",
+      "conditions": ["HTN", "T2DM"],
+      "medications": ["lisinopril 20mg", "amlodipine 5mg", "metformin 1000mg BID", "atorvastatin 40mg"],
+      "allergies": [],
+      "ckd_stage": null
+    },
+    "linda_patel": {
+      "id": "linda_patel",
+      "name": "Linda Patel",
+      "age": 67,
+      "sex": "F",
+      "conditions": ["HTN", "T2DM", "CKD_3a"],
+      "medications": ["losartan 50mg", "HCTZ 25mg", "glipizide 5mg", "metformin 500mg", "atorvastatin 20mg"],
+      "allergies": ["sulfa"],
+      "ckd_stage": "3a",
+      "egfr": 52
+    },
+    "david_brooks": {
+      "id": "david_brooks",
+      "name": "David Brooks",
+      "age": 49,
+      "sex": "M",
+      "conditions": ["HTN"],
+      "medications": ["lisinopril 10mg"],
+      "allergies": [],
+      "ckd_stage": null,
+      "baseline_a1c": 6.2
+    }
+  },
+  "scenarios": [
+    {
+      "id": "S01",
+      "patient_id": "marcus_williams",
+      "title": "Hypertensive emergency with end-organ damage symptoms",
+      "journey_day": 22,
+      "ground_truth": "IMMEDIATE",
+      "ground_truth_subtype": "hypertensive_emergency",
+      "vitals": {
+        "current_bp_systolic": 198,
+        "current_bp_diastolic": 126,
+        "bp_7day_avg_systolic": 138,
+        "bp_7day_avg_diastolic": 86
+      },
+      "labs": {
+        "a1c_pct": 7.4,
+        "a1c_days_old": 60
+      },
+      "symptoms": {
+        "severe_headache": true,
+        "headache_worst_of_life": true,
+        "vision_changes": true,
+        "chest_pain": true,
+        "focal_neuro_deficit": false,
+        "kussmaul_breathing": false,
+        "neuroglycopenic": false,
+        "osmotic_symptoms": false
+      },
+      "context": {
+        "call_type": "patient_initiated_unscheduled",
+        "adherence_gap": false,
+        "missed_calls": 0,
+        "intercurrent_illness": null,
+        "post_activity": false,
+        "concurrent_steroid": false
+      }
+    },
+    {
+      "id": "S02",
+      "patient_id": "linda_patel",
+      "title": "Level 2 hypoglycemia with neuroglycopenic symptoms",
+      "journey_day": 41,
+      "ground_truth": "IMMEDIATE",
+      "ground_truth_subtype": "level_2_hypoglycemia",
+      "vitals": {
+        "current_glucose_mgdl": 48,
+        "glucose_verified_twice": true,
+        "fasting_glucose_7day_avg": 92
+      },
+      "labs": {
+        "a1c_pct": 6.8
+      },
+      "symptoms": {
+        "neuroglycopenic": true,
+        "confusion": true,
+        "slurred_speech": true,
+        "altered_mental_status": true,
+        "severe_headache": false,
+        "vision_changes": false,
+        "chest_pain": false,
+        "focal_neuro_deficit": false,
+        "kussmaul_breathing": false,
+        "osmotic_symptoms": false
+      },
+      "context": {
+        "call_type": "scheduled_weekly",
+        "caregiver_on_call": true,
+        "adherence_gap": false,
+        "post_activity": false,
+        "concurrent_steroid": false
+      }
+    },
+    {
+      "id": "S03",
+      "patient_id": "marcus_williams",
+      "title": "Hyperglycemic crisis presentation (DKA / HHS concern)",
+      "journey_day": 67,
+      "ground_truth": "IMMEDIATE",
+      "ground_truth_subtype": "hyperglycemic_crisis",
+      "vitals": {
+        "current_glucose_mgdl": 412
+      },
+      "labs": {
+        "a1c_pct": 7.6,
+        "a1c_days_old": 60
+      },
+      "symptoms": {
+        "osmotic_symptoms": true,
+        "polyuria": true,
+        "polydipsia": true,
+        "severe_fatigue": true,
+        "nausea": true,
+        "kussmaul_breathing": true,
+        "altered_mental_status": false,
+        "neuroglycopenic": false,
+        "severe_headache": false,
+        "vision_changes": false,
+        "chest_pain": false,
+        "symptom_progression_days": 4
+      },
+      "context": {
+        "call_type": "scheduled_biweekly",
+        "missed_calls": 2,
+        "adherence_gap": true,
+        "post_activity": false,
+        "concurrent_steroid": false
+      }
+    },
+    {
+      "id": "S04",
+      "patient_id": "marcus_williams",
+      "title": "Stage 2 sustained HTN with confirmed adherence gap",
+      "journey_day": 14,
+      "ground_truth": "SAME-DAY",
+      "ground_truth_subtype": "stage2_sustained_with_adherence_gap",
+      "vitals": {
+        "current_bp_systolic": 158,
+        "current_bp_diastolic": 95,
+        "bp_7day_avg_systolic": 159,
+        "bp_7day_avg_diastolic": 96,
+        "bp_pre_program_avg_systolic": 142,
+        "bp_pre_program_avg_diastolic": 88
+      },
+      "symptoms": {
+        "severe_headache": false,
+        "vision_changes": false,
+        "chest_pain": false,
+        "focal_neuro_deficit": false,
+        "kussmaul_breathing": false,
+        "neuroglycopenic": false,
+        "osmotic_symptoms": false
+      },
+      "context": {
+        "call_type": "scheduled_weekly",
+        "adherence_gap": true,
+        "adherence_gap_evidence": ["self_reported_missed_doses", "pharmacy_refill_lag"],
+        "missed_doses_past_week": 4,
+        "post_activity": false,
+        "concurrent_steroid": false
+      }
+    },
+    {
+      "id": "S05",
+      "patient_id": "linda_patel",
+      "title": "Symptomatic hyperglycemia in T2DM, no crisis features",
+      "journey_day": 53,
+      "ground_truth": "SAME-DAY",
+      "ground_truth_subtype": "symptomatic_hyperglycemia_no_crisis",
+      "vitals": {
+        "fasting_glucose_5day_range": [168, 184],
+        "post_meal_glucose_5day_range": [240, 285],
+        "fasting_glucose_5day_avg": 176,
+        "post_meal_glucose_5day_avg": 263
+      },
+      "labs": {
+        "a1c_pct": 6.8,
+        "a1c_days_old": 50
+      },
+      "symptoms": {
+        "osmotic_symptoms": true,
+        "polydipsia": true,
+        "nocturia": true,
+        "mild_fatigue": true,
+        "nausea": false,
+        "kussmaul_breathing": false,
+        "altered_mental_status": false,
+        "neuroglycopenic": false,
+        "severe_headache": false,
+        "vision_changes": false,
+        "chest_pain": false,
+        "symptom_progression_days": 7
+      },
+      "context": {
+        "call_type": "scheduled_weekly",
+        "concurrent_steroid": true,
+        "steroid_drug": "prednisone",
+        "steroid_days_remaining": 5,
+        "adherence_gap": false,
+        "post_activity": false
+      }
+    },
+    {
+      "id": "S06",
+      "patient_id": "marcus_williams",
+      "title": "Stage 1 BP drift with controlled T2DM",
+      "journey_day": 38,
+      "ground_truth": "WATCH",
+      "ground_truth_subtype": "stage1_drift_asymptomatic_adherent",
+      "vitals": {
+        "current_bp_systolic": 135,
+        "current_bp_diastolic": 84,
+        "bp_7day_avg_systolic": 135,
+        "bp_7day_avg_diastolic": 83,
+        "bp_pre_program_avg_systolic": 142,
+        "bp_pre_program_avg_diastolic": 88
+      },
+      "symptoms": {
+        "severe_headache": false,
+        "vision_changes": false,
+        "chest_pain": false,
+        "focal_neuro_deficit": false,
+        "kussmaul_breathing": false,
+        "neuroglycopenic": false,
+        "osmotic_symptoms": false
+      },
+      "context": {
+        "call_type": "scheduled_weekly",
+        "adherence_gap": false,
+        "adherence_verified": "pharmacy_refill_timing",
+        "lifestyle_factors": ["work_stress", "reduced_exercise"],
+        "post_activity": false,
+        "concurrent_steroid": false
+      }
+    },
+    {
+      "id": "S07",
+      "patient_id": "david_brooks",
+      "title": "A1C drift with adherence gap identified",
+      "journey_day": 30,
+      "ground_truth": "WATCH",
+      "ground_truth_subtype": "a1c_crossing_diagnostic_threshold",
+      "vitals": {
+        "bp_7day_avg_systolic": 128,
+        "bp_7day_avg_diastolic": 80,
+        "fasting_glucose_recent_readings": [108, 112, 118, 121, 124]
+      },
+      "labs": {
+        "a1c_pct": 6.5,
+        "a1c_days_old": 0,
+        "baseline_a1c_pct": 6.2
+      },
+      "symptoms": {
+        "severe_headache": false,
+        "vision_changes": false,
+        "chest_pain": false,
+        "kussmaul_breathing": false,
+        "neuroglycopenic": false,
+        "osmotic_symptoms": false
+      },
+      "context": {
+        "call_type": "scheduled_biweekly",
+        "adherence_gap": true,
+        "adherence_gap_evidence": ["dietary_lapse", "increased_alcohol_intake"],
+        "post_activity": false,
+        "concurrent_steroid": false
+      }
+    },
+    {
+      "id": "S08",
+      "patient_id": "linda_patel",
+      "title": "Near-threshold reading in well-controlled patient (false-positive test)",
+      "journey_day": 75,
+      "ground_truth": "ROUTINE",
+      "ground_truth_subtype": "false_positive_post_activity",
+      "vitals": {
+        "current_bp_systolic": 142,
+        "current_bp_diastolic": 88,
+        "bp_7day_avg_systolic": 124,
+        "bp_7day_avg_diastolic": 76,
+        "bp_30day_avg_systolic": 126,
+        "bp_30day_avg_diastolic": 78,
+        "fasting_glucose_avg": 105
+      },
+      "labs": {
+        "a1c_pct": 6.7,
+        "egfr": 51
+      },
+      "symptoms": {
+        "severe_headache": false,
+        "vision_changes": false,
+        "chest_pain": false,
+        "kussmaul_breathing": false,
+        "neuroglycopenic": false,
+        "osmotic_symptoms": false
+      },
+      "context": {
+        "call_type": "scheduled_weekly",
+        "post_activity": true,
+        "activity_description": "20min_brisk_walk",
+        "improper_cuff_position": true,
+        "adherence_gap": false,
+        "concurrent_steroid": false
+      }
+    }
+  ]
+}

@@ -6,3 +6,4 @@ epic-private-key.pem
 .env*.local
 test-results/
 .claude/worktrees/
+evals/eval-harness/__pycache__/

@@ -1,0 +1,54 @@
+{
+  "metadata": {
+    "version": "adversarial"
+  },
+  "results": [
+    {
+      "id": "ADV01",
+      "patient": "Marcus Williams",
+      "title": "Severe HTN at 198/126 but ZERO end-organ symptoms (urgency, not emergency)",
+      "ground_truth_state": "SAME-DAY",
+      "ground_truth_subtype": "hypertensive_urgency",
+      "predicted_state": "WATCH",
+      "predicted_subtype": "stage1_drift_asymptomatic_adherent",
+      "triggers": [
+        "bp_avg_142_88",
+        "asymptomatic",
+        "adherent"
+      ],
+      "citation": "2025 AHA/ACC HTN Guideline \u00b7 Stage 1 + DM target <130/80 (no urgent intervention required)",
+      "passed": false,
+      "subtype_match": false
+    },
+    {
+      "id": "ADV02",
+      "patient": "Linda Patel",
+      "title": "Glucose 51 but NO neuroglycopenic symptoms (Level 2 by number, asymptomatic)",
+      "ground_truth_state": "SAME-DAY",
+      "ground_truth_subtype": "asymptomatic_level2_hypoglycemia",
+      "predicted_state": "ROUTINE",
+      "predicted_subtype": "routine_default",
+      "triggers": [
+        "no_higher_priority_rule_fired"
+      ],
+      "citation": "2025 AHA/ACC HTN Guideline \u00b7 HBPM/ABPM standardized conditions; trend over snapshot",
+      "passed": false,
+      "subtype_match": false
+    },
+    {
+      "id": "ADV03",
+      "patient": "Marcus Williams",
+      "title": "Stage 2 BP sustained but adherence is fully verified",
+      "ground_truth_state": "WATCH",
+      "ground_truth_subtype": "stage2_sustained_adherent",
+      "predicted_state": "ROUTINE",
+      "predicted_subtype": "routine_default",
+      "triggers": [
+        "no_higher_priority_rule_fired"
+      ],
+      "citation": "2025 AHA/ACC HTN Guideline \u00b7 HBPM/ABPM standardized conditions; trend over snapshot",
+      "passed": false,
+      "subtype_match": false
+    }
+  ]
+}

@@ -2,217 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, ReferenceLine, Tooltip, CartesianGrid } from "recharts";
 import { DEMO_BASE } from './demoPath';
 
-// ── Data ──
-const WEIGHT_DATA = [
-  { day: 1, date: "Feb 15", weight: 187.2 },
-  { day: 2, date: "Feb 16", weight: 187.0 },
-  { day: 3, date: "Feb 17", weight: 186.8 },
-  { day: 4, date: "Feb 18", weight: 186.6 },
-  { day: 5, date: "Feb 19", weight: 186.4 },
-  { day: 6, date: "Feb 20", weight: 186.2 },
-  { day: 7, date: "Feb 21", weight: 186.0 },
-  { day: 8, date: "Feb 22", weight: 185.8 },
-  { day: 9, date: "Feb 23", weight: 185.7 },
-  { day: 10, date: "Feb 24", weight: 185.6 },
-  { day: 11, date: "Feb 25", weight: 185.5 },
-  { day: 12, date: "Feb 26", weight: 185.4 },
-  { day: 13, date: "Feb 27", weight: 186.5 },
-  { day: 14, date: "Feb 28", weight: 187.7 },
-];
-
-const BP_DATA = [
-  { date: "Feb 15", sys: 138, dia: 88 },
-  { date: "Feb 19", sys: 134, dia: 84 },
-  { date: "Feb 22", sys: 130, dia: 82 },
-  { date: "Feb 24", sys: 128, dia: 80 },
-  { date: "Feb 26", sys: 126, dia: 78 },
-  { date: "Feb 27", sys: 132, dia: 84 },
-  { date: "Feb 28", sys: 136, dia: 86 },
-];
-
-
-
-const ROSTER = [
-  { id: 1, name: "Sarah Chen", age: 67, gender: "F", dob: { month: 7, day: 14, year: 1958 }, day: 15, phase: "Stabilize → Optimize", risk: 72, riskLevel: "high", alert: true, alertType: "Decompensation risk", alertTime: "38 min ago", trend: "worsening", scheduledOutreach: null, doctor: "Dr. James Harrington" },
-  { id: 2, name: "Robert Williams", age: 74, gender: "M", dob: { month: 3, day: 22, year: 1951 }, day: 52, phase: "Optimize", risk: 34, riskLevel: "low", alert: false, trend: "stable", scheduledOutreach: "Today 2:00 PM · Voice", doctor: "Dr. Sarah Patel" },
-  { id: 3, name: "Maria Gonzalez", age: 61, gender: "F", dob: { month: 11, day: 5, year: 1964 }, day: 8, phase: "Stabilize", risk: 45, riskLevel: "moderate", alert: false, trend: "improving", scheduledOutreach: "Tomorrow 10:00 AM · SMS", doctor: "Dr. Michael Torres" },
-  { id: 4, name: "James Thompson", age: 79, gender: "M", dob: { month: 9, day: 18, year: 1946 }, day: 83, phase: "Maintain", risk: 22, riskLevel: "low", alert: false, trend: "stable", scheduledOutreach: null, doctor: "Dr. Lisa Chen" },
-  { id: 5, name: "Marcus Williams", age: 58, gender: "M", dob: { month: 6, day: 10, year: 1967 }, day: 22, phase: "Stabilize → Optimize", risk: 53, riskLevel: "moderate", alert: true, alertType: "BP worsening trend", alertTime: "12 min ago", trend: "worsening", scheduledOutreach: null, doctor: "Dr. Angela Torres" },
-];
-
-// ── Patient Clinical Data (Robert, Maria, James) ──
-const PATIENT_CLINICAL_DATA = {
-  1: {
-    dob: "July 14, 1958",
-    conditions: ["HFpEF (EF 45%)", "Hypertension", "Type 2 Diabetes", "CKD Stage 3a"],
-    medications: [
-      { name: "Carvedilol", dose: "12.5mg", timing: "Twice daily (morning & evening)" },
-      { name: "Lisinopril", dose: "10mg", timing: "Once daily (morning)" },
-      { name: "Furosemide", dose: "40mg", timing: "Once daily (morning)" },
-      { name: "Metformin", dose: "1000mg", timing: "Twice daily (with meals)" },
-      { name: "Spironolactone", dose: "25mg", timing: "Once daily" },
-    ],
-    vitals: {
-      weight: { current: 187.7, previous: 185.4, unit: "lbs", trend: "worsening", status: "warning" },
-      bp: { sys: 136, dia: 86, status: "borderline", note: "Reversed from 126/78 best" },
-      hr: { value: 82, status: "good", note: "Normal sinus rhythm" },
-      spo2: { value: 96, status: "good" },
-    },
-    labs: [
-      { name: "BNP", value: "485 pg/mL", date: "Mar 6", status: "elevated" },
-      { name: "Creatinine", value: "1.4 mg/dL", date: "Mar 6", status: "borderline" },
-      { name: "eGFR", value: "48 mL/min", date: "Mar 6", status: "warning" },
-      { name: "Potassium", value: "4.5 mEq/L", date: "Mar 6", status: "good" },
-    ],
-    recentCheckins: [
-      { date: "Today, 7:45 AM", summary: "AI concierge detected 2.3 lb weight gain over 48hrs. Patient reports increased fatigue and ankle swelling. Escalated to care coordinator." },
-      { date: "Yesterday, 8:00 AM", summary: "Routine check-in. Weight 186.2 lbs (+1.1 from baseline). Patient reported feeling 'a little more tired.' Furosemide adherence confirmed." },
-    ],
-    allergy: "Aspirin",
-    coordinator: "Rachel Kim, RN",
-  },
-  2: {
-    dob: "March 22, 1951",
-    conditions: ["HFpEF (EF 52%)", "Hypertension", "Atrial Fibrillation", "Hyperlipidemia"],
-    medications: [
-      { name: "Metoprolol Succinate", dose: "50mg", timing: "Once daily (morning)" },
-      { name: "Lisinopril", dose: "20mg", timing: "Once daily (morning)" },
-      { name: "Apixaban", dose: "5mg", timing: "Twice daily" },
-      { name: "Atorvastatin", dose: "40mg", timing: "Once daily (evening)" },
-      { name: "Spironolactone", dose: "25mg", timing: "Once daily" },
-    ],
-    vitals: {
-      weight: { current: 201.4, previous: 201.8, unit: "lbs", trend: "stable", status: "good" },
-      bp: { sys: 128, dia: 76, status: "good", note: "Well controlled" },
-      hr: { value: 68, status: "good", note: "Normal, rate-controlled" },
-      spo2: { value: 97, status: "good" },
-    },
-    labs: [
-      { name: "BNP", value: "145 pg/mL", date: "Feb 24", status: "borderline" },
-      { name: "Creatinine", value: "1.1 mg/dL", date: "Feb 24", status: "good" },
-      { name: "Potassium", value: "4.3 mEq/L", date: "Feb 24", status: "good" },
-      { name: "INR", value: "N/A (on Apixaban)", date: "—", status: "good" },
-    ],
-    recentCheckins: [
-      { date: "Yesterday, 9:00 AM", summary: "Routine check-in. Weight stable, no symptoms reported. Robert continues daily walks and reports improved exercise tolerance." },
-      { date: "Mar 5, 2:00 PM", summary: "Discussed medication adherence. All medications taken on time. Blood pressure well controlled. Phase 2 optimization progressing well." },
-    ],
-    allergy: "Penicillin",
-    coordinator: "Rachel Kim, RN",
-  },
-  3: {
-    dob: "November 5, 1964",
-    conditions: ["HFrEF (EF 35%)", "Type 2 Diabetes", "COPD (mild)", "Chronic Kidney Disease Stage 2"],
-    medications: [
-      { name: "Entresto", dose: "49/51mg", timing: "Twice daily" },
-      { name: "Carvedilol", dose: "6.25mg", timing: "Twice daily (with meals)" },
-      { name: "Jardiance", dose: "10mg", timing: "Once daily (morning)" },
-      { name: "Furosemide", dose: "20mg", timing: "Once daily (morning)" },
-      { name: "Tiotropium", dose: "18mcg", timing: "Once daily (inhaler)" },
-      { name: "Metformin", dose: "500mg", timing: "Twice daily (with meals)" },
-    ],
-    vitals: {
-      weight: { current: 158.6, previous: 159.4, unit: "lbs", trend: "improving", status: "good" },
-      bp: { sys: 134, dia: 82, status: "borderline", note: "Slightly elevated" },
-      hr: { value: 78, status: "good", note: "Normal range" },
-      spo2: { value: 95, status: "borderline" },
-    },
-    labs: [
-      { name: "BNP", value: "380 pg/mL", date: "Mar 3", status: "elevated" },
-      { name: "HbA1c", value: "7.2%", date: "Mar 3", status: "borderline" },
-      { name: "eGFR", value: "72 mL/min", date: "Mar 3", status: "borderline" },
-      { name: "Potassium", value: "4.6 mEq/L", date: "Mar 3", status: "good" },
-    ],
-    recentCheckins: [
-      { date: "Today, 8:30 AM", summary: "Maria reported mild shortness of breath when climbing stairs. Weight improving (down 0.8 lbs). Reminded about low-sodium diet. Care team monitoring closely." },
-      { date: "Yesterday, 9:00 AM", summary: "Checked in on medication tolerance. Maria adjusting well to Entresto. Blood sugar slightly high — discussed carb intake." },
-    ],
-    allergy: "Sulfa drugs, Codeine",
-    coordinator: "David Park, RN",
-  },
-  4: {
-    dob: "September 18, 1946",
-    conditions: ["HFpEF (EF 48%)", "Hypertension (controlled)", "Type 2 Diabetes (controlled)", "Osteoarthritis"],
-    medications: [
-      { name: "Losartan", dose: "50mg", timing: "Once daily (morning)" },
-      { name: "Metoprolol Tartrate", dose: "25mg", timing: "Twice daily" },
-      { name: "Empagliflozin", dose: "10mg", timing: "Once daily (morning)" },
-      { name: "Metformin", dose: "1000mg", timing: "Twice daily (with meals)" },
-      { name: "Acetaminophen", dose: "500mg", timing: "As needed for joint pain" },
-    ],
-    vitals: {
-      weight: { current: 176.2, previous: 176.0, unit: "lbs", trend: "stable", status: "good" },
-      bp: { sys: 124, dia: 74, status: "good", note: "Excellent control" },
-      hr: { value: 72, status: "good", note: "Normal sinus rhythm" },
-      spo2: { value: 98, status: "good" },
-    },
-    labs: [
-      { name: "BNP", value: "95 pg/mL", date: "Feb 28", status: "good" },
-      { name: "HbA1c", value: "6.4%", date: "Feb 28", status: "good" },
-      { name: "Creatinine", value: "1.0 mg/dL", date: "Feb 28", status: "good" },
-      { name: "Potassium", value: "4.1 mEq/L", date: "Feb 28", status: "good" },
-    ],
-    recentCheckins: [
-      { date: "Mar 8, 10:00 AM", summary: "Routine check-in. James feeling great, walking 30 minutes daily. All vitals within target. On track with Phase 3 maintenance." },
-      { date: "Mar 5, 10:00 AM", summary: "Discussed ongoing care plan. James understands continued monitoring importance. Very compliant with all medications." },
-    ],
-    allergy: "None known",
-    coordinator: "Rachel Kim, RN",
-  },
-  5: {
-    dob: "June 10, 1967",
-    conditions: ["Essential Hypertension (I10)", "Type 2 Diabetes with Hyperglycemia (E11.65)"],
-    medications: [
-      { name: "Lisinopril", dose: "20mg", timing: "Once daily (morning)" },
-      { name: "Amlodipine", dose: "5mg", timing: "Once daily (morning)" },
-      { name: "Metformin", dose: "1000mg", timing: "Twice daily (with meals)" },
-      { name: "Atorvastatin", dose: "40mg", timing: "Once daily (evening)" },
-      { name: "Aspirin", dose: "81mg", timing: "Once daily" },
-    ],
-    vitals: {
-      weight: { current: 212.0, previous: 211.5, unit: "lbs", trend: "stable", status: "good" },
-      bp: { sys: 158, dia: 98, status: "warning", note: "4-day worsening trend from 129/80" },
-      hr: { value: 78, status: "good", note: "Normal sinus rhythm" },
-      spo2: { value: 97, status: "good" },
-      glucose: { value: 186, unit: "mg/dL", status: "elevated" },
-    },
-    labs: [
-      { name: "HbA1c", value: "7.8%", date: "Mar 1", status: "elevated" },
-      { name: "Creatinine", value: "1.1 mg/dL", date: "Mar 1", status: "good" },
-      { name: "eGFR", value: "78 mL/min", date: "Mar 1", status: "good" },
-      { name: "Potassium", value: "4.3 mEq/L", date: "Mar 1", status: "good" },
-    ],
-    recentCheckins: [
-      { date: "Today, 8:15 AM", summary: "AI concierge detected 4-day BP worsening trend (158/98 from best of 129/80). Fasting glucose 186 mg/dL. Suspected missed Lisinopril." },
-      { date: "Yesterday, 8:00 AM", summary: "Routine check-in. BP 152/94. Patient reported feeling fine. Medications confirmed taken." },
-    ],
-    allergy: "None known",
-    coordinator: "David Park, RN",
-  },
-};
-
-const VOICE_TRANSCRIPT = [
-  { t: 1200, speaker: "AI", text: "Good morning, Sarah. This is the Vardana Care Concierge calling for your Day 15 check-in. How are you feeling this morning?" },
-  { t: 6200, speaker: "Sarah", text: "Hi. I feel okay, about the same as yesterday I think." },
-  { t: 11000, speaker: "AI", text: "I'm glad to hear that. I did want to flag something. Your weight has gone up a couple of pounds over the last two days. That can sometimes be a sign of fluid retention. Are you noticing any ankle swelling or feeling more short of breath than usual?" },
-  { t: 17500, speaker: "Sarah", text: "Now that you mention it, my ankles have been a little puffy. And I have been more tired than usual the last couple of days." },
-  { t: 21000, speaker: "AI", text: "Thank you for telling me that. Let me pull up your recent readings. Your weight is up 2.3 pounds in 48 hours, and your blood pressure has climbed to 136 over 86, which is higher than your best last week. Combined with the ankle swelling and fatigue, I want to make sure your care team knows about this today." },
-  { t: 28000, speaker: "Sarah", text: "Is that serious? Should I be worried?" },
-  { t: 30000, speaker: "AI", text: "We're being careful, not alarmed. I'm letting Rachel Kim know right now so she can follow up with you and your doctor today. Are you having any trouble breathing, especially when lying flat?" },
-  { t: 35000, speaker: "Sarah", text: "A little, yes. I had to use an extra pillow last night." },
-  { t: 37500, speaker: "AI", text: "That's helpful to know. I've sent a priority alert to your coordinator with everything we discussed. Rachel will call you today. In the meantime, please stay on your medications and keep your sodium low." },
-];
-
-const FHIR_QUERIES = [
-  { t: 11500, method: "GET", path: "/Patient/sarah-chen-001", result: "Patient demographics loaded", color: "#2563EB" },
-  { t: 12200, method: "GET", path: "/Observation?patient=sarah-chen&code=body-weight&_sort=-date&_count=14", result: "14 weight readings · Latest: 187.7 lbs", color: "#2563EB" },
-  { t: 12900, method: "GET", path: "/Observation?patient=sarah-chen&code=blood-pressure", result: "BP trend: 126/78 → 136/86 mmHg", color: "#D97706" },
-  { t: 13500, method: "GET", path: "/CarePlan?patient=sarah-chen&status=active", result: "Day 15/90 · Phase: Stabilize → Optimize", color: "#2563EB" },
-  { t: 14100, method: "GET", path: "/Condition?patient=sarah-chen", result: "HFrEF, CKD3a, HTN, T2DM", color: "#2563EB" },
-  { t: 33000, method: "POST", path: "/Flag", result: "P1 Alert created · ID: flag-sc-001", color: "#DC2626" },
-  { t: 33600, method: "POST", path: "/Communication", result: "Coordinator alert dispatched → Rachel Kim", color: "#DC2626" },
-];
-
 // ── Marcus Williams HTN/DM Data ──
 const MARCUS_BP_DATA = [
   { day: 1, date: "Feb 25", sys: 148, dia: 94 },
@@ -503,7 +292,7 @@ function Header({ onBack, patientSelected, onSwitchRole, coordinatorName = "Rach
 }
 
 // ── Roster View ──
-function RosterView({ onSelect, onCallPatient, onBack, epicPatients = [], epicLoading, onFetchEpic, riskOverrides = {}, guidanceBanner, isScriptedDemo = false, roster = ROSTER, primaryPatientId = 1 }) {
+function RosterView({ onSelect, onCallPatient, onBack, epicPatients = [], epicLoading, onFetchEpic, riskOverrides = {}, guidanceBanner, isScriptedDemo = false, roster = MARCUS_ROSTER, primaryPatientId = 101 }) {
   const isMobile = useIsMobile();
   const alertCount = roster.filter(p => p.alert).length;
   const [showPointerArrow, setShowPointerArrow] = useState(false);
@@ -722,9 +511,9 @@ export function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, 
   const [transcript, setTranscript]   = useState([]);
   const [fhirLog, setFhirLog]         = useState([]);
   const isEpic = patient?.isEpic;
-  const ACTIVE_TRANSCRIPT = isMarcusDemo ? MARCUS_VOICE_TRANSCRIPT : VOICE_TRANSCRIPT;
-  const ACTIVE_FHIR = isMarcusDemo ? MARCUS_FHIR_QUERIES : FHIR_QUERIES;
-  const ACTIVE_CLINICAL = isMarcusDemo ? MARCUS_CLINICAL_DATA : PATIENT_CLINICAL_DATA;
+  const ACTIVE_TRANSCRIPT = MARCUS_VOICE_TRANSCRIPT;
+  const ACTIVE_FHIR = MARCUS_FHIR_QUERIES;
+  const ACTIVE_CLINICAL = MARCUS_CLINICAL_DATA;
   const getPatientContext = () => {
     if (isEpic && patient.epicData) {
       return {
@@ -1481,7 +1270,7 @@ export function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, 
   // Play the pre-cached failsafe message and end the call gracefully
   const playFailsafeAndEnd = async () => {
     const pfName = patient?.name?.split(' ')[0] || 'there';
-    const pfCoord = ACTIVE_CLINICAL[patient?.id]?.coordinator || PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
+    const pfCoord = ACTIVE_CLINICAL[patient?.id]?.coordinator || "David Park, RN";
     const failsafeText = `I'm sorry ${pfName}, we're experiencing a brief technical issue. Don't worry — I've shared everything from our conversation with your care coordinator ${pfCoord.split(',')[0]}, and they will follow up with you today. Take care.`;
     setTranscript(p => [...p, { speaker: "AI", text: failsafeText }]);
     setActiveSpeaker("AI");
@@ -1517,7 +1306,7 @@ export function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, 
     const history = [];
     const firstName = patient?.name?.split(' ')[0] || 'there';
     // Pre-cache failsafe audio in background (don't await — let it load while call runs)
-    const coordinatorName = ACTIVE_CLINICAL[patient?.id]?.coordinator || PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
+    const coordinatorName = ACTIVE_CLINICAL[patient?.id]?.coordinator || "David Park, RN";
     const failsafeMsg = `I'm sorry ${firstName}, we're experiencing a brief technical issue. Don't worry — I've shared everything from our conversation with your care coordinator ${coordinatorName.split(',')[0]}, and they will follow up with you today. Take care.`;
     fetchAudioOnce(failsafeMsg, "AI")
       .then(url => { failsafeAudio.current = url; })
@@ -1695,7 +1484,7 @@ export function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, 
         processMetadata(finalData);
       } catch {
         // Fallback if API fails
-        const coordName = ACTIVE_CLINICAL[patient?.id]?.coordinator || PATIENT_CLINICAL_DATA[patient?.id]?.coordinator || "Rachel Kim, RN";
+        const coordName = ACTIVE_CLINICAL[patient?.id]?.coordinator || "David Park, RN";
         closingMsg = `Well ${firstName}, it was great checking in with you today. I've noted everything from our conversation, and your care coordinator ${coordName.split(',')[0]} will have a full summary. If anything changes or you have concerns before your next check-in, don't hesitate to reach out. Take care!`;
       }
       setTranscript(p => [...p, { speaker: "AI", text: closingMsg }]);
@@ -1935,7 +1724,7 @@ export function VoiceCallDemo({ patient, onComplete, autoStartScripted = false, 
   // CLOSING SLIDE — smooth fade + call summary end screen
   // ─────────────────────────────────────────────
   if (uiState === "closing") {
-    const closingTranscript = isMarcusDemo ? MARCUS_VOICE_TRANSCRIPT : VOICE_TRANSCRIPT;
+    const closingTranscript = MARCUS_VOICE_TRANSCRIPT;
     const closingDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     const summaryRows = isMarcusDemo ? [
       { label: "Risk score", value: "53 \u2192 73", color: "#C0392B" },
@@ -3273,36 +3062,36 @@ function EpicFHIRSection() {
 
 // ── Supporting Data ──
 function SupportingData() {
-  const [openSection, setOpenSection] = useState("weight");
+  const [openSection, setOpenSection] = useState("glucose");
   const toggle = (id) => setOpenSection(openSection === id ? null : id);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 8 }}>Supporting Data</div>
       <div style={{ background: c.card, borderRadius: c.radius, border: `1px solid ${c.border}`, boxShadow: c.shadow, overflow: "hidden" }}>
-        <button onClick={() => toggle("weight")} style={{ width: "100%", padding: "14px 18px", border: "none", background: "none", cursor: "pointer", fontFamily: c.font, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: c.text, display: "flex", alignItems: "center", gap: 6 }}><Icon name="scale" size={14} color={c.textMed} /> Weight Trend — 14 days</span>
+        <button onClick={() => toggle("glucose")} style={{ width: "100%", padding: "14px 18px", border: "none", background: "none", cursor: "pointer", fontFamily: c.font, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: c.text, display: "flex", alignItems: "center", gap: 6 }}><Icon name="flask" size={14} color={c.textMed} /> Fasting Glucose — 22 days</span>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: c.red, fontFamily: DS.fontDisplay }}>187.7 lbs (+2.3)</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: c.red, fontFamily: DS.fontDisplay }}>186 mg/dL</span>
             <span style={{ fontSize: 14, color: c.textLight }}>⌄</span>
           </div>
         </button>
-        {openSection === "weight" && (
+        {openSection === "glucose" && (
           <div style={{ padding: "0 12px 14px" }}>
             <div style={{ height: 180 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={WEIGHT_DATA} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+                <AreaChart data={MARCUS_GLUCOSE_DATA} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
                   <defs>
-                    <linearGradient id="wg3" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={c.accent} stopOpacity={0.1} />
-                      <stop offset="100%" stopColor={c.accent} stopOpacity={0.01} />
+                    <linearGradient id="gg3" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={c.orange} stopOpacity={0.18} />
+                      <stop offset="100%" stopColor={c.orange} stopOpacity={0.02} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={c.border} />
                   <XAxis dataKey="date" tick={{ fontSize: 11, fill: c.textLight }} axisLine={false} tickLine={false} interval={2} />
-                  <YAxis domain={[184, 189]} tick={{ fontSize: 11, fill: c.textLight }} axisLine={false} tickLine={false} width={40} />
-                  <ReferenceLine y={186} stroke={c.red} strokeDasharray="6 4" strokeOpacity={0.5} label={{ value: "Alert", position: "right", fontSize: 10, fill: c.red }} />
+                  <YAxis domain={[140, 200]} tick={{ fontSize: 11, fill: c.textLight }} axisLine={false} tickLine={false} width={40} />
+                  <ReferenceLine y={130} stroke={c.green} strokeDasharray="6 4" strokeOpacity={0.5} label={{ value: "Goal <130", position: "right", fontSize: 10, fill: c.green }} />
                   <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${c.border}`, fontFamily: c.font }} />
-                  <Area type="monotone" dataKey="weight" stroke={c.accent} strokeWidth={2.5} fill="url(#wg3)" dot={{ r: 3.5, fill: c.accent, stroke: "white", strokeWidth: 2 }} />
+                  <Area type="monotone" dataKey="glucose" stroke={c.orange} strokeWidth={2.5} fill="url(#gg3)" dot={{ r: 3.5, fill: c.orange, stroke: "white", strokeWidth: 2 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -3312,9 +3101,9 @@ function SupportingData() {
 
       <div style={{ background: c.card, borderRadius: c.radius, border: `1px solid ${c.border}`, boxShadow: c.shadow, overflow: "hidden" }}>
         <button onClick={() => toggle("bp")} style={{ width: "100%", padding: "14px 18px", border: "none", background: "none", cursor: "pointer", fontFamily: c.font, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: c.text, display: "flex", alignItems: "center", gap: 6 }}><Icon name="stethoscope" size={14} color={c.textMed} /> Blood Pressure Trend</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: c.text, display: "flex", alignItems: "center", gap: 6 }}><Icon name="stethoscope" size={14} color={c.textMed} /> Blood Pressure Trend — 22 days</span>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: c.orange, fontFamily: DS.fontDisplay }}>136/86 mmHg</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: c.red, fontFamily: DS.fontDisplay }}>158/98 mmHg</span>
             <span style={{ fontSize: 14, color: c.textLight }}>⌄</span>
           </div>
         </button>
@@ -3322,7 +3111,7 @@ function SupportingData() {
           <div style={{ padding: "0 12px 14px" }}>
             <div style={{ height: 160 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={BP_DATA} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+                <AreaChart data={MARCUS_BP_DATA} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={c.border} />
                   <XAxis dataKey="date" tick={{ fontSize: 11, fill: c.textLight }} axisLine={false} tickLine={false} />
                   <YAxis domain={[60, 150]} tick={{ fontSize: 11, fill: c.textLight }} axisLine={false} tickLine={false} width={36} />
@@ -3604,7 +3393,7 @@ function GenericPatientSummary({ patient, onOutreach }) {
   const trendColors = { worsening: c.red, stable: c.teal, improving: "#10B981" };
   const trendIcons = { worsening: "↗", stable: "→", improving: "↘" };
   const phaseColors = { Stabilize: "#10B981", "Stabilize → Optimize": "#10B981", Optimize: "#3B82F6", Maintain: "#8B5CF6" };
-  const data = PATIENT_CLINICAL_DATA[patient.id];
+  const data = MARCUS_CLINICAL_DATA[patient.id];
   const cardStyle = { background: c.card, borderRadius: c.radius, border: `1px solid ${c.border}`, boxShadow: c.shadow, overflow: "hidden" };
   const sectionHead = { fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 };
   const statusColor = (s) => s === "good" ? c.green : s === "elevated" ? c.red : c.orange;
@@ -4014,7 +3803,7 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
     if (!isScriptedDemo) return;
     const patientKey = isMarcusDemo ? 'marcus' : 'sarah';
     if (window._vardanaPreloadedUrls && window._vardanaPreloadedPatient === patientKey) return;
-    const transcript = isMarcusDemo ? MARCUS_VOICE_TRANSCRIPT : VOICE_TRANSCRIPT;
+    const transcript = MARCUS_VOICE_TRANSCRIPT;
     let cancelled = false;
     (async () => {
       try {
@@ -4059,8 +3848,8 @@ function CareCoordinatorView({ onSwitchRole, isScriptedDemo = false, isLiveDemo 
   };
 
   // Determine which roster and clinical data to use
-  const activeRoster = isMarcusDemo ? MARCUS_ROSTER : ROSTER;
-  const activeClinicalData = isMarcusDemo ? { ...PATIENT_CLINICAL_DATA, ...MARCUS_CLINICAL_DATA } : PATIENT_CLINICAL_DATA;
+  const activeRoster = MARCUS_ROSTER;
+  const activeClinicalData = MARCUS_CLINICAL_DATA;
   const primaryPatientId = isMarcusDemo ? 101 : 1;
   const coordinatorName = isMarcusDemo ? "David Park, RN" : "Rachel Kim, RN";
 
@@ -4206,389 +3995,6 @@ function PatientContactModal({ onClose, onVoice, onChat }) {
   );
 }
 
-// ── Patient Chat Component ──
-function PatientChat({ patient, onBack }) {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [history, setHistory] = useState([]);
-  const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
-
-  // AI greeting on mount
-  useEffect(() => {
-    const greeting = `Hi ${patient.name.split(' ')[0]}, I'm your Vardana care concierge. How can I help you today?`;
-    setMessages([{ role: "ai", text: greeting }]);
-    setHistory([{ role: "assistant", content: greeting }]);
-  }, [patient.name]);
-
-  // Auto-scroll
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const sendMessage = async () => {
-    const text = input.trim();
-    if (!text || isTyping) return;
-    setInput("");
-    setMessages(prev => [...prev, { role: "user", text }]);
-    const newHistory = [...history, { role: "user", content: text }];
-    setHistory(newHistory);
-    setIsTyping(true);
-
-    try {
-      const res = await fetch("/api/voice-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newHistory, turn: Math.floor(newHistory.length / 2), maxTurns: 20, chatMode: true }),
-      });
-      if (!res.ok) throw new Error(`API ${res.status}`);
-      const data = await res.json();
-      setMessages(prev => [...prev, { role: "ai", text: data.reply }]);
-      setHistory(prev => [...prev, { role: "assistant", content: data.reply }]);
-      // Notify coordinator view of escalation via localStorage (cross-tab)
-      if (data.riskScore || data.generateAlert) {
-        const escalation = { patientId: patient.id, riskScore: data.riskScore, generateAlert: data.generateAlert, riskLevel: data.riskScore >= 80 ? 'critical' : data.riskScore >= 45 ? 'high' : data.riskScore >= 20 ? 'moderate' : 'low', timestamp: Date.now() };
-        localStorage.setItem('vardana-escalation', JSON.stringify(escalation));
-      }
-    } catch (err) {
-      setMessages(prev => [...prev, { role: "ai", text: "I'm sorry, I'm having trouble connecting right now. Please try again." }]);
-    }
-    setIsTyping(false);
-    setTimeout(() => inputRef.current?.focus(), 100);
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: DS.color.slate[950], zIndex: 300, display: "flex", flexDirection: "column", fontFamily: c.font }}>
-      {/* Header */}
-      <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={onBack} style={{ background: "rgba(255,255,255,0.08)", border: "none", color: "white", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: c.font }}>← Back</button>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg, ${c.purple}, #7C3AED)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: "white" }}>V</div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "white" }}>Vardana AI</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Care Concierge</div>
-          </div>
-        </div>
-        <button onClick={onBack} style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", color: "#FCA5A5", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: c.font }}>End Chat</button>
-      </div>
-
-      {/* Messages */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 10px" }}>
-        <div style={{ maxWidth: 600, margin: "0 auto" }}>
-          {messages.map((msg, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", marginBottom: 12 }}>
-              {msg.role === "ai" && (
-                <div style={{ width: 28, height: 28, borderRadius: 8, background: `${c.purple}25`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: c.purple, marginRight: 8, flexShrink: 0, marginTop: 2 }}>V</div>
-              )}
-              <div style={{
-                maxWidth: "75%",
-                padding: "10px 14px",
-                borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
-                background: msg.role === "user" ? "linear-gradient(135deg, #0EA5E9, #0284C7)" : "rgba(255,255,255,0.06)",
-                border: msg.role === "user" ? "none" : "1px solid rgba(255,255,255,0.08)",
-                color: "white",
-                fontSize: 13,
-                lineHeight: 1.6,
-              }}>
-                {msg.text.split(/(\*\*[^*]+\*\*)/).map((part, j) =>
-                  part.startsWith('**') && part.endsWith('**')
-                    ? <strong key={j}>{part.slice(2, -2)}</strong>
-                    : part
-                )}
-              </div>
-            </div>
-          ))}
-          {isTyping && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: `${c.purple}25`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: c.purple }}>V</div>
-              <div style={{ padding: "10px 14px", borderRadius: "14px 14px 14px 4px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)", fontSize: 13 }}>Typing...</div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      {/* Input */}
-      <div style={{ padding: "12px 20px 20px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", gap: 8 }}>
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && sendMessage()}
-            placeholder="Type your message..."
-            style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "white", fontSize: 14, fontFamily: c.font, outline: "none" }}
-          />
-          <button onClick={sendMessage} disabled={isTyping || !input.trim()} style={{ padding: "12px 20px", borderRadius: 12, background: isTyping || !input.trim() ? "rgba(255,255,255,0.06)" : "linear-gradient(135deg, #0EA5E9, #0284C7)", color: "white", border: "none", fontSize: 14, fontWeight: 800, cursor: isTyping ? "default" : "pointer", fontFamily: c.font, opacity: isTyping || !input.trim() ? 0.4 : 1 }}>Send</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Patient Experience View ──
-function PatientExperienceView({ onSwitchRole }) {
-  const patient = ROSTER[0]; // Sarah Chen
-  const [view, setView] = useState("dashboard"); // dashboard | voiceCall | chat
-  const [showContactModal, setShowContactModal] = useState(false);
-  const latestWeight = WEIGHT_DATA[WEIGHT_DATA.length - 1];
-  const prevWeight = WEIGHT_DATA[WEIGHT_DATA.length - 3];
-  const latestBP = BP_DATA[BP_DATA.length - 1];
-  const journeyPct = (patient.day / 90) * 100;
-
-  const sarahPatient = { ...patient, isEpic: false, alert: false };
-
-  if (view === "voiceCall") {
-    return <VoiceCallDemo patient={sarahPatient} onComplete={() => setView("dashboard")} />;
-  }
-  if (view === "chat") {
-    return <PatientChat patient={sarahPatient} onBack={() => setView("dashboard")} />;
-  }
-
-  const medications = [
-    { name: "Carvedilol", dose: "12.5mg", timing: "Twice daily (morning & evening)", iconName: "pill" },
-    { name: "Lisinopril", dose: "10mg", timing: "Once daily (morning)", iconName: "pill" },
-    { name: "Furosemide", dose: "40mg", timing: "Once daily (morning)", icon: "💧" },
-    { name: "Metformin", dose: "1000mg", timing: "Twice daily (with meals)", iconName: "pill" },
-    { name: "Spironolactone", dose: "25mg", timing: "Once daily", iconName: "pill" },
-  ];
-
-  const cardStyle = { background: c.card, borderRadius: c.radius, border: `1px solid ${c.border}`, boxShadow: c.shadow, overflow: "hidden" };
-  const sectionHead = { fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 };
-
-  return (
-    <div style={{ minHeight: "100vh", background: "#E5E7EB", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "32px 16px", fontFamily: c.font }}>
-      <style>{`
-        * { box-sizing: border-box; margin: 0; }
-        button:active { opacity: 0.9; }
-      `}</style>
-      <div style={{ width: 390, minHeight: 844, background: DS.color.canvas.warm, borderRadius: 44, boxShadow: "0 25px 60px rgba(0,0,0,0.15), 0 0 0 4px #1F2937", overflow: "hidden", position: "relative" }}>
-      <PatientHeader onSwitchRole={onSwitchRole} />
-
-      <div style={{ padding: 16 }}>
-
-        {/* Welcome */}
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 400, color: c.text, margin: 0, fontFamily: DS.fontDisplay }}>Welcome back, Sarah</h1>
-          <p style={{ fontSize: 14, color: c.textLight, margin: "4px 0 0", fontFamily: c.font }}>Here's your recovery progress for today</p>
-        </div>
-
-        {/* AI Concierge Check-in — above the fold */}
-        <div style={{ ...cardStyle, padding: 0, marginBottom: 16, background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)", border: "none", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(14,165,233,0.08)" }} />
-          <div style={{ padding: "20px 24px", position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: "linear-gradient(135deg, #0EA5E9, #A855F7)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Icon name="phone" size={22} color="white" />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "white" }}>Your daily check-in is ready</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>Talk to Vardana AI about how you're feeling today</div>
-            </div>
-            <button
-              onClick={() => setShowContactModal(true)}
-              style={{
-                padding: "10px 22px", borderRadius: 10,
-                background: "linear-gradient(135deg, #0EA5E9, #0284C7)",
-                color: "white", border: "none", fontSize: 14, fontWeight: 800,
-                cursor: "pointer", fontFamily: c.font, whiteSpace: "nowrap",
-                boxShadow: "0 4px 16px rgba(14,165,233,0.3)",
-                display: "flex", alignItems: "center", gap: 6,
-              }}
-            >
-              Start Check-in
-            </button>
-          </div>
-        </div>
-
-        {/* Weight Alert — elevated above journey bar when alert active */}
-        {patient.alert && (
-          <div style={{ ...cardStyle, padding: "18px 20px", marginBottom: 16, borderLeft: `4px solid ${c.red}`, background: "#FEF2F2" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <Icon name="alert" size={16} color={c.red} />
-              <div style={{ fontSize: 13, fontWeight: 700, color: c.red, textTransform: "uppercase", letterSpacing: "0.05em" }}>Weight Change Alert</div>
-            </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <span style={{ fontSize: 28, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>{latestWeight.weight}</span>
-              <span style={{ fontSize: 13, color: c.textLight }}>lbs</span>
-              <span style={{ fontSize: 14, color: c.red, fontWeight: 700 }}>+{(latestWeight.weight - prevWeight.weight).toFixed(1)} lbs in 48hrs</span>
-            </div>
-            <div style={{ fontSize: 13, color: c.textMed, marginTop: 8, lineHeight: 1.5 }}>Your care team has been notified. Nurse Rachel Kim will call you today.</div>
-          </div>
-        )}
-
-        {/* Journey Progress */}
-        <div style={{ ...cardStyle, padding: "20px 24px", marginBottom: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: c.text }}>Recovery Journey</div>
-              <div style={{ fontSize: 13, color: c.textLight, marginTop: 2 }}>Day {patient.day} · Continuous Care</div>
-            </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: c.purple, background: c.purpleLight, padding: "4px 12px", borderRadius: 8 }}>
-              {patient.phase}
-            </span>
-          </div>
-          {/* Progress bar */}
-          <div style={{ position: "relative", height: 10, background: c.borderLight, borderRadius: 6, overflow: "hidden", marginBottom: 10 }}>
-            <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${journeyPct}%`, background: "linear-gradient(90deg, #059669, #2563EB)", borderRadius: 6, transition: "width 1s ease" }} />
-          </div>
-          {/* Phase labels */}
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: c.textLight }}>
-            <span style={{ color: c.green, fontWeight: 700 }}>Stabilize (1–14)</span>
-            <span style={{ color: "#3B82F6", fontWeight: 700 }}>Optimize (15–60)</span>
-            <span style={{ color: c.purple, fontWeight: 600 }}>Maintain (61–90)</span>
-          </div>
-        </div>
-
-        {/* Vitals Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-          {/* Weight — normal position when no alert */}
-          {!patient.alert && (
-          <div style={{ ...cardStyle, padding: "18px 20px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Your Weight</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <span style={{ fontSize: 28, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>{latestWeight.weight}</span>
-              <span style={{ fontSize: 13, color: c.textLight }}>lbs</span>
-            </div>
-            <div style={{ fontSize: 12, color: c.red, fontWeight: 600, marginTop: 4 }}>
-              +{(latestWeight.weight - prevWeight.weight).toFixed(1)} lbs in 48hrs
-            </div>
-            <div style={{ fontSize: 11, color: c.textLight, marginTop: 6 }}>Your care team has been notified about this change.</div>
-          </div>
-          )}
-
-          {/* Blood Pressure */}
-          <div style={{ ...cardStyle, padding: "18px 20px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Blood Pressure</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-              <span style={{ fontSize: 28, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>{latestBP.sys}/{latestBP.dia}</span>
-              <span style={{ fontSize: 13, color: c.textLight }}>mmHg</span>
-            </div>
-            <div style={{ fontSize: 12, color: c.orange, fontWeight: 600, marginTop: 4 }}>
-              Slightly elevated
-            </div>
-            <div style={{ fontSize: 11, color: c.textLight, marginTop: 6 }}>Target: below 130/80 mmHg</div>
-          </div>
-
-          {/* Heart Rate */}
-          <div style={{ ...cardStyle, padding: "18px 20px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: c.textLight, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Heart Rate</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <span style={{ fontSize: 28, fontWeight: 400, color: c.text, fontFamily: DS.fontDisplay }}>82</span>
-              <span style={{ fontSize: 13, color: c.textLight }}>bpm</span>
-            </div>
-            <div style={{ fontSize: 12, color: c.green, fontWeight: 600, marginTop: 4 }}>
-              Normal range
-            </div>
-          </div>
-
-          {/* Next Check-in */}
-          <div style={{ ...cardStyle, padding: "18px 20px", background: DS.color.amber[50] }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: DS.color.amber[600], textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Next Check-in</div>
-            <div style={{ fontSize: 18, fontWeight: 400, color: DS.color.amber[700], fontFamily: DS.fontDisplay }}>Today</div>
-            <div style={{ fontSize: 12, color: c.textMed, fontWeight: 600, marginTop: 4 }}>
-              AI Concierge call scheduled
-            </div>
-            <div style={{ fontSize: 11, color: c.textLight, marginTop: 6 }}>Vardana will call to check on your progress.</div>
-          </div>
-        </div>
-
-        {/* Talk to Vardana CTA */}
-        <div style={{ ...cardStyle, padding: 0, marginBottom: 16, background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)", border: "none", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(14,165,233,0.08)" }} />
-          <div style={{ position: "absolute", bottom: -20, left: -20, width: 80, height: 80, borderRadius: "50%", background: "rgba(168,85,247,0.08)" }} />
-          <div style={{ padding: "24px 28px", position: "relative", zIndex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #0EA5E9, #A855F7)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Icon name="sms" size={18} color="white" />
-              </div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "white", fontFamily: DS.fontDisplay }}>Have a question?</div>
-            </div>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, margin: "0 0 16px", maxWidth: 340 }}>
-              Talk to your Vardana AI care concierge anytime.
-            </p>
-            <button
-              onClick={() => setShowContactModal(true)}
-              style={{
-                padding: "12px 28px", borderRadius: 10,
-                background: "linear-gradient(135deg, #0EA5E9, #0284C7)",
-                color: "white", border: "none", fontSize: 14, fontWeight: 800,
-                cursor: "pointer", fontFamily: c.font,
-                boxShadow: "0 4px 16px rgba(14,165,233,0.3)",
-                display: "flex", alignItems: "center", gap: 8,
-              }}
-            >
-              <Icon name="sms" size={16} color="white" /> Start a Check-in
-            </button>
-          </div>
-        </div>
-
-        {/* Medications */}
-        <div style={{ ...cardStyle, padding: "20px 24px", marginBottom: 16 }}>
-          <div style={sectionHead}>Your Medications</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {medications.map((med, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 14px", background: c.borderLight, borderRadius: 10 }}>
-                <Icon name={med.iconName} size={20} color={c.accent} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: c.text }}>{med.name} <span style={{ fontWeight: 500, color: c.textLight }}>{med.dose}</span></div>
-                  <div style={{ fontSize: 12, color: c.textLight, marginTop: 2 }}>{med.timing}</div>
-                </div>
-                <div style={{ width: 28, height: 28, borderRadius: 8, background: c.greenLight, border: `1.5px solid ${c.green}`, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="check" size={14} color={c.green} /></div>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 12, padding: "10px 14px", background: "#FEF3C7", borderRadius: 10, fontSize: 12, color: c.orange, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
-            <Icon name="alert" size={12} color={c.orange} /> Allergy: Sulfa drugs — Always remind your doctor before any new prescriptions.
-          </div>
-        </div>
-
-        {/* Recent AI Check-ins */}
-        <div style={{ ...cardStyle, padding: "20px 24px", marginBottom: 16 }}>
-          <div style={sectionHead}>Recent Check-ins with Vardana AI</div>
-          {[
-            { date: "Yesterday, 8:00 AM", summary: "You mentioned feeling more tired and noticed some ankle swelling. Vardana connected this to a 1.1 lb weight increase and flagged it for your care team as an early sign to monitor." },
-            { date: "Today, 7:45 AM", summary: "Your weight is up 2.3 lbs over 2 days — back above your discharge weight. Vardana identified this as a fluid retention pattern and notified Nurse Rachel Kim. She will call you today." },
-          ].map((item, i) => (
-            <div key={i} style={{ padding: "14px 16px", background: i === 1 ? c.purpleLight : c.borderLight, borderRadius: 10, marginBottom: i < 1 ? 8 : 0, border: i === 1 ? `1px solid ${c.purple}30` : "none" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: i === 1 ? c.purple : c.textLight, marginBottom: 6 }}>{item.date}</div>
-              <div style={{ fontSize: 13, color: c.textMed, lineHeight: 1.6 }}>{item.summary}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Care Team */}
-        <div style={{ ...cardStyle, padding: "20px 24px", marginBottom: 24 }}>
-          <div style={sectionHead}>Your Care Team</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {[
-              { name: "Rachel Kim, RN", role: "Care Coordinator", initials: "RK", color: c.teal },
-              { name: "Dr. James Harrington", role: "Cardiologist", initials: "JH", color: c.accent },
-              { name: "Vardana AI", role: "Care Concierge", initials: "V", color: c.purple },
-            ].map((member, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 14px", background: c.borderLight, borderRadius: 10 }}>
-                <div style={{ width: 40, height: 40, borderRadius: "50%", background: `${member.color}15`, border: `2px solid ${member.color}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: member.color, fontFamily: DS.fontSans }}>{member.initials}</div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: c.text }}>{member.name}</div>
-                  <div style={{ fontSize: 12, color: c.textLight }}>{member.role}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </div>
-      </div>{/* end phone frame */}
-      {showContactModal && (
-        <PatientContactModal
-          onClose={() => setShowContactModal(false)}
-          onVoice={() => { setShowContactModal(false); setView("voiceCall"); }}
-          onChat={() => { setShowContactModal(false); setView("chat"); }}
-        />
-      )}
-    </div>
-  );
-}
 
 // ── App Entry (routed via main.jsx) ──
 export default function App({ initialRole, navigate }) {
@@ -4601,7 +4007,8 @@ export default function App({ initialRole, navigate }) {
   const isMarcusDemo = patientParam === 'marcus';
 
   if (initialRole === "coordinator") return <CareCoordinatorView onSwitchRole={goBack} isScriptedDemo={isScriptedDemo} isLiveDemo={isLiveDemo} isMarcusDemo={isMarcusDemo} />;
-  if (initialRole === "patient") return <PatientExperienceView onSwitchRole={goBack} />;
+  // /patient route was the legacy Sarah CHF patient view; removed when CHF
+  // was decommissioned. The route is unreachable from main.jsx.
 
   // Fallback — redirect to demo page
   navigate(DEMO_BASE);
