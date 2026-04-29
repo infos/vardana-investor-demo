@@ -108,7 +108,7 @@ export function initialsFromName(name = "") {
   if (!parts.length) return "??";
   return ((parts[0][0] || "") + (parts[parts.length - 1][0] || "")).toUpperCase();
 }
-function ageFromBirthDate(birthDate) {
+export function ageFromBirthDate(birthDate) {
   if (!birthDate) return null;
   const b = new Date(birthDate);
   if (isNaN(b.getTime())) return null;
@@ -443,6 +443,10 @@ export const LOCAL_PATIENTS = [
     bundlePath: "/data/marcus-williams-bundle.json",
     summary: null,
     local: true,
+    // Demographics duplicated from the bundle so the grid view can render
+    // age/sex without a per-row bundle fetch.
+    birthDate: "1967-06-03",
+    gender: "male",
   },
 ];
 const LOCAL_MARCUS_ROSTER = LOCAL_PATIENTS[0];

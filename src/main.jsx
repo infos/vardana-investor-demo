@@ -12,6 +12,7 @@ import ClinicalDemoPage from './demo/ClinicalDemoPage.jsx'
 import ClinicalDemoEntry from './demo/ClinicalDemoEntry.jsx'
 import CoordinatorDashboard from './CoordinatorDashboard.jsx'
 import CoordinatorPanel from './CoordinatorPanel.jsx'
+import PracticeDashboard from './PracticeDashboard.jsx'
 import { useAnalytics } from './useAnalytics'
 import { DEMO_BASE, CLINICAL_BASE, isTokenValid, setDemoTokenCookie } from './demoPath'
 
@@ -34,7 +35,7 @@ function Router() {
 
   // Add noindex meta for demo/coordinator/checkin routes
   useEffect(() => {
-    const noindexPaths = ['/demo', '/coordinator', '/patient', '/checkin'];
+    const noindexPaths = ['/demo', '/coordinator', '/patient', '/checkin', '/practice'];
     const shouldNoindex = noindexPaths.some(p => pathname.startsWith(p));
     let meta = document.querySelector('meta[name="robots"]');
     if (shouldNoindex) {
@@ -63,13 +64,23 @@ function Router() {
   // /patient was the legacy Sarah CHF patient view; removed when CHF was
   // decommissioned. /demo/{token}/scripted likewise — Sarah's Loom video
   // is gone; the recorded Marcus demo lives at /demo/{token}/recorded.
-  const gatedRoutes = ['/coordinator', '/coordinator/panel', '/checkin'];
+  const gatedRoutes = ['/coordinator', '/coordinator/panel', '/practice', '/checkin'];
   if (gatedRoutes.includes(pathname) && !isTokenValid()) {
     return <HomePage navigate={navigate} />;
   }
 
-  if (pathname === '/coordinator/panel') return <CoordinatorPanel />;
-  if (pathname === '/coordinator') return <CoordinatorDashboard />;
+  // /coordinator now renders the patient grid by default. The existing
+  // single-patient detail surface is reached by ?patient=<id> on the same
+  // path — the dashboard reads that param on mount and pre-selects the
+  // matching roster entry. /coordinator/panel is kept as a permanent alias
+  // so anything bookmarked from the previous shipping window still resolves
+  // to the grid.
+  if (pathname === '/practice') return <PracticeDashboard navigate={navigate} />;
+  if (pathname === '/coordinator/panel') return <CoordinatorPanel navigate={navigate} />;
+  if (pathname === '/coordinator') {
+    const hasPatientQuery = new URLSearchParams(window.location.search).has('patient');
+    return hasPatientQuery ? <CoordinatorDashboard /> : <CoordinatorPanel navigate={navigate} />;
+  }
   if (pathname === `${DEMO_BASE}/recorded`) return <RecordedDemoPage navigate={navigate} />;
   if (pathname === `${DEMO_BASE}/live`) return <LiveDemoPage navigate={navigate} />;
   if (pathname === `${DEMO_BASE}/clinical`) return <ClinicalDemoPage navigate={navigate} />;
