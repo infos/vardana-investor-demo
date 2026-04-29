@@ -103,7 +103,7 @@ function EmptyState({ children }) {
 }
 
 // ── Helpers ──
-function initialsFromName(name = "") {
+export function initialsFromName(name = "") {
   const parts = name.trim().split(/\s+/);
   if (!parts.length) return "??";
   return ((parts[0][0] || "") + (parts[parts.length - 1][0] || "")).toUpperCase();
@@ -125,7 +125,7 @@ function fmtDate(iso) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 // Infer risk tier from summary roster data (BP readings, conditions)
-function inferRiskLevel(summary) {
+export function inferRiskLevel(summary) {
   const bp = summary.latestBP;
   const hasHTN = (summary.conditions || []).some(c => /hypertension|htn/i.test(c.text || ""));
   const hasT2DM = hasActiveDiabetes(summary.conditions);
@@ -134,7 +134,7 @@ function inferRiskLevel(summary) {
   if (hasHTN && hasT2DM) return "mod";
   return "low";
 }
-function inferConditionsSummary(conditions) {
+export function inferConditionsSummary(conditions) {
   if (!conditions?.length) return "—";
   const parts = [];
   if (conditions.some(c => /hypertension|htn/i.test(c.text || ""))) parts.push("HTN");
@@ -430,8 +430,8 @@ function buildCarePlanView(cp, goalResources = []) {
 // lives. Used both as the demo default (when Medplum is unavailable)
 // and as authoritative data in front of Medplum for named patients
 // (see roster loader below).
-const LOCAL_MARCUS_ID = "local-marcus";
-const LOCAL_PATIENTS = [
+export const LOCAL_MARCUS_ID = "local-marcus";
+export const LOCAL_PATIENTS = [
   {
     id: LOCAL_MARCUS_ID,
     name: "Marcus Williams",
@@ -446,19 +446,19 @@ const LOCAL_PATIENTS = [
   },
 ];
 const LOCAL_MARCUS_ROSTER = LOCAL_PATIENTS[0];
-const LOCAL_PATIENT_BY_ID = new Map(LOCAL_PATIENTS.map(p => [p.id, p]));
-const LOCAL_PATIENT_NAMES = new Set(LOCAL_PATIENTS.map(p => p.name));
+export const LOCAL_PATIENT_BY_ID = new Map(LOCAL_PATIENTS.map(p => [p.id, p]));
+export const LOCAL_PATIENT_NAMES = new Set(LOCAL_PATIENTS.map(p => p.name));
 // Patients suppressed from the Medplum roster for this demo. They are
 // not deleted — older links, eval fixtures, and recorded demo content
 // may still reference them. Suppression is reversible; deletion is not.
-const SUPPRESSED_PATIENT_NAMES = new Set([
+export const SUPPRESSED_PATIENT_NAMES = new Set([
   "Sarah Chen",
   "Robert Williams",
   "James Thompson",
 ]);
 // Display order for the left-nav roster. Anything not listed keeps its
 // Medplum-returned order and falls to the tail.
-const ROSTER_ORDER = [
+export const ROSTER_ORDER = [
   "Marcus Williams",
   "Linda Patel",
   "Maria Gonzalez",
@@ -478,9 +478,10 @@ const CARD_COLORS = [
 // shows the Medplum persistence status (saving / saved / error).
 function PostCallSummary({ summary, status, onDismiss, onViewSessions }) {
   if (!summary) return null;
-  const { patientName, duration, timestamp, riskLevel, alertGenerated, summary: summaryText, transcript } = summary;
+  const { patientName, duration, timestamp, riskLevel, alertGenerated, summary: summaryText, transcript, kind } = summary;
   const when = timestamp || new Date().toLocaleString();
   const tier = (riskLevel || "").toUpperCase();
+  const sessionLabel = kind === "chat" ? "Chat just ended" : "Call just ended";
   const transcriptText = Array.isArray(transcript)
     ? transcript.map(t => `${t.speaker || "AI"}: ${t.text || ""}`).join("\n")
     : (transcript || "");
@@ -488,11 +489,12 @@ function PostCallSummary({ summary, status, onDismiss, onViewSessions }) {
   let statusColor = S.textLight;
   if (status === "saving") { statusText = "Saving to Medplum…"; statusColor = S.textMed; }
   else if (status === "saved") { statusText = "Saved to Medplum."; statusColor = S.green; }
+  else if (status === "demo") { statusText = "Demo mode — this summary is NOT saved to Medplum."; statusColor = S.amber; }
   else if (typeof status === "string" && status.startsWith("error:")) { statusText = `Medplum write failed: ${status.slice(6)}`; statusColor = S.red; }
   return (
     <div style={{ background: S.card, border: `1px solid ${S.navy}`, borderLeft: `4px solid ${S.amber}`, borderRadius: 8, padding: 14, marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
-        <span style={{ fontSize: 14, letterSpacing: 1, textTransform: "uppercase", color: S.amber, fontWeight: 700, ...css.sans }}>Call just ended</span>
+        <span style={{ fontSize: 14, letterSpacing: 1, textTransform: "uppercase", color: S.amber, fontWeight: 700, ...css.sans }}>{sessionLabel}</span>
         <span style={{ fontSize: 13, ...css.sans, color: S.textLight }}>{when}{duration ? ` · ${duration}` : ""}</span>
         <span style={{ flex: 1 }} />
         {alertGenerated && <Badge color="red">Alert generated</Badge>}
@@ -1331,7 +1333,7 @@ const GENERIC_SESSIONS = [
   { id: "s-gen-2", date: "2026-02-20", duration: "5m 48s", summary: "Reviewed sodium intake and daily weight log. Reinforced warning signs. Care plan on track." },
   { id: "s-gen-3", date: "2026-02-13", duration: "6m 05s", summary: "Post-discharge onboarding. Confirmed pharmacy, PCP contact, and care journey expectations." },
 ];
-const SESSION_FIXTURES = {
+export const SESSION_FIXTURES = {
   "Marcus Williams": [
     { id: "s-mw-1", date: "2026-03-05", duration: "5m 22s", summary: "BP 158/98, 4-day worsening trend. Missed Lisinopril dose confirmed. Escalated P2 to David Park." },
     { id: "s-mw-2", date: "2026-02-28", duration: "4m 08s", summary: "Routine HTN check-in. BP 142/88. Reinforced evening Lisinopril routine and home cuff technique." },
@@ -1358,7 +1360,7 @@ const SESSION_FIXTURES = {
     { id: "s-db-3", date: "2026-04-08", duration: "3m 58s", summary: "Onboarding. Confirmed home BP cuff, lifestyle goals, and quarterly A1c cadence." },
   ],
 };
-function getSessionsFor(patientName) {
+export function getSessionsFor(patientName) {
   return SESSION_FIXTURES[patientName] || GENERIC_SESSIONS;
 }
 function fmtSessionDate(iso) {
@@ -1585,8 +1587,12 @@ export default function CoordinatorDashboard() {
         };
         merged.sort((a, b) => orderIdx(a.name) - orderIdx(b.name));
         setRoster(merged);
-        // Auto-select Marcus (always present via LOCAL_PATIENTS)
-        setSelectedPatientId(LOCAL_MARCUS_ID);
+        // Honor ?patient=<id> deep-link from the panel queue view; fall back
+        // to Marcus (always present via LOCAL_PATIENTS) when the param is
+        // absent or doesn't match the loaded roster.
+        const requested = new URLSearchParams(window.location.search).get("patient");
+        const match = requested && merged.find(p => p.id === requested);
+        setSelectedPatientId(match ? requested : LOCAL_MARCUS_ID);
       } catch (err) {
         if (cancelled) return;
         // Medplum unreachable (e.g. preview deploys without MEDPLUM_CLIENT_ID
@@ -1594,7 +1600,9 @@ export default function CoordinatorDashboard() {
         // seed the local fixtures so the call flow stays demoable.
         setRosterError(err.message);
         setRoster([...LOCAL_PATIENTS]);
-        setSelectedPatientId(LOCAL_MARCUS_ID);
+        const requested = new URLSearchParams(window.location.search).get("patient");
+        const match = requested && LOCAL_PATIENT_BY_ID.has(requested);
+        setSelectedPatientId(match ? requested : LOCAL_MARCUS_ID);
       } finally {
         if (!cancelled) setRosterLoading(false);
       }
@@ -1665,30 +1673,15 @@ export default function CoordinatorDashboard() {
     return () => { cancelled = true; };
   }, [selectedPatientId, sessionLogStatus]);
 
-  // Called by VoiceCallDemo when the call ends. Persists the encounter to
-  // Medplum (when the patient has a real Medplum id) and flashes the summary
-  // onto the Overview tab so the coordinator sees it immediately.
-  const handleCallComplete = async (payload) => {
+  // Called by VoiceCallDemo when the call ends. Pins the summary on Overview
+  // and flags it as demo mode -- Medplum persistence is intentionally
+  // disabled in this build so the shared test deploy doesn't accumulate
+  // Encounters every time someone runs a demo call.
+  const handleCallComplete = (payload) => {
     setCallOpen(false);
     const name = patientData?.patient?.name || roster.find(r => r.id === selectedPatientId)?.name || "Patient";
     setLastCallSummary({ ...payload, patientName: name, patientId: selectedPatientId });
-    // Don't POST for any local fixture patient (no Medplum Patient resource).
-    if (!selectedPatientId || LOCAL_PATIENT_BY_ID.has(selectedPatientId)) return;
-    setSessionLogStatus("saving");
-    try {
-      const res = await fetch("/api/medplum-fhir?action=log-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId: selectedPatientId, ...payload }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `Log session failed: ${res.status}`);
-      }
-      setSessionLogStatus("saved");
-    } catch (err) {
-      setSessionLogStatus(`error:${err.message}`);
-    }
+    setSessionLogStatus("demo");
   };
 
   const selectedRosterItem = useMemo(() => roster.find(r => r.id === selectedPatientId), [roster, selectedPatientId]);
@@ -1764,18 +1757,25 @@ export default function CoordinatorDashboard() {
   const riskDot = (r) => ({ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: r === "high" ? S.red : r === "mod" ? S.amber : S.green, boxShadow: r === "high" ? "0 0 5px rgba(239,68,68,0.5)" : "none" });
 
   // ── Chat eligibility & handlers ──
-  // Live chat is gated on: patient has a CarePlan AND at least one Encounter
-  // (sessions.length > 0). Recorded chat is gated on: at least one scenario in
-  // the manifest matches this patient's name. Voice eligibility is unchanged.
-  const chatPatient = (patientData?.patient && patientData.patient.id)
+  // Live chat just needs a patient with an ID and a name. /api/voice-chat is
+  // stateless and builds the AI's context from whatever conditions /
+  // medications / labs the bundle (or Medplum detail) returned -- no
+  // CarePlan or prior-Encounter requirement. Recorded chat only needs a
+  // patient name (matched against the scenario manifest) and never hits the
+  // network, so it must open even when patientData is still loading.
+  const chatPatientFromData = (patientData?.patient && patientData.patient.id)
     ? { id: patientData.patient.id, name: patientData.patient.name || selectedRosterItem?.name || "Patient" }
     : null;
-  const chatLiveEligible = !!(chatPatient && patientData?.carePlan && (sessions?.length || 0) > 0);
-  const chatScenariosAvailable = scenariosForPatient(chatPatient?.name || selectedRosterItem?.name || "");
+  // Replay-only fallback: roster item alone is enough for the header label;
+  // ChatCheckinDemo never uses patient.id in replay mode.
+  const chatPatientForReplay = chatPatientFromData
+    || (selectedRosterItem ? { id: selectedRosterItem.id, name: selectedRosterItem.name } : null);
+  const chatLiveEligible = !!chatPatientFromData;
+  const chatScenariosAvailable = scenariosForPatient(chatPatientFromData?.name || selectedRosterItem?.name || "");
 
   const handleInitiateChat = () => {
-    if (!chatLiveEligible || !chatPatient) {
-      setChatError("Live chat requires a CarePlan and at least one Encounter for this patient.");
+    if (!chatLiveEligible || !chatPatientFromData) {
+      setChatError("Select a patient before starting a live chat.");
       return;
     }
     setChatError("");
@@ -1802,6 +1802,29 @@ export default function CoordinatorDashboard() {
     setChatScenario(null);
   };
 
+  // Mirrors handleCallComplete (voice). Pinned to the Overview tab via
+  // PostCallSummary so the coordinator sees the chat outcome the same way
+  // they see a voice-call outcome. Persistence to Medplum is intentionally
+  // SKIPPED in this demo build to keep the test deploy non-destructive --
+  // every chat run otherwise wrote a fresh Encounter to the shared Medplum
+  // tenant. The summary still pins on Overview; the status note tells the
+  // coordinator nothing was persisted.
+  const handleChatComplete = (payload) => {
+    setChatOpen(false);
+    setChatScenario(null);
+    const name = patientData?.patient?.name || roster.find(r => r.id === selectedPatientId)?.name || "Patient";
+    setLastCallSummary({ ...payload, patientName: name, patientId: selectedPatientId });
+    setSessionLogStatus("demo");
+  };
+
+  // Only show the post-session card on the patient it belongs to. Without
+  // this filter, a chat with Linda would surface as "Chat just ended" on
+  // Marcus's Overview tab as soon as the coordinator switched roster
+  // selection.
+  const summaryForSelected = lastCallSummary && lastCallSummary.patientId === selectedPatientId
+    ? lastCallSummary
+    : null;
+
   const tabContent = {
     overview: <OverviewTab
       patientData={patientData}
@@ -1809,8 +1832,8 @@ export default function CoordinatorDashboard() {
       onViewRiskProfile={() => setActiveTab("risk")}
       onViewCarePlan={() => setActiveTab("care-plan")}
       medplumSessions={sessions}
-      lastCallSummary={lastCallSummary}
-      sessionLogStatus={sessionLogStatus}
+      lastCallSummary={summaryForSelected}
+      sessionLogStatus={summaryForSelected ? sessionLogStatus : null}
       onDismissLastCall={() => { setLastCallSummary(null); setSessionLogStatus(null); }}
     />,
     "care-plan": <CarePlanTab patientData={patientData} />,
@@ -1915,13 +1938,13 @@ export default function CoordinatorDashboard() {
           )}
 
           {/* Live chat — gated on CarePlan + ≥1 Encounter */}
-          {chatPatient && (
+          {chatPatientFromData && (
             <button
               onClick={handleInitiateChat}
               disabled={!chatLiveEligible}
               title={chatLiveEligible
                 ? "Start a live AI chat check-in"
-                : "Live chat requires a CarePlan and at least one Encounter for this patient."}
+                : "Select a patient to enable live chat."}
               style={{
                 padding: "10px 20px", borderRadius: 6, fontSize: 14, ...css.sans,
                 background: chatLiveEligible ? S.navy : "#CBD5E1",
@@ -2034,13 +2057,17 @@ export default function CoordinatorDashboard() {
       )}
 
       {/* Chat overlay — additive to voice. Replay mode never persists an
-          Encounter (no /session/end); live mode persists on close. */}
-      {chatOpen && chatPatient && (
+          Encounter (no /session/end); live mode persists on close.
+          Replay uses the roster-fallback patient so the overlay opens even
+          while patientData (Medplum/local bundle) is still loading. */}
+      {chatOpen && (chatMode === "replay" ? chatPatientForReplay : chatPatientFromData) && (
         <ChatCheckinDemo
-          patient={chatPatient}
+          patient={chatMode === "replay" ? chatPatientForReplay : chatPatientFromData}
+          patientData={patientData}
           mode={chatMode}
           scenario={chatScenario}
           onClose={handleCloseChat}
+          onComplete={handleChatComplete}
         />
       )}
     </div>

@@ -107,6 +107,31 @@ function ruleHyperglycemicCrisis(s) {
 
 // ─── SAME-DAY ─────────────────────────────────────────────────────────────
 
+function ruleChestPainInCardiometabolic(s) {
+  // Chest pain in a known HTN or T2DM patient -> SAME-DAY (regardless of BP).
+  // Fills the gap between hypertensive_emergency (BP >=180/120 + symptoms,
+  // IMMEDIATE) and stage2_sustained_with_adherence (Stage 2 + adherence gap).
+  // Chest pain in this population always warrants same-day evaluation.
+  const sym = s.symptoms;
+  if (!sym.chest_pain) return null;
+  const conditions = s._patient_conditions || [];
+  if (!conditions.includes('HTN') && !conditions.includes('T2DM')) return null;
+  const v = s.vitals;
+  const sbp = v.current_bp_systolic;
+  const dbp = v.current_bp_diastolic;
+  const triggers = ['chest_pain'];
+  if (conditions.includes('HTN')) triggers.push('htn');
+  if (conditions.includes('T2DM')) triggers.push('t2dm');
+  if (sbp != null && dbp != null) triggers.push(`bp_${sbp}_${dbp}`);
+  return {
+    state: 'SAME-DAY',
+    subtype: 'chest_pain_with_cardiometabolic_risk',
+    triggers,
+    citation:
+      '2025 AHA/ACC HTN Guideline · New chest pain in HTN/T2DM warrants same-day evaluation',
+  };
+}
+
 function ruleStage2SustainedWithAdherence(s) {
   const v = s.vitals;
   const ctx = s.context;
@@ -151,6 +176,32 @@ function ruleSymptomaticHyperglycemiaNoCrisis(s) {
 
 // ─── WATCH ────────────────────────────────────────────────────────────────
 
+function ruleStage2SustainedAdherent(s) {
+  // Sustained Stage 2 BP (>=140/90 7-day avg), no adherence gap, asymptomatic.
+  // Closes the gap between stage2_sustained_with_adherence (SAME-DAY) and
+  // stage1_drift (WATCH). Without this rule, Stage 2 BP without an adherence
+  // gap fell through to ROUTINE, which understates clinical risk in a known
+  // HTN/T2DM patient. Matches adversarial scenario ADV03.
+  const v = s.vitals;
+  const ctx = s.context;
+  const sym = s.symptoms;
+  const sbpAvg = v.bp_7day_avg_systolic ?? 0;
+  const dbpAvg = v.bp_7day_avg_diastolic ?? 0;
+  const inStage2 = sbpAvg >= 140 || dbpAvg >= 90;
+  if (!inStage2) return null;
+  if (ctx.adherence_gap) return null;
+  if (sym.severe_headache || sym.vision_changes || sym.chest_pain || sym.focal_neuro_deficit) {
+    return null;
+  }
+  return {
+    state: 'WATCH',
+    subtype: 'stage2_sustained_adherent',
+    triggers: [`bp_avg_${sbpAvg}_${dbpAvg}`, 'asymptomatic', 'adherent'],
+    citation:
+      '2025 AHA/ACC HTN Guideline · Sustained Stage 2 BP without adherence gap warrants 24h coordinator review',
+  };
+}
+
 function ruleA1cDiagnosticThreshold(s) {
   const labs = s.labs;
   const a1c = labs.a1c_pct;
@@ -165,6 +216,28 @@ function ruleA1cDiagnosticThreshold(s) {
     subtype: 'a1c_crossing_diagnostic_threshold',
     triggers,
     citation: 'ADA Standards of Care 2026 · Section 2 (Diagnosis: A1C >=6.5%)',
+  };
+}
+
+function ruleStage1WithAdherenceGap(s) {
+  // Stage 1 BP (130-139/80-89) + adherence gap -> WATCH. Less acute than
+  // Stage 2 + adherence gap (SAME-DAY), but still warrants coordinator
+  // follow-up within 24h. Without this rule the case fell through to
+  // ROUTINE, which understated the clinical signal.
+  const v = s.vitals;
+  const ctx = s.context;
+  const sbpAvg = v.bp_7day_avg_systolic ?? 0;
+  const dbpAvg = v.bp_7day_avg_diastolic ?? 0;
+  const inStage1 =
+    (sbpAvg >= 130 && sbpAvg <= 139) || (dbpAvg >= 80 && dbpAvg <= 89);
+  if (!inStage1) return null;
+  if (!ctx.adherence_gap) return null;
+  return {
+    state: 'WATCH',
+    subtype: 'stage1_with_adherence_gap',
+    triggers: [`bp_avg_${sbpAvg}_${dbpAvg}`, 'adherence_gap'],
+    citation:
+      '2025 AHA/ACC HTN Guideline · Stage 1 BP + adherence intervention warrants 24h coordinator follow-up',
   };
 }
 
@@ -225,9 +298,12 @@ const RULE_ORDER = [
   ruleHypertensiveEmergency,
   ruleLevel2Hypoglycemia,
   ruleHyperglycemicCrisis,
+  ruleChestPainInCardiometabolic,
   ruleStage2SustainedWithAdherence,
   ruleSymptomaticHyperglycemiaNoCrisis,
+  ruleStage2SustainedAdherent,
   ruleA1cDiagnosticThreshold,
+  ruleStage1WithAdherenceGap,
   ruleStage1Drift,
 ];
 

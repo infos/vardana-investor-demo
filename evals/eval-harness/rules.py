@@ -115,6 +115,39 @@ def rule_hyperglycemic_crisis(s: dict) -> RuleResult | None:
 
 # ─── SAME-DAY — high priority within 4 hours ────────────────────────────────
 
+def rule_chest_pain_in_cardiometabolic(s: dict) -> RuleResult | None:
+    """Chest pain in a known HTN or T2DM patient -> SAME-DAY (regardless of BP).
+
+    Hypertensive emergency (BP >=180/120 + chest pain) is caught earlier in
+    the order and produces IMMEDIATE. This rule fills the gap between that
+    threshold and the existing Stage-2 + adherence rule: chest pain in this
+    population always warrants same-day evaluation, even when BP is in
+    Stage 1/Stage 2 range without an adherence gap.
+    """
+    sym = s.get("symptoms", {})
+    if not sym.get("chest_pain"):
+        return None
+    conditions = s.get("_patient_conditions", [])
+    if "HTN" not in conditions and "T2DM" not in conditions:
+        return None
+    v = s.get("vitals", {})
+    sbp = v.get("current_bp_systolic")
+    dbp = v.get("current_bp_diastolic")
+    triggers = ["chest_pain"]
+    if "HTN" in conditions:
+        triggers.append("htn")
+    if "T2DM" in conditions:
+        triggers.append("t2dm")
+    if sbp is not None and dbp is not None:
+        triggers.append(f"bp_{sbp}_{dbp}")
+    return RuleResult(
+        "SAME-DAY",
+        "chest_pain_with_cardiometabolic_risk",
+        triggers,
+        "2025 AHA/ACC HTN Guideline · New chest pain in HTN/T2DM warrants same-day evaluation",
+    )
+
+
 def rule_stage2_sustained_with_adherence(s: dict) -> RuleResult | None:
     """Sustained Stage 2 BP (>=140/90 7-day avg) + adherence gap evidence."""
     v = s.get("vitals", {})
@@ -187,6 +220,66 @@ def rule_a1c_diagnostic_threshold(s: dict) -> RuleResult | None:
     )
 
 
+def rule_stage2_sustained_adherent(s: dict) -> RuleResult | None:
+    """Sustained Stage 2 BP (>=140/90 7-day avg), no adherence gap, asymptomatic.
+
+    Closes the documented gap between stage2_sustained_with_adherence
+    (SAME-DAY -- Stage 2 + adherence gap) and stage1_drift (WATCH -- Stage 1).
+    Without this rule, Stage 2 BP without an adherence gap fell through to
+    ROUTINE, which understates clinical risk in a known HTN/T2DM patient.
+    Matches adversarial scenario ADV03's design intent.
+    """
+    v = s.get("vitals", {})
+    ctx = s.get("context", {})
+    sym = s.get("symptoms", {})
+    sbp_avg = v.get("bp_7day_avg_systolic", 0)
+    dbp_avg = v.get("bp_7day_avg_diastolic", 0)
+    in_stage2 = sbp_avg >= 140 or dbp_avg >= 90
+    if not in_stage2:
+        return None
+    # Earlier SAME-DAY rule owns the with-adherence-gap case.
+    if ctx.get("adherence_gap"):
+        return None
+    # End-organ symptoms route through the IMMEDIATE / chest-pain SAME-DAY rules
+    # earlier in the pipeline; skip to avoid masking a higher-priority signal.
+    if any([sym.get("severe_headache"), sym.get("vision_changes"),
+            sym.get("chest_pain"), sym.get("focal_neuro_deficit")]):
+        return None
+    return RuleResult(
+        "WATCH",
+        "stage2_sustained_adherent",
+        [f"bp_avg_{sbp_avg}_{dbp_avg}", "asymptomatic", "adherent"],
+        "2025 AHA/ACC HTN Guideline · Sustained Stage 2 BP without adherence gap warrants 24h coordinator review",
+    )
+
+
+def rule_stage1_with_adherence_gap(s: dict) -> RuleResult | None:
+    """Stage 1 BP (130-139/80-89) + adherence gap -> WATCH.
+
+    Stage 2 + adherence gap is SAME-DAY (rule_stage2_sustained_with_adherence).
+    Stage 1 is less acute, but a confirmed adherence gap on top of Stage 1
+    BP still warrants coordinator follow-up within 24h -- the patient's BP
+    is already drifting AND the prescribed therapy isn't being taken.
+    Without this rule, the case falls through to ROUTINE, which understates
+    the clinical signal.
+    """
+    v = s.get("vitals", {})
+    ctx = s.get("context", {})
+    sbp_avg = v.get("bp_7day_avg_systolic", 0)
+    dbp_avg = v.get("bp_7day_avg_diastolic", 0)
+    in_stage1 = (130 <= sbp_avg <= 139) or (80 <= dbp_avg <= 89)
+    if not in_stage1:
+        return None
+    if not ctx.get("adherence_gap"):
+        return None
+    return RuleResult(
+        "WATCH",
+        "stage1_with_adherence_gap",
+        [f"bp_avg_{sbp_avg}_{dbp_avg}", "adherence_gap"],
+        "2025 AHA/ACC HTN Guideline · Stage 1 BP + adherence intervention warrants 24h coordinator follow-up",
+    )
+
+
 def rule_stage1_drift(s: dict) -> RuleResult | None:
     """Stage 1 BP (130-139/80-89) sustained, asymptomatic, adherent."""
     v = s.get("vitals", {})
@@ -250,10 +343,13 @@ RULE_ORDER = [
     rule_level2_hypoglycemia,
     rule_hyperglycemic_crisis,
     # SAME-DAY
+    rule_chest_pain_in_cardiometabolic,
     rule_stage2_sustained_with_adherence,
     rule_symptomatic_hyperglycemia_no_crisis,
     # WATCH
+    rule_stage2_sustained_adherent,
     rule_a1c_diagnostic_threshold,
+    rule_stage1_with_adherence_gap,
     rule_stage1_drift,
 ]
 

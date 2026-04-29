@@ -71,7 +71,10 @@ function parseSymptoms(messages) {
     severe_headache: /(severe|terrible|worst|pounding|splitting).{0,20}headache|headache.{0,20}(severe|terrible)/i.test(text),
     headache_worst_of_life: /worst.{0,15}headache.{0,15}(life|ever)/i.test(text),
     vision_changes: /(blurr|double vision|spots|vision.{0,15}(chang|off|weird)|seeing.{0,15}spot)/i.test(text),
-    chest_pain: /chest.{0,10}(pain|press|tight)|pain.{0,10}chest/i.test(text),
+    // Broadened from the original (pain|press|tight) set so common patient
+    // wording lands. "Some chest discomfort" was missing the trigger and the
+    // SAME-DAY chest-pain-in-cardiometabolic rule never fired.
+    chest_pain: /chest.{0,15}(pain|press|tight|discomfort|ache|heav|squeez|hurt|flutter)|(pain|pressure|squeez|tight|discomfort)\w*.{0,10}chest/i.test(text),
     focal_neuro_deficit: /numb|weakness on one side|slurred|can('?t| not) speak|drooping/i.test(text),
     kussmaul_breathing: /breathing (deep|fast|hard).{0,20}(can('?t)? stop|won'?t stop)|kussmaul|fruity breath|ketone/i.test(text),
     altered_mental_status: /confused|disoriented|can('?t| not) think|foggy|out of it|not making sense/i.test(text),
@@ -203,9 +206,35 @@ METADATA FIELDS:
 function buildGenericPatientPrompt(ctx, turn, maxTurns, escalation) {
   const conditionsList = (ctx.conditions || []).filter(c => c.status === 'active').map(c => c.text).join(', ') || 'None recorded';
   const medsList = (ctx.medications || []).map(m => `${m.name}${m.dosage ? ' (' + m.dosage + ')' : ''}`).join(', ') || 'None recorded';
-  const labsSummary = (ctx.labs || []).slice(0, 5).map(l => `${l.name}: ${l.value} ${l.unit || ''}`.trim()).join(', ') || 'No recent labs';
+  // Render labs grouped by name so trend direction is visible (e.g. HbA1c
+  // 6.2 -> 6.3 -> 6.4). Falls back to a flat list when only one reading per
+  // analyte exists.
+  const labsList = ctx.labs || [];
+  const labsByName = labsList.reduce((acc, l) => {
+    if (!l?.name) return acc;
+    if (!acc[l.name]) acc[l.name] = [];
+    acc[l.name].push(l);
+    return acc;
+  }, {});
+  const labsSummary = Object.keys(labsByName).length
+    ? Object.entries(labsByName).map(([name, rows]) => {
+        const sorted = rows.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        const seq = sorted.map(r => `${r.value}${r.unit ? ' ' + r.unit : ''}${r.date ? ' (' + r.date + ')' : ''}`).join(' -> ');
+        return `${name}: ${seq}`;
+      }).join('\n  ')
+    : 'No recent labs';
+  const latestBpLine = ctx.latestBp
+    ? `${ctx.latestBp.systolic}/${ctx.latestBp.diastolic}${ctx.latestBp.date ? ' on ' + String(ctx.latestBp.date).slice(0, 10) : ''}`
+    : 'No BP on file';
   const firstName = (ctx.name || 'there').split(' ')[0];
   const patientId = (ctx.name || 'patient').toLowerCase().replace(/\s+/g, '-');
+  const isHtnPatient = /hypertensi|HTN/i.test(conditionsList);
+  const isT2dmPatient = /diabetes|T2DM/i.test(conditionsList);
+  const targetsBlock = [
+    isHtnPatient ? '- BP target: <130/80. 130-139/80-89 is Stage 1; >=140/90 is Stage 2; >=180/120 is hypertensive crisis.' : '',
+    isT2dmPatient ? '- A1c target: <7%. >=6.5% is the T2DM diagnostic threshold.' : '',
+    isHtnPatient ? '- LDL target: <100 mg/dL (general) / <70 mg/dL (high-risk cardiometabolic).' : '',
+  ].filter(Boolean).join('\n');
 
   return `You are Vardana, an AI care concierge for cardiometabolic (HTN + T2DM) management. You are conducting a check-in with ${ctx.name}.
 
@@ -213,7 +242,27 @@ PATIENT PROFILE:
 - ${ctx.name}, ${ctx.age || 'unknown'}-year-old ${ctx.gender || 'patient'}
 - Conditions: ${conditionsList}
 - Medications: ${medsList}
-- Labs: ${labsSummary}
+- Latest BP: ${latestBpLine}
+- Labs (oldest -> newest):
+  ${labsSummary}
+
+CLINICAL TARGETS FOR THIS PATIENT:
+${targetsBlock || '- (no explicit targets — describe values factually without judgment)'}
+
+━━━ DATA INTERPRETATION RULES (read before greeting) ━━━━━━━━━━━━━━━━━━━━━━━━━
+- READ the lab sequences left-to-right (oldest -> newest). If the most recent
+  value is HIGHER than the prior, the trend is RISING -- describe it that way.
+  If LOWER, FALLING. Only call something "stable" if the values are within
+  ~5% of each other across the full sequence.
+- NEVER describe a Stage 1 BP (130-139/80-89) or Stage 2 BP (>=140/90) as
+  "normal", "looking good", or "stable". State the actual reading and
+  whether it is at, above, or below this patient's target.
+- NEVER editorialize ("great news", "looking stable") without grounding the
+  claim in the specific numeric trend. If asked to characterize, quote the
+  actual numbers.
+- For HTN patients: 138/88 is NOT normal -- it is Stage 1 above the
+  <130/80 cardiometabolic target.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ━━━ DETERMINISTIC ESCALATION (computed before the call — DO NOT override) ━━━
 State:    ${escalation.state}
@@ -349,21 +398,59 @@ export default async function handler(req, res) {
     //       baseline (BP 158/98 trending up from 142/88, glucose 186, missed
     //       Lisinopril); the in-call signals override the baseline.
     const isMarcusContext = patientContext && /marcus/i.test(patientContext.name || '');
-    const baselineBp = isMarcusContext
-      ? [
-          { date: today(0), systolic: parsed.systolic ?? 158, diastolic: parsed.diastolic ?? 98 },
-          { date: today(-1), systolic: 156, diastolic: 96 },
-          { date: today(-2), systolic: 152, diastolic: 94 },
-          { date: today(-4), systolic: 142, diastolic: 88 },
-          { date: today(-6), systolic: 138, diastolic: 86 },
-        ]
-      : parsed.systolic
-      ? [{ date: today(0), systolic: parsed.systolic, diastolic: parsed.diastolic }]
+
+    // Prefer client-supplied bundle data (every chat patient now sends BP /
+    // glucose / A1c / eGFR history via patientContext). Fall back to whatever
+    // the patient mentioned in chat text. Marcus's hardcoded baseline only
+    // kicks in when neither source is present -- it anchors the scripted
+    // voice demo, not live chat with bundle data.
+    const ctxBpReadings = Array.isArray(patientContext?.bpReadings) ? patientContext.bpReadings : [];
+    const ctxGlucose = Array.isArray(patientContext?.glucoseReadings) ? patientContext.glucoseReadings : [];
+    const ctxA1c = Array.isArray(patientContext?.a1cReadings) ? patientContext.a1cReadings : [];
+    const ctxEgfr = Array.isArray(patientContext?.egfrReadings) ? patientContext.egfrReadings : [];
+
+    let baselineBp;
+    if (ctxBpReadings.length > 0) {
+      // Augment with the value the patient just spoke, if any.
+      baselineBp = parsed.systolic
+        ? [{ date: today(0), systolic: parsed.systolic, diastolic: parsed.diastolic }, ...ctxBpReadings]
+        : ctxBpReadings;
+    } else if (isMarcusContext) {
+      baselineBp = [
+        { date: today(0), systolic: parsed.systolic ?? 158, diastolic: parsed.diastolic ?? 98 },
+        { date: today(-1), systolic: 156, diastolic: 96 },
+        { date: today(-2), systolic: 152, diastolic: 94 },
+        { date: today(-4), systolic: 142, diastolic: 88 },
+        { date: today(-6), systolic: 138, diastolic: 86 },
+      ];
+    } else if (parsed.systolic) {
+      baselineBp = [{ date: today(0), systolic: parsed.systolic, diastolic: parsed.diastolic }];
+    } else {
+      baselineBp = [];
+    }
+
+    let baselineGlucose;
+    if (ctxGlucose.length > 0) {
+      baselineGlucose = parsed.glucose
+        ? [{ date: today(0), value: parsed.glucose, fasting: true }, ...ctxGlucose]
+        : ctxGlucose;
+    } else if (isMarcusContext) {
+      baselineGlucose = [{ date: today(0), value: parsed.glucose ?? 186, fasting: true }];
+    } else if (parsed.glucose) {
+      baselineGlucose = [{ date: today(0), value: parsed.glucose, fasting: true }];
+    } else {
+      baselineGlucose = [];
+    }
+
+    const a1cReadings = ctxA1c.length > 0
+      ? ctxA1c
+      : isMarcusContext
+      ? [{ date: today(-7), value: 8.4 }, { date: today(-90), value: 7.4 }]
       : [];
-    const baselineGlucose = isMarcusContext
-      ? [{ date: today(0), value: parsed.glucose ?? 186, fasting: true }]
-      : parsed.glucose
-      ? [{ date: today(0), value: parsed.glucose, fasting: true }]
+    const egfrReadings = ctxEgfr.length > 0
+      ? ctxEgfr
+      : isMarcusContext
+      ? [{ date: today(-7), value: 72 }]
       : [];
 
     const conditionsTags = isMarcusContext ? ['HTN', 'T2DM', 'HLD'] : extractConditionTags(patientContext);
@@ -376,8 +463,8 @@ export default async function handler(req, res) {
       patient: patientForRules,
       bpReadings: baselineBp,
       glucoseReadings: baselineGlucose,
-      a1cReadings: isMarcusContext ? [{ date: today(-7), value: 8.4 }, { date: today(-90), value: 7.4 }] : [],
-      egfrReadings: isMarcusContext ? [{ date: today(-7), value: 72 }] : [],
+      a1cReadings,
+      egfrReadings,
       symptoms,
       context: {
         call_type: chatMode ? 'chat_check_in' : 'voice_check_in',
@@ -399,7 +486,18 @@ export default async function handler(req, res) {
       : buildGenericPatientPrompt(patientContext || { name: 'Patient' }, turn, maxTurns, escalation);
 
     if (chatMode) {
-      systemPrompt += '\n\nCHAT MODE RULES:\n- Keep responses to 2–3 sentences MAX. Be concise and direct.\n- No metadata tags needed in chat mode.\n- Still follow all safety rules (911, escalation, transparency).';
+      systemPrompt += [
+        '',
+        '',
+        'CHAT MODE RULES (read carefully — different shape than voice):',
+        '- Keep responses to 2 short sentences. Be direct, no filler.',
+        '- No metadata tags needed in chat mode. Reply text only.',
+        '- READ THE CONVERSATION HISTORY before replying. Each user message is a turn; your previous assistant messages are visible to the patient on screen.',
+        '- DO NOT re-greet, re-introduce yourself, or restate the patient\'s name + day + BP/glucose if you have already done so in an earlier assistant message in this conversation.',
+        '- A short user reply like "hi", "hello", "ok", "sure", "yes" is NOT a fresh start — it is the patient continuing. Acknowledge briefly (1 short clause) and immediately advance to the NEXT protocol step you have not done yet (symptom check → adherence → safety screen → escalation/close).',
+        '- Track which protocol step you are on by inspecting your prior assistant messages, not by defaulting to step 1.',
+        '- Still follow all safety rules: 911 for IMMEDIATE, priority alert wording for SAME-DAY, full transparency about what you can and cannot do.',
+      ].join('\n');
     }
 
     // ── 6. Call Claude ──────────────────────────────────────────────────────

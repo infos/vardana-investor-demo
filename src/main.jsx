@@ -11,6 +11,7 @@ import CheckinPage from './CheckinPage.jsx'
 import ClinicalDemoPage from './demo/ClinicalDemoPage.jsx'
 import ClinicalDemoEntry from './demo/ClinicalDemoEntry.jsx'
 import CoordinatorDashboard from './CoordinatorDashboard.jsx'
+import CoordinatorPanel from './CoordinatorPanel.jsx'
 import { useAnalytics } from './useAnalytics'
 import { DEMO_BASE, CLINICAL_BASE, isTokenValid, setDemoTokenCookie } from './demoPath'
 
@@ -62,11 +63,12 @@ function Router() {
   // /patient was the legacy Sarah CHF patient view; removed when CHF was
   // decommissioned. /demo/{token}/scripted likewise — Sarah's Loom video
   // is gone; the recorded Marcus demo lives at /demo/{token}/recorded.
-  const gatedRoutes = ['/coordinator', '/checkin'];
+  const gatedRoutes = ['/coordinator', '/coordinator/panel', '/checkin'];
   if (gatedRoutes.includes(pathname) && !isTokenValid()) {
     return <HomePage navigate={navigate} />;
   }
 
+  if (pathname === '/coordinator/panel') return <CoordinatorPanel />;
   if (pathname === '/coordinator') return <CoordinatorDashboard />;
   if (pathname === `${DEMO_BASE}/recorded`) return <RecordedDemoPage navigate={navigate} />;
   if (pathname === `${DEMO_BASE}/live`) return <LiveDemoPage navigate={navigate} />;
