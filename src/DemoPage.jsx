@@ -183,7 +183,7 @@ export default function DemoPage({ navigate }) {
           ctaLabel="Start Live Demo"
           ctaBackground={DT.jade.default}
           ctaColor="white"
-          onClick={() => navigate(`/coordinator?demo=live&patient=marcus${RAW_TOKEN ? `&token=${RAW_TOKEN}` : ''}`)}
+          onClick={() => navigate(`/coordinator?demo=live${RAW_TOKEN ? `&token=${RAW_TOKEN}` : ''}`)}
         />
       </div>
 
