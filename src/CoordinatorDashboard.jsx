@@ -103,7 +103,7 @@ function EmptyState({ children }) {
 }
 
 // ── Helpers ──
-function initialsFromName(name = "") {
+export function initialsFromName(name = "") {
   const parts = name.trim().split(/\s+/);
   if (!parts.length) return "??";
   return ((parts[0][0] || "") + (parts[parts.length - 1][0] || "")).toUpperCase();
@@ -125,7 +125,7 @@ function fmtDate(iso) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 // Infer risk tier from summary roster data (BP readings, conditions)
-function inferRiskLevel(summary) {
+export function inferRiskLevel(summary) {
   const bp = summary.latestBP;
   const hasHTN = (summary.conditions || []).some(c => /hypertension|htn/i.test(c.text || ""));
   const hasT2DM = hasActiveDiabetes(summary.conditions);
@@ -134,7 +134,7 @@ function inferRiskLevel(summary) {
   if (hasHTN && hasT2DM) return "mod";
   return "low";
 }
-function inferConditionsSummary(conditions) {
+export function inferConditionsSummary(conditions) {
   if (!conditions?.length) return "—";
   const parts = [];
   if (conditions.some(c => /hypertension|htn/i.test(c.text || ""))) parts.push("HTN");
@@ -430,8 +430,8 @@ function buildCarePlanView(cp, goalResources = []) {
 // lives. Used both as the demo default (when Medplum is unavailable)
 // and as authoritative data in front of Medplum for named patients
 // (see roster loader below).
-const LOCAL_MARCUS_ID = "local-marcus";
-const LOCAL_PATIENTS = [
+export const LOCAL_MARCUS_ID = "local-marcus";
+export const LOCAL_PATIENTS = [
   {
     id: LOCAL_MARCUS_ID,
     name: "Marcus Williams",
@@ -446,19 +446,19 @@ const LOCAL_PATIENTS = [
   },
 ];
 const LOCAL_MARCUS_ROSTER = LOCAL_PATIENTS[0];
-const LOCAL_PATIENT_BY_ID = new Map(LOCAL_PATIENTS.map(p => [p.id, p]));
-const LOCAL_PATIENT_NAMES = new Set(LOCAL_PATIENTS.map(p => p.name));
+export const LOCAL_PATIENT_BY_ID = new Map(LOCAL_PATIENTS.map(p => [p.id, p]));
+export const LOCAL_PATIENT_NAMES = new Set(LOCAL_PATIENTS.map(p => p.name));
 // Patients suppressed from the Medplum roster for this demo. They are
 // not deleted — older links, eval fixtures, and recorded demo content
 // may still reference them. Suppression is reversible; deletion is not.
-const SUPPRESSED_PATIENT_NAMES = new Set([
+export const SUPPRESSED_PATIENT_NAMES = new Set([
   "Sarah Chen",
   "Robert Williams",
   "James Thompson",
 ]);
 // Display order for the left-nav roster. Anything not listed keeps its
 // Medplum-returned order and falls to the tail.
-const ROSTER_ORDER = [
+export const ROSTER_ORDER = [
   "Marcus Williams",
   "Linda Patel",
   "Maria Gonzalez",
@@ -1333,7 +1333,7 @@ const GENERIC_SESSIONS = [
   { id: "s-gen-2", date: "2026-02-20", duration: "5m 48s", summary: "Reviewed sodium intake and daily weight log. Reinforced warning signs. Care plan on track." },
   { id: "s-gen-3", date: "2026-02-13", duration: "6m 05s", summary: "Post-discharge onboarding. Confirmed pharmacy, PCP contact, and care journey expectations." },
 ];
-const SESSION_FIXTURES = {
+export const SESSION_FIXTURES = {
   "Marcus Williams": [
     { id: "s-mw-1", date: "2026-03-05", duration: "5m 22s", summary: "BP 158/98, 4-day worsening trend. Missed Lisinopril dose confirmed. Escalated P2 to David Park." },
     { id: "s-mw-2", date: "2026-02-28", duration: "4m 08s", summary: "Routine HTN check-in. BP 142/88. Reinforced evening Lisinopril routine and home cuff technique." },
@@ -1360,7 +1360,7 @@ const SESSION_FIXTURES = {
     { id: "s-db-3", date: "2026-04-08", duration: "3m 58s", summary: "Onboarding. Confirmed home BP cuff, lifestyle goals, and quarterly A1c cadence." },
   ],
 };
-function getSessionsFor(patientName) {
+export function getSessionsFor(patientName) {
   return SESSION_FIXTURES[patientName] || GENERIC_SESSIONS;
 }
 function fmtSessionDate(iso) {
@@ -1587,8 +1587,12 @@ export default function CoordinatorDashboard() {
         };
         merged.sort((a, b) => orderIdx(a.name) - orderIdx(b.name));
         setRoster(merged);
-        // Auto-select Marcus (always present via LOCAL_PATIENTS)
-        setSelectedPatientId(LOCAL_MARCUS_ID);
+        // Honor ?patient=<id> deep-link from the panel queue view; fall back
+        // to Marcus (always present via LOCAL_PATIENTS) when the param is
+        // absent or doesn't match the loaded roster.
+        const requested = new URLSearchParams(window.location.search).get("patient");
+        const match = requested && merged.find(p => p.id === requested);
+        setSelectedPatientId(match ? requested : LOCAL_MARCUS_ID);
       } catch (err) {
         if (cancelled) return;
         // Medplum unreachable (e.g. preview deploys without MEDPLUM_CLIENT_ID
@@ -1596,7 +1600,9 @@ export default function CoordinatorDashboard() {
         // seed the local fixtures so the call flow stays demoable.
         setRosterError(err.message);
         setRoster([...LOCAL_PATIENTS]);
-        setSelectedPatientId(LOCAL_MARCUS_ID);
+        const requested = new URLSearchParams(window.location.search).get("patient");
+        const match = requested && LOCAL_PATIENT_BY_ID.has(requested);
+        setSelectedPatientId(match ? requested : LOCAL_MARCUS_ID);
       } finally {
         if (!cancelled) setRosterLoading(false);
       }
