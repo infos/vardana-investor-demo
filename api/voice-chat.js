@@ -544,6 +544,7 @@ export default async function handler(req, res) {
         apiRes = { ok: true, __bedrock_json: body };
       }
     } else {
+      console.warn('[BEDROCK-FALLBACK] Falling back to direct Anthropic API. Reason: USE_BEDROCK=' + process.env.USE_BEDROCK + ', timestamp=' + new Date().toISOString());
       apiRes = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
