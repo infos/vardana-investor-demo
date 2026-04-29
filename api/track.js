@@ -12,14 +12,14 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
-  const { path, ref, timestamp, userAgent, referrer, sessionId } = req.body || {};
+  const { type, path, ref, timestamp, userAgent, referrer, sessionId, durationSeconds } = req.body || {};
 
   const ip = (req.headers['x-forwarded-for'] || 'unknown').split(',')[0].trim();
   const country = req.headers['x-vercel-ip-country'] || 'unknown';
   const city = req.headers['x-vercel-ip-city'] || 'unknown';
   const region = req.headers['x-vercel-ip-country-region'] || 'unknown';
 
-  const event = { path, ref, timestamp, userAgent, referrer, sessionId, ip, country, city, region };
+  const event = { type, path, ref, timestamp, userAgent, referrer, sessionId, durationSeconds, ip, country, city, region };
 
   if (EXCLUDED_IPS.includes(ip)) {
     console.log('[DEMO_VISIT_SKIPPED]', JSON.stringify(event));
