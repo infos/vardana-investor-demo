@@ -10,7 +10,7 @@ import {
   getSessionsFor,
 } from "./CoordinatorDashboard.jsx";
 import { useIsMobile } from "./demo/useIsMobile";
-import CoordinatorTopNav, { topNavTokens as S } from "./components/CoordinatorTopNav.jsx";
+import CoordinatorSidebar, { sidebarTokens as S } from "./components/CoordinatorSidebar.jsx";
 
 const css = {
   sans: { fontFamily: "'DM Sans', Inter, -apple-system, 'Segoe UI', system-ui, sans-serif" },
@@ -221,9 +221,9 @@ export default function CoordinatorPanel() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: S.bg, ...css.sans }}>
-      <CoordinatorTopNav active="patients" navigate={navigate} />
-      <div style={{ padding: isMobile ? "20px 16px" : "32px 28px" }}>
+    <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: "100vh", background: S.bg, ...css.sans }}>
+      <CoordinatorSidebar active="patients" navigate={navigate} />
+      <div style={{ flex: 1, padding: isMobile ? "20px 16px" : "32px 28px", overflowY: "auto" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 4, flexWrap: "wrap" }}>
             <h1 style={{ ...css.serif, fontSize: isMobile ? 24 : 28, color: S.text, margin: 0 }}>Patients</h1>
@@ -262,7 +262,7 @@ export default function CoordinatorPanel() {
   );
 }
 
-// ── Desktop: 7-column sortable table ──
+// ── Desktop: 6-column grid (Patient, Condition, Risk, Sessions, Last contact, Next action, Open) ──
 function DesktopTable({ rows, onOpen }) {
   return (
     <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, overflow: "hidden" }}>

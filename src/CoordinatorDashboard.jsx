@@ -14,6 +14,12 @@ import {
   MARCUS_SESSIONS,
   MARCUS_CROSS_SESSION_INSIGHT,
 } from "./components/CareConsole/careConsoleData.js";
+import CoordinatorSidebar, { rememberPatient } from "./components/CoordinatorSidebar.jsx";
+
+function navigate(path) {
+  window.history.pushState({}, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
 
 // ── Styles ──
 const S = {
@@ -1651,6 +1657,13 @@ export default function CoordinatorDashboard() {
     return () => { cancelled = true; };
   }, [selectedPatientId, roster]);
 
+  // Remember the most-recently-viewed patient so the sidebar's "Care
+  // Console" nav item from another view (Patients / Practice) returns
+  // the coordinator to the same chart they were last looking at.
+  useEffect(() => {
+    if (selectedPatientId) rememberPatient(selectedPatientId);
+  }, [selectedPatientId]);
+
   // ── Fetch logged sessions for the selected patient ──
   // Refetches whenever the selected patient changes or a new session is
   // logged (sessionLogStatus === "saved"). Local Marcus has no Medplum
@@ -1859,33 +1872,18 @@ export default function CoordinatorDashboard() {
 
   return (
     <div style={{ display: "flex", height: "100vh", minHeight: 720, background: S.bg }}>
-      {/* Sidebar */}
-      <div style={{ width: 260, background: S.navy, color: "#CBD5E1", display: "flex", flexDirection: "column", flexShrink: 0, overflowY: "auto" }}>
-        <div style={{ padding: "18px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ fontSize: 17, ...css.serif, color: S.navyText }}>Vardana</div>
-          <div style={{ fontSize: 14, color: S.sidebarMuted, letterSpacing: "1.5px", textTransform: "uppercase", marginTop: 2, ...css.sans }}>Care Console</div>
-        </div>
-
-        {rosterLoading && <div style={{ padding: 16, fontSize: 15, ...css.sans, color: S.sidebarMuted }}>Loading roster from Medplum…</div>}
-        {rosterError && <div style={{ padding: 16, fontSize: 15, ...css.sans, color: S.red }}>Roster error: {rosterError}</div>}
-
-        {roster.length > 0 && (
-          <div style={{ padding: "10px 10px 4px", fontSize: 14, letterSpacing: "1.2px", textTransform: "uppercase", color: S.sidebarMuted, ...css.sans }}>Patients</div>
-        )}
-        {roster.map((p) => (
-          <div key={p.id} onClick={() => setSelectedPatientId(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderLeft: `3px solid ${selectedPatientId === p.id ? S.navyText : "transparent"}`, background: selectedPatientId === p.id ? "rgba(226,213,184,0.08)" : "transparent", cursor: "pointer" }}>
-            <div style={{ width: 30, height: 30, borderRadius: "50%", background: p.bg, color: p.fg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, ...css.sans, flexShrink: 0 }}>{p.initials}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, color: "#CBD5E1" }}>{p.name}</div>
-              <div style={{ fontSize: 13, color: S.sidebarMuted, ...css.sans }}>{p.meta}</div>
-            </div>
-            <div style={riskDot(p.risk)} />
-          </div>))}
-
-        <div style={{ marginTop: "auto", borderTop: "1px solid rgba(255,255,255,0.06)", padding: 10 }}>
-          <div style={{ padding: "7px 10px", color: S.sidebarMuted, fontSize: 13, ...css.mono }}>Source: Medplum FHIR R4</div>
-        </div>
-      </div>
+      {/* Shared sidebar — global nav (Patients / Care Console / Practice)
+          plus the per-patient roster used to switch between charts without
+          leaving the detail view. */}
+      <CoordinatorSidebar
+        active="careConsole"
+        navigate={navigate}
+        roster={roster}
+        rosterLoading={rosterLoading}
+        rosterError={rosterError}
+        selectedPatientId={selectedPatientId}
+        onPatientSelect={setSelectedPatientId}
+      />
 
       {/* Main */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
