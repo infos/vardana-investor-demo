@@ -14,7 +14,8 @@ import {
   MARCUS_SESSIONS,
   MARCUS_CROSS_SESSION_INSIGHT,
 } from "./components/CareConsole/careConsoleData.js";
-import CoordinatorSidebar, { rememberPatient } from "./components/CoordinatorSidebar.jsx";
+import CoordinatorSidebar from "./components/CoordinatorSidebar.jsx";
+import { useIsMobile } from "./demo/useIsMobile";
 
 function navigate(path) {
   window.history.pushState({}, "", path);
@@ -1527,6 +1528,7 @@ const TABS = [
 ];
 
 export default function CoordinatorDashboard() {
+  const isMobile = useIsMobile(768);
   const [activeTab, setActiveTab] = useState("overview");
   const [roster, setRoster] = useState([]);           // [{ id, name, initials, meta, risk, bg, fg, raw, summary }]
   const [rosterLoading, setRosterLoading] = useState(true);
@@ -1656,13 +1658,6 @@ export default function CoordinatorDashboard() {
     })();
     return () => { cancelled = true; };
   }, [selectedPatientId, roster]);
-
-  // Remember the most-recently-viewed patient so the sidebar's "Care
-  // Console" nav item from another view (Patients / Practice) returns
-  // the coordinator to the same chart they were last looking at.
-  useEffect(() => {
-    if (selectedPatientId) rememberPatient(selectedPatientId);
-  }, [selectedPatientId]);
 
   // ── Fetch logged sessions for the selected patient ──
   // Refetches whenever the selected patient changes or a new session is
@@ -1870,30 +1865,111 @@ export default function CoordinatorDashboard() {
     a => !a.status || a.status === "active",
   );
 
+  // ── Patient-list navigation (breadcrumb + prev/next) ──
+  // The sidebar no longer renders a roster — that was a duplicate of the
+  // cohort grid and structurally confused which list was canonical. The
+  // detail view instead surfaces:
+  //   - a breadcrumb back to /coordinator (the grid)
+  //   - prev/next icons keyed off the same `roster` state already loaded
+  //     above, so the coordinator can advance through a queue without
+  //     two-click round-trips through the list
+  const rosterIndex = useMemo(
+    () => roster.findIndex(p => p.id === selectedPatientId),
+    [roster, selectedPatientId],
+  );
+  const prevPatient = rosterIndex > 0 ? roster[rosterIndex - 1] : null;
+  const nextPatient = rosterIndex >= 0 && rosterIndex < roster.length - 1 ? roster[rosterIndex + 1] : null;
+  const positionLabel = rosterIndex >= 0 && roster.length
+    ? `${rosterIndex + 1} of ${roster.length}`
+    : null;
+  const goToPatient = (id) => {
+    if (!id) return;
+    const token = new URLSearchParams(window.location.search).get("token");
+    const qs = new URLSearchParams();
+    qs.set("patient", id);
+    if (token) qs.set("token", token);
+    // Replace state instead of pushing so the browser back button still
+    // exits the detail view rather than walking back through every patient
+    // the user advanced through.
+    window.history.replaceState({}, "", `/coordinator?${qs.toString()}`);
+    setSelectedPatientId(id);
+  };
+  const goToList = () => {
+    const token = new URLSearchParams(window.location.search).get("token");
+    navigate(token ? `/coordinator?token=${encodeURIComponent(token)}` : "/coordinator");
+  };
+
   return (
-    <div style={{ display: "flex", height: "100vh", minHeight: 720, background: S.bg }}>
-      {/* Shared sidebar — global nav (Patients / Care Console / Practice)
-          plus the per-patient roster used to switch between charts without
-          leaving the detail view. */}
-      <CoordinatorSidebar
-        active="careConsole"
-        navigate={navigate}
-        roster={roster}
-        rosterLoading={rosterLoading}
-        rosterError={rosterError}
-        selectedPatientId={selectedPatientId}
-        onPatientSelect={setSelectedPatientId}
-      />
+    <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: "100vh", height: isMobile ? "auto" : "100vh", background: S.bg }}>
+      {/* Two-item sidebar (Patients / Practice). Detail view is a child
+          route of Patients, so the rail keeps Patients highlighted while
+          the user is on a patient chart. On mobile the sidebar becomes a
+          horizontal top bar so the patient detail can use the full width. */}
+      <CoordinatorSidebar active="patients" navigate={navigate} />
 
       {/* Main */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* Breadcrumb row — guarantees a one-click return to the grid even
+            without using the browser back button. Position label gives the
+            coordinator a sense of where they are in the queue. */}
+        <div style={{ background: S.card, borderBottom: `1px solid ${S.border}`, padding: "8px 20px", display: "flex", alignItems: "center", gap: 10, fontSize: 13, ...css.sans, flexShrink: 0 }}>
+          <button
+            onClick={goToList}
+            style={{ padding: "4px 8px", marginLeft: -8, background: "transparent", border: "none", color: S.navy, fontSize: 13, cursor: "pointer", ...css.sans, fontWeight: 500 }}
+          >
+            ← Patients
+          </button>
+          {positionLabel && (
+            <span style={{ color: S.textLight }}>· {positionLabel}</span>
+          )}
+        </div>
         {/* Topbar */}
-        <div style={{ background: S.card, borderBottom: `1px solid ${S.border}`, padding: "0 20px", display: "flex", alignItems: "center", gap: 12, height: 52, flexShrink: 0 }}>
+        <div style={{ background: S.card, borderBottom: `1px solid ${S.border}`, padding: isMobile ? "10px 16px" : "0 20px", display: "flex", alignItems: "center", gap: 12, minHeight: 52, flexShrink: 0, flexWrap: isMobile ? "wrap" : "nowrap" }}>
           <div>
             <div style={{ fontSize: 15, ...css.serif }}>{displayName}</div>
             <div style={{ fontSize: 13, color: S.textLight, ...css.sans }}>
               {age != null ? `${age} yo · ` : ""}{gender}{mrn !== "—" ? ` · ${mrn}` : ""}
             </div>
+          </div>
+          {/* Prev/next: skips between adjacent patients in the loaded roster
+              order without forcing a list round-trip. Disabled at the bounds
+              (no wraparound — coordinators can land on the first or last
+              patient cleanly without overshooting). */}
+          <div style={{ display: "flex", gap: 4, marginLeft: 8 }}>
+            <button
+              onClick={() => goToPatient(prevPatient?.id)}
+              disabled={!prevPatient}
+              title={prevPatient ? `Previous: ${prevPatient.name}` : "No previous patient"}
+              aria-label="Previous patient"
+              style={{
+                width: 28, height: 28, borderRadius: 4,
+                background: "transparent",
+                color: prevPatient ? S.navy : S.textLight,
+                border: `1px solid ${S.border}`,
+                cursor: prevPatient ? "pointer" : "not-allowed",
+                opacity: prevPatient ? 1 : 0.4,
+                fontSize: 14, ...css.sans,
+              }}
+            >
+              ‹
+            </button>
+            <button
+              onClick={() => goToPatient(nextPatient?.id)}
+              disabled={!nextPatient}
+              title={nextPatient ? `Next: ${nextPatient.name}` : "No next patient"}
+              aria-label="Next patient"
+              style={{
+                width: 28, height: 28, borderRadius: 4,
+                background: "transparent",
+                color: nextPatient ? S.navy : S.textLight,
+                border: `1px solid ${S.border}`,
+                cursor: nextPatient ? "pointer" : "not-allowed",
+                opacity: nextPatient ? 1 : 0.4,
+                fontSize: 14, ...css.sans,
+              }}
+            >
+              ›
+            </button>
           </div>
           <div style={{ flex: 1 }} />
 

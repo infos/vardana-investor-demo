@@ -113,7 +113,7 @@ export default function ClinicalDemoEntry({ navigate }) {
           ctaLabel="Start Live Demo"
           ctaBackground={DT.jade.default}
           ctaColor="white"
-          onClick={() => navigate(`/coordinator?demo=live&patient=marcus${RAW_TOKEN ? `&token=${RAW_TOKEN}` : ''}`)}
+          onClick={() => navigate(`/coordinator?demo=live${RAW_TOKEN ? `&token=${RAW_TOKEN}` : ''}`)}
         />
         <DemoCard
           badge="~90 SECONDS / NO MIC"
@@ -130,7 +130,7 @@ export default function ClinicalDemoEntry({ navigate }) {
           ctaLabel="Watch Recorded Demo"
           ctaBackground={DT.amber.default}
           ctaColor={DT.bg.page}
-          onClick={() => navigate(`/coordinator?demo=scripted&patient=marcus${RAW_TOKEN ? `&token=${RAW_TOKEN}` : ''}`)}
+          onClick={() => navigate(`/coordinator?demo=scripted${RAW_TOKEN ? `&token=${RAW_TOKEN}` : ''}`)}
         />
       </div>
 

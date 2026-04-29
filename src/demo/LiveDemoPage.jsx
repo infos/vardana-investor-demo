@@ -21,7 +21,7 @@ export default function LiveDemoPage({ navigate }) {
       flexDirection: isMobile ? 'column' : 'row',
     }}>
       <GhostButton onClick={() => setStep('about')}>&larr; Back</GhostButton>
-      <PrimaryButton onClick={() => navigate(`/coordinator?demo=live&patient=marcus`)} color={DT.amber.default} textColor={DT.bg.page}>
+      <PrimaryButton onClick={() => navigate(`/coordinator?demo=live`)} color={DT.amber.default} textColor={DT.bg.page}>
         Open Coordinator View &rarr;
       </PrimaryButton>
     </div>
@@ -39,7 +39,7 @@ export default function LiveDemoPage({ navigate }) {
       ) : (
         <ScenarioSlide
           onBack={() => setStep('about')}
-          onEnter={(patient) => navigate(`/coordinator?demo=live${patient === 'marcus' ? '&patient=marcus' : ''}`)}
+          onEnter={() => navigate(`/coordinator?demo=live`)}
           onPatientSelect={(patient) => setSelectedPatient(patient)}
           defaultPatient={defaultPatient}
           ctaSlot={ctaSlot}
