@@ -487,6 +487,41 @@ function escalationToRiskLevel(state) {
   }
 }
 
+// The per-turn `assessment` field in the AI's metadata is a snapshot of
+// confirmed/pending findings ("lisinopril: Confirmed", "headache: Reported"),
+// useful as a status chip during the conversation but a poor fit for the
+// post-call summary card — when the model hasn't refreshed the keys it
+// degrades to "headache: Pending · lisinopril: Pending" even after the
+// patient has answered every question. Detect that shape and decline to
+// use it as the summary line.
+function looksLikeAssessmentChip(s) {
+  if (!s) return false;
+  // Only "key: value" pairs separated by " · ", with at least one Pending or
+  // similar template-y value. This is the synthesis-state shape produced by
+  // ChatCheckinDemo's per-turn handler.
+  if (!/·/.test(s) && !/:/.test(s)) return false;
+  const looksKv = /^[A-Za-z][A-Za-z0-9_ ]*:\s*\S/.test(s);
+  return looksKv && /\bPending\b/i.test(s);
+}
+
+// Pick the single most informative AI reply as the post-call summary text.
+// Prefers messages that name the wrap-up plan (nurse follow-up, monitor,
+// safety guidance) over short acknowledgements. Falls back to the longest
+// AI message overall if no message contains those signals.
+function pickSummaryFromMessages(messages) {
+  const aiMessages = (messages || []).filter(m => m && m.role === "ai" && m.text);
+  if (!aiMessages.length) return null;
+  const clinical = aiMessages.filter(m => (
+    /(follow.?up|nurse|24 hours|same.?day|monitor|escalat|alert|recheck|reach out|stay hydrated|chest pain|vision changes|shortness of breath)/i.test(m.text)
+  ));
+  const pool = clinical.length ? clinical : aiMessages;
+  let best = pool[0];
+  for (const m of pool) {
+    if ((m.text || "").length > (best.text || "").length) best = m;
+  }
+  return best.text;
+}
+
 function buildLiveChatSummary({
   patientName, sessionStartedAt, messages, escalationState, synthesis, riskScore,
 }) {
@@ -499,9 +534,18 @@ function buildLiveChatSummary({
     speaker: m.role === "ai" ? "AI" : (patientName || "Patient"),
     text: m.text,
   }));
-  const summaryLine = synthesis && synthesis !== "Conversation starting."
-    ? synthesis
-    : `Chat check-in completed. Escalation: ${escalationState}.`;
+  // Order of preference for the summary line:
+  //   1. A meaningful synthesis string from the model (i.e. not the
+  //      "key: Pending" chip and not the placeholder).
+  //   2. The AI's most clinically dense message in the transcript.
+  //   3. A generic "completed, escalation X" line — only when the
+  //      conversation is empty enough that nothing else is salvageable.
+  let summaryLine = null;
+  if (synthesis && synthesis !== "Conversation starting." && !looksLikeAssessmentChip(synthesis)) {
+    summaryLine = synthesis;
+  }
+  if (!summaryLine) summaryLine = pickSummaryFromMessages(messages);
+  if (!summaryLine) summaryLine = `Chat check-in completed. Escalation: ${escalationState}.`;
   return {
     kind: "chat",
     duration,
