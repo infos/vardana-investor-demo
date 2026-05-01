@@ -1519,6 +1519,459 @@ function OutreachTab({ patientData, onInitiateCall }) {
   </div>;
 }
 
+// ── In-call three-panel shell ──
+// Left: ASCVD risk view (sourced from existing patientData via calcPCE).
+// Center: live transcript region (placeholder until a Pipecat-side
+// transcript fanout is added — see PR description) + the embedded
+// LiveKitVoiceOverlay control strip at the bottom.
+// Right: patient chart sidebar — allergies, conditions, medications,
+// latest vitals, recent labs. All rendered from the patientData the
+// dashboard has already loaded; no new fetches.
+//
+// LiveKitVoiceOverlay is mounted in `sessionMode='embedded'` mode so it
+// renders only the audio renderer + a slim status/mute control strip.
+// The full three-panel chrome stays here in the dashboard so the overlay
+// remains reusable for /voice-test (which renders its own standalone
+// chrome via sessionMode='voice-test').
+function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
+  const [elapsed, setElapsed] = useState(0);
+  const [connState, setConnState] = useState(null);
+
+  useEffect(() => {
+    const t = setInterval(() => setElapsed(e => e + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const formatElapsed = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  const isConnected = connState === "connected";
+  const isConnecting = connState === "connecting" || connState === "reconnecting";
+  const statusLabel =
+    connState === "connected" ? "Connected · live" :
+    connState === "connecting" ? "Connecting to LiveKit room…" :
+    connState === "reconnecting" ? "Reconnecting…" :
+    connState === "disconnected" ? "Disconnected" :
+    "Starting voice session…";
+  const statusColor =
+    isConnected ? S.green :
+    isConnecting ? S.amber :
+    connState === "disconnected" ? S.red :
+    S.textLight;
+
+  // ── Risk view (left panel) ──
+  const pceInputs = useMemo(() => defaultPCEInputs(patientData), [patientData]);
+  const pcePct = calcPCE(pceInputs);
+  const pceTier = pceTierLabel(pcePct);
+  const pceColors = pceTierColors(pcePct);
+
+  // ── Patient chart (right panel) ──
+  const chartName = patientData?.patient?.name || patient?.name || "Patient";
+  const chartAge = ageFromBirthDate(patientData?.patient?.birthDate) || patient?.age;
+  const chartGender = (patientData?.patient?.gender || patient?.gender || "")
+    .toString()
+    .charAt(0)
+    .toUpperCase();
+  const dob = patientData?.patient?.birthDate;
+  const allergies = patientData?.allergies || [];
+  const activeConditions = (patientData?.conditions || []).filter(
+    c => !c.status || c.status === "active",
+  );
+  const activeMeds = (patientData?.medications || []).filter(
+    m => !m.status || m.status === "active",
+  );
+  const latestBP = patientData?.latestBP;
+  const latestWeight = patientData?.latestWeight;
+  const recentLabs = (patientData?.labs || [])
+    .slice()
+    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+    .slice(0, 4);
+
+  const sectionHead = {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#7A96B0",
+    textTransform: "uppercase",
+    letterSpacing: "0.07em",
+    marginBottom: 8,
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.85)",
+        zIndex: 1000,
+        overflow: "auto",
+        ...css.sans,
+      }}
+    >
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#F8F9FB",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* ── Top bar ── */}
+        <div
+          style={{
+            background: S.navy,
+            color: S.navyText,
+            padding: "12px 18px",
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              width: 9,
+              height: 9,
+              borderRadius: "50%",
+              background: statusColor,
+              boxShadow: isConnected ? `0 0 6px ${S.green}66` : "none",
+              flexShrink: 0,
+            }}
+          />
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{statusLabel}</div>
+          <div
+            style={{
+              fontSize: 13,
+              color: "#94A3B8",
+              fontVariantNumeric: "tabular-nums",
+              ...css.mono,
+            }}
+          >
+            {formatElapsed(elapsed)}
+          </div>
+          <div style={{ flex: 1 }} />
+          <div style={{ fontSize: 13, color: "#94A3B8" }}>
+            {chartName}
+            {chartAge ? ` · ${chartAge}` : ""}
+            {chartGender ? ` · ${chartGender}` : ""}
+          </div>
+          <button
+            onClick={onEnd}
+            aria-label="End call and return to dashboard"
+            style={{
+              background: S.red,
+              color: "white",
+              border: "none",
+              borderRadius: 6,
+              padding: "7px 14px",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              ...css.sans,
+            }}
+          >
+            End call
+          </button>
+        </div>
+
+        {/* ── Three-panel body ── */}
+        <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
+          {/* LEFT: Risk view */}
+          <div
+            style={{
+              width: 300,
+              flexShrink: 0,
+              background: S.card,
+              borderRight: `1px solid ${S.border}`,
+              padding: "18px 16px",
+              overflowY: "auto",
+            }}
+          >
+            <div style={sectionHead}>10-year ASCVD risk</div>
+            <div
+              style={{
+                background: "#F0EEE8",
+                borderRadius: 10,
+                padding: "16px 14px",
+                textAlign: "center",
+                marginBottom: 12,
+              }}
+            >
+              <div style={{ fontSize: 32, ...css.serif, color: pceColors.text, lineHeight: 1.1 }}>
+                {pcePct.toFixed(1)}
+                <span style={{ fontSize: 18, marginLeft: 2 }}>%</span>
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  ...css.sans,
+                  marginTop: 6,
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  background: pceColors.bg,
+                  color: pceColors.text,
+                  display: "inline-block",
+                }}
+              >
+                {pceTier}
+              </div>
+              <div style={{ fontSize: 11, color: S.textLight, marginTop: 8 }}>
+                Per ACC/AHA PCE (2013)
+              </div>
+            </div>
+
+            <div style={sectionHead}>Tier inputs</div>
+            <div style={{ fontSize: 13, color: S.textMed, lineHeight: 1.6 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Age</span><span>{pceInputs.age}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Systolic BP</span><span>{pceInputs.sbp} mmHg</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Diabetes</span><span>{pceInputs.dm ? "Yes" : "No"}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>On BP Tx</span><span>{pceInputs.bptx ? "Yes" : "No"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* CENTER: Transcript + audio control strip */}
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              minWidth: 0,
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: "12px 20px",
+                borderBottom: `1px solid ${S.border}`,
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#7A96B0",
+                textTransform: "uppercase",
+                letterSpacing: "0.07em",
+                background: S.card,
+              }}
+            >
+              Live transcript
+            </div>
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: "20px 24px",
+                background: "#FFFFFF",
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  padding: "12px 14px",
+                  background: "#FFFBEB",
+                  border: "1px solid #FCD34D",
+                  borderRadius: 6,
+                  fontSize: 13,
+                  color: "#78350F",
+                  lineHeight: 1.55,
+                }}
+              >
+                <strong style={{ display: "block", marginBottom: 4 }}>
+                  Live transcript not yet wired in
+                </strong>
+                The Pipecat bot pipeline currently runs STT → LLM → TTS
+                without publishing transcript frames to the LiveKit data
+                channel. Audio still streams normally. Adding a transcript
+                processor + frontend `useDataChannel` subscription is
+                tracked as a Stage&nbsp;3 follow-up.
+              </div>
+
+              <div
+                style={{
+                  padding: "10px 14px",
+                  background: S.card,
+                  border: `1px solid ${S.border}`,
+                  borderRadius: 6,
+                  fontSize: 13,
+                  color: S.textMed,
+                  lineHeight: 1.55,
+                }}
+              >
+                {isConnecting && "Negotiating with LiveKit Cloud and joining the room…"}
+                {isConnected && (
+                  <>
+                    Connected to {chartName}'s voice session. Speak into your
+                    microphone — the bot's reply (Cartesia TTS) plays through
+                    your speakers automatically.
+                  </>
+                )}
+                {connState === "disconnected" && "Disconnected from the room. Use End call to return to the dashboard."}
+                {!connState && "Waiting on session-start handshake…"}
+              </div>
+            </div>
+
+            <div style={{ padding: "12px 20px", borderTop: `1px solid ${S.border}`, background: S.card }}>
+              <LiveKitVoiceOverlay
+                patient={patient}
+                sessionMode="embedded"
+                onConnectionStateChange={(state) => setConnState(String(state))}
+                onCallComplete={onCallComplete}
+              />
+            </div>
+          </div>
+
+          {/* RIGHT: Patient chart sidebar */}
+          <div
+            style={{
+              width: 320,
+              flexShrink: 0,
+              background: S.card,
+              borderLeft: `1px solid ${S.border}`,
+              padding: "18px 16px",
+              overflowY: "auto",
+            }}
+          >
+            <div style={sectionHead}>Patient chart</div>
+            <div style={{ fontSize: 13, color: S.textMed, marginBottom: 14, lineHeight: 1.6 }}>
+              {dob && (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: S.textLight }}>DOB</span>
+                  <span>{dob}</span>
+                </div>
+              )}
+              {allergies.length === 0 ? (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: S.textLight }}>Allergies</span>
+                  <span style={{ color: S.green }}>None known</span>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ color: S.textLight, marginBottom: 4 }}>Allergies</div>
+                  {allergies.map((a, i) => (
+                    <div key={i} style={{ color: S.amberText, fontSize: 12 }}>
+                      • {a.substance}
+                      {a.reaction ? ` — ${a.reaction}` : ""}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={sectionHead}>Active conditions</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 14 }}>
+              {activeConditions.length === 0 ? (
+                <span style={{ fontSize: 12, color: S.textLight }}>None on record</span>
+              ) : (
+                activeConditions.map((c, i) => (
+                  <span
+                    key={i}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "#4A6380",
+                      background: "#EEF1F5",
+                      border: "1px solid #E8EDF3",
+                      borderRadius: 4,
+                      padding: "2px 7px",
+                    }}
+                  >
+                    {c.text}
+                  </span>
+                ))
+              )}
+            </div>
+
+            <div style={sectionHead}>Active medications</div>
+            <div style={{ marginBottom: 14, display: "flex", flexDirection: "column", gap: 4 }}>
+              {activeMeds.length === 0 ? (
+                <span style={{ fontSize: 12, color: S.textLight }}>None on record</span>
+              ) : (
+                activeMeds.map((m, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      fontSize: 12,
+                      color: S.text,
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    <span style={{ fontWeight: 600 }}>{m.name}</span>
+                    {m.dosage ? <span style={{ color: S.textLight }}> · {m.dosage}</span> : null}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div style={sectionHead}>Recent vitals</div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 8,
+                marginBottom: 14,
+              }}
+            >
+              <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "8px 10px" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>
+                  Blood Pressure
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: latestBP && (latestBP.systolic >= 140 || latestBP.diastolic >= 90) ? S.red : S.text }}>
+                  {latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : "—"}
+                </div>
+                <div style={{ fontSize: 10, color: S.textLight, marginTop: 2 }}>
+                  {latestBP ? fmtDate(latestBP.date) : "No data"}
+                </div>
+              </div>
+              <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "8px 10px" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>
+                  Weight
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: S.text }}>
+                  {latestWeight ? `${latestWeight.value}` : "—"}
+                  {latestWeight ? <span style={{ fontSize: 10, fontWeight: 600, marginLeft: 2 }}>{latestWeight.unit || "lb"}</span> : null}
+                </div>
+                <div style={{ fontSize: 10, color: S.textLight, marginTop: 2 }}>
+                  {latestWeight ? fmtDate(latestWeight.date) : "No data"}
+                </div>
+              </div>
+            </div>
+
+            {recentLabs.length > 0 && (
+              <>
+                <div style={sectionHead}>Recent labs</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {recentLabs.map((lab, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 6, fontSize: 11 }}>
+                      <span style={{ color: S.text, fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {lab.name || lab.code}
+                      </span>
+                      <span style={{ color: S.textMed, fontWeight: 600 }}>
+                        {lab.value}
+                        {lab.unit ? ` ${lab.unit}` : ""}
+                      </span>
+                      <span style={{ color: S.textLight, fontSize: 10 }}>{fmtDate(lab.date)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Dashboard ──
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -2166,28 +2619,12 @@ export default function CoordinatorDashboard() {
           routes through handleCallComplete to pin the PostCallSummary
           card. Single completion path, no race. */}
       {callOpen && patientForCall && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, overflow: "auto" }}>
-          <div style={{ position: "relative", minHeight: "100vh", background: "#F8F9FB", padding: "32px 24px" }}>
-            <button
-              onClick={() => setCallOpen(false)}
-              aria-label="End call and return to dashboard"
-              style={{
-                position: "absolute", top: 14, right: 18, zIndex: 1,
-                background: S.navy, color: S.navyText,
-                border: "none", borderRadius: 6,
-                padding: "7px 14px", fontSize: 14, ...css.sans, fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              End call
-            </button>
-            <LiveKitVoiceOverlay
-              patient={patientForCall}
-              sessionMode="coordinator"
-              onCallComplete={handleCallComplete}
-            />
-          </div>
-        </div>
+        <InCallShell
+          patient={patientForCall}
+          patientData={patientData}
+          onEnd={() => setCallOpen(false)}
+          onCallComplete={handleCallComplete}
+        />
       )}
 
       {/* Chat overlay — additive to voice. Replay mode never persists an

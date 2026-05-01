@@ -27,10 +27,18 @@ import "@livekit/components-styles";
 //     persists the FHIR Encounter via persist_voice_encounter, and the
 //     escalation taxonomy is server-side. The frontend doesn't need to
 //     reconstruct what the bot already wrote.
-//   sessionMode: 'voice-test' | 'coordinator'
+//   sessionMode: 'voice-test' | 'coordinator' | 'embedded'
 //     'voice-test' renders standalone page chrome (h1, subtitle, cream
 //     bg). 'coordinator' renders compact for embedding in a modal — the
-//     parent supplies its own outer chrome.
+//     parent supplies its own outer chrome. 'embedded' is the most
+//     compact form — a single status + mute control strip with no
+//     surrounding chrome at all, intended for placement inside a
+//     parent-owned three-panel layout.
+//   onConnectionStateChange?: (state: ConnectionState) => void
+//     Fired whenever the LiveKit room's connection state transitions
+//     (Connecting / Connected / Reconnecting / Disconnected). The parent
+//     uses this to drive its own speaking / listening indicators when
+//     it owns the in-call chrome.
 
 const TOKENS = {
   bg: "#F0EEE8",
@@ -62,6 +70,7 @@ function formatDuration(ms) {
 export default function LiveKitVoiceOverlay({
   patient,
   onCallComplete,
+  onConnectionStateChange,
   sessionMode = "voice-test",
 }) {
   const [stage, setStage] = useState("init");
@@ -162,6 +171,14 @@ export default function LiveKitVoiceOverlay({
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
       window.removeEventListener("beforeunload", onBeforeUnload);
+      // Only fire endSession + onCallComplete when a session has actually
+      // been established. Without this guard, React 18 StrictMode's
+      // dev-mode double-mount cleanup fires fireComplete() before
+      // /api/session-start resolves, which in CoordinatorDashboard's
+      // handleCallComplete flips callOpen=false and tears down the
+      // in-call shell within milliseconds of the user clicking
+      // "Initiate call".
+      if (!sessionIdRef.current) return;
       endSession();
       fireComplete();
     };
@@ -172,6 +189,67 @@ export default function LiveKitVoiceOverlay({
   }, []);
 
   const compact = sessionMode === "coordinator";
+  const embedded = sessionMode === "embedded";
+
+  // Embedded mode skips the centered max-width container and the standalone
+  // chrome — the parent (e.g. CoordinatorDashboard's three-panel call layout)
+  // owns the outer wrapper. Everything below still mounts the LiveKitRoom
+  // and audio renderer the same way; only the surrounding presentation
+  // changes.
+  if (embedded) {
+    return (
+      <div style={{ ...css.sans }}>
+        {(stage === "init" || stage === "starting") && (
+          <StatusCard tone="info">
+            Starting voice session — backend is spawning the bot worker.
+          </StatusCard>
+        )}
+
+        {stage === "error" && (
+          <StatusCard tone="error">
+            <strong style={{ display: "block", marginBottom: 6 }}>Could not start session</strong>
+            <code style={{ ...css.mono, fontSize: 12, color: TOKENS.red, whiteSpace: "pre-wrap" }}>
+              {error}
+            </code>
+          </StatusCard>
+        )}
+
+        {stage === "ready" && creds && (
+          <LiveKitRoom
+            token={creds.token}
+            serverUrl={creds.livekitUrl}
+            connect={true}
+            audio={true}
+            video={false}
+            onError={(e) => {
+              setError(`LiveKit error: ${e.message || String(e)}`);
+              setStage("error");
+            }}
+            onDisconnected={() => {
+              setStage((prev) => (prev === "ended" ? prev : "disconnected"));
+              fireComplete();
+            }}
+          >
+            <RoomBody
+              roomName={creds.roomName}
+              sessionId={creds.sessionId}
+              patientName={patientName}
+              compact={true}
+              embedded={true}
+              onConnectionStateChange={onConnectionStateChange}
+            />
+            <RoomAudioRenderer />
+          </LiveKitRoom>
+        )}
+
+        {stage === "disconnected" && (
+          <StatusCard tone="warn">
+            Disconnected from the room. Reload the page to reconnect.
+          </StatusCard>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -235,6 +313,7 @@ export default function LiveKitVoiceOverlay({
               sessionId={creds.sessionId}
               patientName={patientName}
               compact={compact}
+              onConnectionStateChange={onConnectionStateChange}
             />
             <RoomAudioRenderer />
           </LiveKitRoom>
@@ -253,10 +332,19 @@ export default function LiveKitVoiceOverlay({
 // ── Body of the LiveKitRoom — uses the LiveKit React hooks (only valid
 // inside the LiveKitRoom provider). Split out so it can call
 // useConnectionState / useLocalParticipant. ──
-function RoomBody({ roomName, sessionId, patientName, compact }) {
+function RoomBody({ roomName, sessionId, patientName, compact, embedded = false, onConnectionStateChange }) {
   const connectionState = useConnectionState();
   const { localParticipant } = useLocalParticipant();
   const [muted, setMuted] = useState(false);
+
+  // Surface connection state to the parent so it can drive its own
+  // speaking / listening indicators when it owns the in-call chrome
+  // (e.g. CoordinatorDashboard's three-panel layout).
+  useEffect(() => {
+    if (typeof onConnectionStateChange === "function") {
+      onConnectionStateChange(connectionState);
+    }
+  }, [connectionState, onConnectionStateChange]);
 
   const isConnecting =
     connectionState === ConnectionState.Connecting ||
@@ -276,6 +364,48 @@ function RoomBody({ roomName, sessionId, patientName, compact }) {
       setMuted(next);
     }
   };
+
+  if (embedded) {
+    // Slim single-row control strip — designed to drop into a parent-owned
+    // layout (e.g. the bottom of CoordinatorDashboard's transcript panel).
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "10px 14px",
+          background: TOKENS.card,
+          border: `1px solid ${TOKENS.border}`,
+          borderRadius: 8,
+        }}
+      >
+        <ConnectionDot state={connectionState} />
+        <div style={{ fontSize: 13, fontWeight: 600, color: TOKENS.text, ...css.sans }}>
+          {labelForState(connectionState)}
+        </div>
+        <div style={{ flex: 1 }} />
+        <button
+          onClick={toggleMute}
+          disabled={!isConnected}
+          style={{
+            padding: "7px 14px",
+            fontSize: 13,
+            ...css.sans,
+            background: muted ? TOKENS.red : TOKENS.navy,
+            color: muted ? "white" : TOKENS.navyText,
+            border: "none",
+            borderRadius: 6,
+            cursor: isConnected ? "pointer" : "not-allowed",
+            opacity: isConnected ? 1 : 0.5,
+            fontWeight: 600,
+          }}
+        >
+          {muted ? "🔇 Muted" : "🎙 Mic on"}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div
