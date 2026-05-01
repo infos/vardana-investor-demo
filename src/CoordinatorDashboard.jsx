@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { VoiceCallDemo } from "./App.jsx";
+import { VoiceCallDemo } from "./App.jsx"; // legacy — kept on import for /demo/{token} flow only; not rendered from this view
 import ChatCheckinDemo from "./ChatCheckinDemo.jsx";
+import LiveKitVoiceOverlay from "./components/LiveKitVoiceOverlay.jsx";
 import { scenariosForPatient, loadScenario } from "./chatScenarios.js";
 import { MetricTile } from "./components/CareConsole/MetricTile.jsx";
 import { AdherenceRow } from "./components/CareConsole/AdherenceRow.jsx";
@@ -1685,15 +1686,16 @@ export default function CoordinatorDashboard() {
     return () => { cancelled = true; };
   }, [selectedPatientId, sessionLogStatus]);
 
-  // Called by VoiceCallDemo when the call ends. Pins the summary on Overview
-  // and flags it as demo mode -- Medplum persistence is intentionally
-  // disabled in this build so the shared test deploy doesn't accumulate
-  // Encounters every time someone runs a demo call.
+  // Called by LiveKitVoiceOverlay when the call ends. Pins the summary on
+  // Overview. Encounter persistence now happens server-side in vardana-voice's
+  // persist_voice_encounter (fires unconditionally in bot.py's session-end
+  // finally block), so this status is "saved" — the FHIR Encounter is
+  // already in Medplum by the time this handler runs.
   const handleCallComplete = (payload) => {
     setCallOpen(false);
     const name = patientData?.patient?.name || roster.find(r => r.id === selectedPatientId)?.name || "Patient";
     setLastCallSummary({ ...payload, patientName: name, patientId: selectedPatientId });
-    setSessionLogStatus("demo");
+    setSessionLogStatus("saved");
   };
 
   const selectedRosterItem = useMemo(() => roster.find(r => r.id === selectedPatientId), [roster, selectedPatientId]);
@@ -1701,12 +1703,39 @@ export default function CoordinatorDashboard() {
     ? (selectedRosterItem.id === LOCAL_MARCUS_ID || identifierMatchesMarcus(selectedRosterItem.summary))
     : false;
 
-  // Live call overlay — launches VoiceCallDemo in live mode
-  // Currently the live call only has Marcus-specific clinical context, so
-  // button is enabled only when Marcus is selected.
-  const patientForCall = isMarcusSelected
-    ? { id: 101, name: "Marcus Williams", age: 58, gender: "M" }
-    : null;
+  // ── Voice overlay eligibility ──
+  // Maps frontend roster ids (LOCAL_PATIENTS or Medplum-loaded names) to the
+  // backend DEMO_PATIENTS slug expected by /api/session-start. The slug is
+  // resolved server-side by vardana-voice's resolve_patient_id() to a real
+  // FHIR Patient.id, which is then used for both the chart pre-fetch and
+  // the persisted Encounter. Patients without a known slug get null
+  // patientForCall → "Initiate call" button doesn't render for them.
+  //
+  // Maria Gonzalez is intentionally absent here — her active CarePlan is a
+  // CHF program that conflicts with the cardiometabolic-only beachhead.
+  // See vardana-voice/vardana_tools.py DEMO_PATIENTS comment.
+  const patientForCall = useMemo(() => {
+    if (!selectedRosterItem) return null;
+    const id = selectedRosterItem.id;
+    const name = (selectedRosterItem.name || "").toLowerCase();
+    let slug = null;
+    if (id === LOCAL_MARCUS_ID || identifierMatchesMarcus(selectedRosterItem.summary)) {
+      slug = "marcus-williams-test";
+    } else if (name.includes("linda") && name.includes("patel")) {
+      slug = "linda-patel-test";
+    } else if (name.includes("david") && name.includes("brooks")) {
+      slug = "david-brooks-test";
+    }
+    if (!slug) return null;
+    return {
+      slug,
+      name: selectedRosterItem.name,
+      // Demographics still useful for UI display even though the bot
+      // pre-fetches them server-side from the FHIR Patient resource.
+      age: ageFromBirthDate(patientData?.patient?.birthDate || selectedRosterItem.summary?.birthDate),
+      gender: patientData?.patient?.gender || selectedRosterItem.summary?.gender || null,
+    };
+  }, [selectedRosterItem, patientData]);
 
   // Safari gating — Safari desktop does not implement Web Speech API
   // SpeechRecognition, and requires audio unlock + mic permission inside a
@@ -2115,20 +2144,35 @@ export default function CoordinatorDashboard() {
         </div>
       </div>
 
-      {/* Live-call overlay. VoiceCallDemo owns its own End Call → Return to
-          Dashboard flow, which routes through onComplete (generates summary,
-          fires handleCallComplete, persists to Medplum). We intentionally do
-          NOT render a wrapper-level Close button here — clicking it would
-          bypass onComplete and skip both the Medplum write and the post-call
-          summary card. One button, one path, always saves. */}
+      {/* Live-call overlay — LiveKit + EC2 pipecat pipeline.
+          Connects to a LiveKit Cloud room spawned by voice.vardana.ai;
+          the bot pre-fetches the patient's chart server-side and
+          persists a FHIR Encounter on session end. The 10-minute cap
+          in bot.py forces a graceful close if the user lingers. The
+          "End call" button just unmounts the overlay — the overlay's
+          own cleanup effect fires session-end + onCallComplete, which
+          routes through handleCallComplete to pin the PostCallSummary
+          card. Single completion path, no race. */}
       {callOpen && patientForCall && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, overflow: "auto" }}>
-          <div style={{ position: "relative", minHeight: "100vh", background: "#F8F9FB" }}>
-            <VoiceCallDemo
+          <div style={{ position: "relative", minHeight: "100vh", background: "#F8F9FB", padding: "32px 24px" }}>
+            <button
+              onClick={() => setCallOpen(false)}
+              aria-label="End call and return to dashboard"
+              style={{
+                position: "absolute", top: 14, right: 18, zIndex: 1,
+                background: S.navy, color: S.navyText,
+                border: "none", borderRadius: 6,
+                padding: "7px 14px", fontSize: 14, ...css.sans, fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              End call
+            </button>
+            <LiveKitVoiceOverlay
               patient={patientForCall}
-              autoStartLive={true}
-              isMarcusDemo={true}
-              onComplete={handleCallComplete}
+              sessionMode="coordinator"
+              onCallComplete={handleCallComplete}
             />
           </div>
         </div>
