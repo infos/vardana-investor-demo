@@ -1714,17 +1714,29 @@ export default function CoordinatorDashboard() {
   // Maria Gonzalez is intentionally absent here — her active CarePlan is a
   // CHF program that conflicts with the cardiometabolic-only beachhead.
   // See vardana-voice/vardana_tools.py DEMO_PATIENTS comment.
+  // Primary slug resolution: deterministic FHIR Patient.id → slug map. These
+  // UUIDs are byte-equal to vardana-voice's DEMO_PATIENTS server-side mapping,
+  // verified against production Medplum via Stage 1 backend pre-fetch logs.
+  const FHIR_ID_TO_SLUG = {
+    "1de9768a-2459-4586-a888-d184a70479cc": "marcus-williams-test",
+    "8562846b-5b4c-4b78-b684-0ca9f2159522": "linda-patel-test",
+    "ba72d65c-3d3c-44e1-8b9b-e5b31d7c83d5": "david-brooks-test",
+  };
+
   const patientForCall = useMemo(() => {
     if (!selectedRosterItem) return null;
     const id = selectedRosterItem.id;
     const name = (selectedRosterItem.name || "").toLowerCase();
-    let slug = null;
-    if (id === LOCAL_MARCUS_ID || identifierMatchesMarcus(selectedRosterItem.summary)) {
+    // Primary: deterministic FHIR Patient.id match.
+    let slug = FHIR_ID_TO_SLUG[id];
+    // LOCAL_MARCUS fixture (dev-only, before Medplum responds) — preserved exactly.
+    if (!slug && (id === LOCAL_MARCUS_ID || identifierMatchesMarcus(selectedRosterItem.summary))) {
       slug = "marcus-williams-test";
-    } else if (name.includes("linda") && name.includes("patel")) {
-      slug = "linda-patel-test";
-    } else if (name.includes("david") && name.includes("brooks")) {
-      slug = "david-brooks-test";
+    }
+    // Name-substring fallback — preserved exactly from existing logic for Linda/David.
+    if (!slug) {
+      if (name.includes("linda") && name.includes("patel")) slug = "linda-patel-test";
+      else if (name.includes("david") && name.includes("brooks")) slug = "david-brooks-test";
     }
     if (!slug) return null;
     return {
