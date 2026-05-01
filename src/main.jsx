@@ -13,6 +13,7 @@ import ClinicalDemoEntry from './demo/ClinicalDemoEntry.jsx'
 import CoordinatorDashboard from './CoordinatorDashboard.jsx'
 import CoordinatorPanel from './CoordinatorPanel.jsx'
 import PracticeDashboard from './PracticeDashboard.jsx'
+import VoiceTestPage from './VoiceTestPage.jsx'
 import { useAnalytics } from './useAnalytics'
 import { DEMO_BASE, CLINICAL_BASE, isTokenValid, setDemoTokenCookie } from './demoPath'
 
@@ -35,7 +36,7 @@ function Router() {
 
   // Add noindex meta for demo/coordinator/checkin routes
   useEffect(() => {
-    const noindexPaths = ['/demo', '/coordinator', '/patient', '/checkin', '/practice'];
+    const noindexPaths = ['/demo', '/coordinator', '/patient', '/checkin', '/practice', '/voice-test'];
     const shouldNoindex = noindexPaths.some(p => pathname.startsWith(p));
     let meta = document.querySelector('meta[name="robots"]');
     if (shouldNoindex) {
@@ -75,6 +76,10 @@ function Router() {
   // matching roster entry. /coordinator/panel is kept as a permanent alias
   // so anything bookmarked from the previous shipping window still resolves
   // to the grid.
+  // Manual QA surface for the EC2 voice pipeline. Intentionally NOT
+  // gated by the demo token so engineering can hit it directly without
+  // the demo URL pattern. Don't link from /demo or /coordinator.
+  if (pathname === '/voice-test') return <VoiceTestPage />;
   if (pathname === '/practice') return <PracticeDashboard navigate={navigate} />;
   if (pathname === '/coordinator/panel') return <CoordinatorPanel navigate={navigate} />;
   if (pathname === '/coordinator') {
