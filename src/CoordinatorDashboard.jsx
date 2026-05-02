@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { VoiceCallDemo } from "./App.jsx";
+import { VoiceCallDemo } from "./App.jsx"; // legacy — kept on import for /demo/{token} flow only; not rendered from this view
 import ChatCheckinDemo from "./ChatCheckinDemo.jsx";
+import LiveKitVoiceOverlay from "./components/LiveKitVoiceOverlay.jsx";
 import { scenariosForPatient, loadScenario } from "./chatScenarios.js";
 import { MetricTile } from "./components/CareConsole/MetricTile.jsx";
 import { AdherenceRow } from "./components/CareConsole/AdherenceRow.jsx";
@@ -1518,6 +1519,459 @@ function OutreachTab({ patientData, onInitiateCall }) {
   </div>;
 }
 
+// ── In-call three-panel shell ──
+// Left: ASCVD risk view (sourced from existing patientData via calcPCE).
+// Center: live transcript region (placeholder until a Pipecat-side
+// transcript fanout is added — see PR description) + the embedded
+// LiveKitVoiceOverlay control strip at the bottom.
+// Right: patient chart sidebar — allergies, conditions, medications,
+// latest vitals, recent labs. All rendered from the patientData the
+// dashboard has already loaded; no new fetches.
+//
+// LiveKitVoiceOverlay is mounted in `sessionMode='embedded'` mode so it
+// renders only the audio renderer + a slim status/mute control strip.
+// The full three-panel chrome stays here in the dashboard so the overlay
+// remains reusable for /voice-test (which renders its own standalone
+// chrome via sessionMode='voice-test').
+function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
+  const [elapsed, setElapsed] = useState(0);
+  const [connState, setConnState] = useState(null);
+
+  useEffect(() => {
+    const t = setInterval(() => setElapsed(e => e + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const formatElapsed = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  const isConnected = connState === "connected";
+  const isConnecting = connState === "connecting" || connState === "reconnecting";
+  const statusLabel =
+    connState === "connected" ? "Connected · live" :
+    connState === "connecting" ? "Connecting to LiveKit room…" :
+    connState === "reconnecting" ? "Reconnecting…" :
+    connState === "disconnected" ? "Disconnected" :
+    "Starting voice session…";
+  const statusColor =
+    isConnected ? S.green :
+    isConnecting ? S.amber :
+    connState === "disconnected" ? S.red :
+    S.textLight;
+
+  // ── Risk view (left panel) ──
+  const pceInputs = useMemo(() => defaultPCEInputs(patientData), [patientData]);
+  const pcePct = calcPCE(pceInputs);
+  const pceTier = pceTierLabel(pcePct);
+  const pceColors = pceTierColors(pcePct);
+
+  // ── Patient chart (right panel) ──
+  const chartName = patientData?.patient?.name || patient?.name || "Patient";
+  const chartAge = ageFromBirthDate(patientData?.patient?.birthDate) || patient?.age;
+  const chartGender = (patientData?.patient?.gender || patient?.gender || "")
+    .toString()
+    .charAt(0)
+    .toUpperCase();
+  const dob = patientData?.patient?.birthDate;
+  const allergies = patientData?.allergies || [];
+  const activeConditions = (patientData?.conditions || []).filter(
+    c => !c.status || c.status === "active",
+  );
+  const activeMeds = (patientData?.medications || []).filter(
+    m => !m.status || m.status === "active",
+  );
+  const latestBP = patientData?.latestBP;
+  const latestWeight = patientData?.latestWeight;
+  const recentLabs = (patientData?.labs || [])
+    .slice()
+    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+    .slice(0, 4);
+
+  const sectionHead = {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#7A96B0",
+    textTransform: "uppercase",
+    letterSpacing: "0.07em",
+    marginBottom: 8,
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.85)",
+        zIndex: 1000,
+        overflow: "auto",
+        ...css.sans,
+      }}
+    >
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#F8F9FB",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* ── Top bar ── */}
+        <div
+          style={{
+            background: S.navy,
+            color: S.navyText,
+            padding: "12px 18px",
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              width: 9,
+              height: 9,
+              borderRadius: "50%",
+              background: statusColor,
+              boxShadow: isConnected ? `0 0 6px ${S.green}66` : "none",
+              flexShrink: 0,
+            }}
+          />
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{statusLabel}</div>
+          <div
+            style={{
+              fontSize: 13,
+              color: "#94A3B8",
+              fontVariantNumeric: "tabular-nums",
+              ...css.mono,
+            }}
+          >
+            {formatElapsed(elapsed)}
+          </div>
+          <div style={{ flex: 1 }} />
+          <div style={{ fontSize: 13, color: "#94A3B8" }}>
+            {chartName}
+            {chartAge ? ` · ${chartAge}` : ""}
+            {chartGender ? ` · ${chartGender}` : ""}
+          </div>
+          <button
+            onClick={onEnd}
+            aria-label="End call and return to dashboard"
+            style={{
+              background: S.red,
+              color: "white",
+              border: "none",
+              borderRadius: 6,
+              padding: "7px 14px",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              ...css.sans,
+            }}
+          >
+            End call
+          </button>
+        </div>
+
+        {/* ── Three-panel body ── */}
+        <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
+          {/* LEFT: Risk view */}
+          <div
+            style={{
+              width: 300,
+              flexShrink: 0,
+              background: S.card,
+              borderRight: `1px solid ${S.border}`,
+              padding: "18px 16px",
+              overflowY: "auto",
+            }}
+          >
+            <div style={sectionHead}>10-year ASCVD risk</div>
+            <div
+              style={{
+                background: "#F0EEE8",
+                borderRadius: 10,
+                padding: "16px 14px",
+                textAlign: "center",
+                marginBottom: 12,
+              }}
+            >
+              <div style={{ fontSize: 32, ...css.serif, color: pceColors.text, lineHeight: 1.1 }}>
+                {pcePct.toFixed(1)}
+                <span style={{ fontSize: 18, marginLeft: 2 }}>%</span>
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  ...css.sans,
+                  marginTop: 6,
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  background: pceColors.bg,
+                  color: pceColors.text,
+                  display: "inline-block",
+                }}
+              >
+                {pceTier}
+              </div>
+              <div style={{ fontSize: 11, color: S.textLight, marginTop: 8 }}>
+                Per ACC/AHA PCE (2013)
+              </div>
+            </div>
+
+            <div style={sectionHead}>Tier inputs</div>
+            <div style={{ fontSize: 13, color: S.textMed, lineHeight: 1.6 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Age</span><span>{pceInputs.age}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Systolic BP</span><span>{pceInputs.sbp} mmHg</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Diabetes</span><span>{pceInputs.dm ? "Yes" : "No"}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>On BP Tx</span><span>{pceInputs.bptx ? "Yes" : "No"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* CENTER: Transcript + audio control strip */}
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              minWidth: 0,
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: "12px 20px",
+                borderBottom: `1px solid ${S.border}`,
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#7A96B0",
+                textTransform: "uppercase",
+                letterSpacing: "0.07em",
+                background: S.card,
+              }}
+            >
+              Live transcript
+            </div>
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: "20px 24px",
+                background: "#FFFFFF",
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  padding: "12px 14px",
+                  background: "#FFFBEB",
+                  border: "1px solid #FCD34D",
+                  borderRadius: 6,
+                  fontSize: 13,
+                  color: "#78350F",
+                  lineHeight: 1.55,
+                }}
+              >
+                <strong style={{ display: "block", marginBottom: 4 }}>
+                  Live transcript not yet wired in
+                </strong>
+                The Pipecat bot pipeline currently runs STT → LLM → TTS
+                without publishing transcript frames to the LiveKit data
+                channel. Audio still streams normally. Adding a transcript
+                processor + frontend `useDataChannel` subscription is
+                tracked as a Stage&nbsp;3 follow-up.
+              </div>
+
+              <div
+                style={{
+                  padding: "10px 14px",
+                  background: S.card,
+                  border: `1px solid ${S.border}`,
+                  borderRadius: 6,
+                  fontSize: 13,
+                  color: S.textMed,
+                  lineHeight: 1.55,
+                }}
+              >
+                {isConnecting && "Negotiating with LiveKit Cloud and joining the room…"}
+                {isConnected && (
+                  <>
+                    Connected to {chartName}'s voice session. Speak into your
+                    microphone — the bot's reply (Cartesia TTS) plays through
+                    your speakers automatically.
+                  </>
+                )}
+                {connState === "disconnected" && "Disconnected from the room. Use End call to return to the dashboard."}
+                {!connState && "Waiting on session-start handshake…"}
+              </div>
+            </div>
+
+            <div style={{ padding: "12px 20px", borderTop: `1px solid ${S.border}`, background: S.card }}>
+              <LiveKitVoiceOverlay
+                patient={patient}
+                sessionMode="embedded"
+                onConnectionStateChange={(state) => setConnState(String(state))}
+                onCallComplete={onCallComplete}
+              />
+            </div>
+          </div>
+
+          {/* RIGHT: Patient chart sidebar */}
+          <div
+            style={{
+              width: 320,
+              flexShrink: 0,
+              background: S.card,
+              borderLeft: `1px solid ${S.border}`,
+              padding: "18px 16px",
+              overflowY: "auto",
+            }}
+          >
+            <div style={sectionHead}>Patient chart</div>
+            <div style={{ fontSize: 13, color: S.textMed, marginBottom: 14, lineHeight: 1.6 }}>
+              {dob && (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: S.textLight }}>DOB</span>
+                  <span>{dob}</span>
+                </div>
+              )}
+              {allergies.length === 0 ? (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: S.textLight }}>Allergies</span>
+                  <span style={{ color: S.green }}>None known</span>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ color: S.textLight, marginBottom: 4 }}>Allergies</div>
+                  {allergies.map((a, i) => (
+                    <div key={i} style={{ color: S.amberText, fontSize: 12 }}>
+                      • {a.substance}
+                      {a.reaction ? ` — ${a.reaction}` : ""}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={sectionHead}>Active conditions</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 14 }}>
+              {activeConditions.length === 0 ? (
+                <span style={{ fontSize: 12, color: S.textLight }}>None on record</span>
+              ) : (
+                activeConditions.map((c, i) => (
+                  <span
+                    key={i}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "#4A6380",
+                      background: "#EEF1F5",
+                      border: "1px solid #E8EDF3",
+                      borderRadius: 4,
+                      padding: "2px 7px",
+                    }}
+                  >
+                    {c.text}
+                  </span>
+                ))
+              )}
+            </div>
+
+            <div style={sectionHead}>Active medications</div>
+            <div style={{ marginBottom: 14, display: "flex", flexDirection: "column", gap: 4 }}>
+              {activeMeds.length === 0 ? (
+                <span style={{ fontSize: 12, color: S.textLight }}>None on record</span>
+              ) : (
+                activeMeds.map((m, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      fontSize: 12,
+                      color: S.text,
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    <span style={{ fontWeight: 600 }}>{m.name}</span>
+                    {m.dosage ? <span style={{ color: S.textLight }}> · {m.dosage}</span> : null}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div style={sectionHead}>Recent vitals</div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 8,
+                marginBottom: 14,
+              }}
+            >
+              <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "8px 10px" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>
+                  Blood Pressure
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: latestBP && (latestBP.systolic >= 140 || latestBP.diastolic >= 90) ? S.red : S.text }}>
+                  {latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : "—"}
+                </div>
+                <div style={{ fontSize: 10, color: S.textLight, marginTop: 2 }}>
+                  {latestBP ? fmtDate(latestBP.date) : "No data"}
+                </div>
+              </div>
+              <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "8px 10px" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>
+                  Weight
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: S.text }}>
+                  {latestWeight ? `${latestWeight.value}` : "—"}
+                  {latestWeight ? <span style={{ fontSize: 10, fontWeight: 600, marginLeft: 2 }}>{latestWeight.unit || "lb"}</span> : null}
+                </div>
+                <div style={{ fontSize: 10, color: S.textLight, marginTop: 2 }}>
+                  {latestWeight ? fmtDate(latestWeight.date) : "No data"}
+                </div>
+              </div>
+            </div>
+
+            {recentLabs.length > 0 && (
+              <>
+                <div style={sectionHead}>Recent labs</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {recentLabs.map((lab, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 6, fontSize: 11 }}>
+                      <span style={{ color: S.text, fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {lab.name || lab.code}
+                      </span>
+                      <span style={{ color: S.textMed, fontWeight: 600 }}>
+                        {lab.value}
+                        {lab.unit ? ` ${lab.unit}` : ""}
+                      </span>
+                      <span style={{ color: S.textLight, fontSize: 10 }}>{fmtDate(lab.date)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Dashboard ──
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -1685,15 +2139,16 @@ export default function CoordinatorDashboard() {
     return () => { cancelled = true; };
   }, [selectedPatientId, sessionLogStatus]);
 
-  // Called by VoiceCallDemo when the call ends. Pins the summary on Overview
-  // and flags it as demo mode -- Medplum persistence is intentionally
-  // disabled in this build so the shared test deploy doesn't accumulate
-  // Encounters every time someone runs a demo call.
+  // Called by LiveKitVoiceOverlay when the call ends. Pins the summary on
+  // Overview. Encounter persistence now happens server-side in vardana-voice's
+  // persist_voice_encounter (fires unconditionally in bot.py's session-end
+  // finally block), so this status is "saved" — the FHIR Encounter is
+  // already in Medplum by the time this handler runs.
   const handleCallComplete = (payload) => {
     setCallOpen(false);
     const name = patientData?.patient?.name || roster.find(r => r.id === selectedPatientId)?.name || "Patient";
     setLastCallSummary({ ...payload, patientName: name, patientId: selectedPatientId });
-    setSessionLogStatus("demo");
+    setSessionLogStatus("saved");
   };
 
   const selectedRosterItem = useMemo(() => roster.find(r => r.id === selectedPatientId), [roster, selectedPatientId]);
@@ -1701,12 +2156,51 @@ export default function CoordinatorDashboard() {
     ? (selectedRosterItem.id === LOCAL_MARCUS_ID || identifierMatchesMarcus(selectedRosterItem.summary))
     : false;
 
-  // Live call overlay — launches VoiceCallDemo in live mode
-  // Currently the live call only has Marcus-specific clinical context, so
-  // button is enabled only when Marcus is selected.
-  const patientForCall = isMarcusSelected
-    ? { id: 101, name: "Marcus Williams", age: 58, gender: "M" }
-    : null;
+  // ── Voice overlay eligibility ──
+  // Maps frontend roster ids (LOCAL_PATIENTS or Medplum-loaded names) to the
+  // backend DEMO_PATIENTS slug expected by /api/session-start. The slug is
+  // resolved server-side by vardana-voice's resolve_patient_id() to a real
+  // FHIR Patient.id, which is then used for both the chart pre-fetch and
+  // the persisted Encounter. Patients without a known slug get null
+  // patientForCall → "Initiate call" button doesn't render for them.
+  //
+  // Maria Gonzalez is intentionally absent here — her active CarePlan is a
+  // CHF program that conflicts with the cardiometabolic-only beachhead.
+  // See vardana-voice/vardana_tools.py DEMO_PATIENTS comment.
+  // Primary slug resolution: deterministic FHIR Patient.id → slug map. These
+  // UUIDs are byte-equal to vardana-voice's DEMO_PATIENTS server-side mapping,
+  // verified against production Medplum via Stage 1 backend pre-fetch logs.
+  const FHIR_ID_TO_SLUG = {
+    "1de9768a-2459-4586-a888-d184a70479cc": "marcus-williams-test",
+    "8562846b-5b4c-4b78-b684-0ca9f2159522": "linda-patel-test",
+    "ba72d65c-3d3c-44e1-8b9b-e5b31d7c83d5": "david-brooks-test",
+  };
+
+  const patientForCall = useMemo(() => {
+    if (!selectedRosterItem) return null;
+    const id = selectedRosterItem.id;
+    const name = (selectedRosterItem.name || "").toLowerCase();
+    // Primary: deterministic FHIR Patient.id match.
+    let slug = FHIR_ID_TO_SLUG[id];
+    // LOCAL_MARCUS fixture (dev-only, before Medplum responds) — preserved exactly.
+    if (!slug && (id === LOCAL_MARCUS_ID || identifierMatchesMarcus(selectedRosterItem.summary))) {
+      slug = "marcus-williams-test";
+    }
+    // Name-substring fallback — preserved exactly from existing logic for Linda/David.
+    if (!slug) {
+      if (name.includes("linda") && name.includes("patel")) slug = "linda-patel-test";
+      else if (name.includes("david") && name.includes("brooks")) slug = "david-brooks-test";
+    }
+    if (!slug) return null;
+    return {
+      slug,
+      name: selectedRosterItem.name,
+      // Demographics still useful for UI display even though the bot
+      // pre-fetches them server-side from the FHIR Patient resource.
+      age: ageFromBirthDate(patientData?.patient?.birthDate || selectedRosterItem.summary?.birthDate),
+      gender: patientData?.patient?.gender || selectedRosterItem.summary?.gender || null,
+    };
+  }, [selectedRosterItem, patientData]);
 
   // Safari gating — Safari desktop does not implement Web Speech API
   // SpeechRecognition, and requires audio unlock + mic permission inside a
@@ -2115,23 +2609,22 @@ export default function CoordinatorDashboard() {
         </div>
       </div>
 
-      {/* Live-call overlay. VoiceCallDemo owns its own End Call → Return to
-          Dashboard flow, which routes through onComplete (generates summary,
-          fires handleCallComplete, persists to Medplum). We intentionally do
-          NOT render a wrapper-level Close button here — clicking it would
-          bypass onComplete and skip both the Medplum write and the post-call
-          summary card. One button, one path, always saves. */}
+      {/* Live-call overlay — LiveKit + EC2 pipecat pipeline.
+          Connects to a LiveKit Cloud room spawned by voice.vardana.ai;
+          the bot pre-fetches the patient's chart server-side and
+          persists a FHIR Encounter on session end. The 10-minute cap
+          in bot.py forces a graceful close if the user lingers. The
+          "End call" button just unmounts the overlay — the overlay's
+          own cleanup effect fires session-end + onCallComplete, which
+          routes through handleCallComplete to pin the PostCallSummary
+          card. Single completion path, no race. */}
       {callOpen && patientForCall && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, overflow: "auto" }}>
-          <div style={{ position: "relative", minHeight: "100vh", background: "#F8F9FB" }}>
-            <VoiceCallDemo
-              patient={patientForCall}
-              autoStartLive={true}
-              isMarcusDemo={true}
-              onComplete={handleCallComplete}
-            />
-          </div>
-        </div>
+        <InCallShell
+          patient={patientForCall}
+          patientData={patientData}
+          onEnd={() => setCallOpen(false)}
+          onCallComplete={handleCallComplete}
+        />
       )}
 
       {/* Chat overlay — additive to voice. Replay mode never persists an
