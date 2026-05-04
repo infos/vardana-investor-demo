@@ -2140,15 +2140,49 @@ export default function CoordinatorDashboard() {
   }, [selectedPatientId, sessionLogStatus]);
 
   // Called by LiveKitVoiceOverlay when the call ends. Pins the summary on
-  // Overview. Encounter persistence now happens server-side in vardana-voice's
-  // persist_voice_encounter (fires unconditionally in bot.py's session-end
-  // finally block), so this status is "saved" — the FHIR Encounter is
-  // already in Medplum by the time this handler runs.
+  // Overview. Encounter persistence happens server-side in vardana-voice's
+  // persist_voice_encounter inside bot.py's finally block — there's no
+  // synchronous return path to the browser. We poll /api/medplum-fhir
+  // ?action=session-status until the Encounter shows up (or 5s timeout)
+  // and only then flip the status to "saved". This was previously
+  // optimistic ("saved" the instant the LiveKit room disconnected), which
+  // would have hidden any write failure — see vardana-voice issue #5
+  // diagnostic for context.
   const handleCallComplete = (payload) => {
     setCallOpen(false);
     const name = patientData?.patient?.name || roster.find(r => r.id === selectedPatientId)?.name || "Patient";
     setLastCallSummary({ ...payload, patientName: name, patientId: selectedPatientId });
-    setSessionLogStatus("saved");
+
+    const sid = payload?.sessionId;
+    if (!sid) {
+      setSessionLogStatus("error:no session id returned by overlay — Medplum status unverifiable");
+      return;
+    }
+
+    setSessionLogStatus("saving");
+    const startedAt = Date.now();
+    const POLL_INTERVAL_MS = 600;
+    const POLL_TIMEOUT_MS = 5000;
+    const interval = setInterval(async () => {
+      if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
+        clearInterval(interval);
+        setSessionLogStatus(prev => prev === "saving"
+          ? `error:Medplum write timed out after ${POLL_TIMEOUT_MS / 1000}s — check EC2 logs`
+          : prev);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/medplum-fhir?action=session-status&sessionId=${encodeURIComponent(sid)}`);
+        if (!res.ok) return; // keep polling on transient errors
+        const data = await res.json();
+        if (data?.found) {
+          clearInterval(interval);
+          setSessionLogStatus("saved");
+        }
+      } catch {
+        // network blip — keep polling until timeout
+      }
+    }, POLL_INTERVAL_MS);
   };
 
   const selectedRosterItem = useMemo(() => roster.find(r => r.id === selectedPatientId), [roster, selectedPatientId]);

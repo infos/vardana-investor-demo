@@ -58,6 +58,14 @@ async function fhirPost(resourceType, body, token) {
 // Encounter resources in the tenant. Keep in sync with ui consumers.
 const VARDANA_SYSTEM = 'http://vardana.ai/sessions';
 const VARDANA_CODE_CHECKIN = 'ai-voice-checkin';
+// vardana-voice's persist_voice_encounter (the new pipecat write path) uses
+// the SNOMED telephone-encounter code instead of the legacy custom URI. We
+// match BOTH on read via FHIR comma-OR so the Sessions tab surfaces:
+//   - the 4 legacy-shape Encounters that pre-date PR #103 (2026-04-20..28)
+//   - every voice session persisted by the new pipecat path since May 1
+// See vardana-voice/docs/linda-persistence-diagnosis.md for the full story.
+const SNOMED_TELEPHONE_ENCOUNTER = 'http://snomed.info/sct|185318006';
+const ENCOUNTER_TYPE_FILTER = `${VARDANA_SYSTEM}|${VARDANA_CODE_CHECKIN},${SNOMED_TELEPHONE_ENCOUNTER}`;
 
 // ── Extract helpers ──
 
@@ -345,7 +353,7 @@ export default async function handler(req, res) {
       if (!patientId) return res.status(400).json({ error: 'patientId query param required' });
 
       const encBundle = await fhirGet(
-        `Encounter?subject=Patient/${patientId}&type=${encodeURIComponent(`${VARDANA_SYSTEM}|${VARDANA_CODE_CHECKIN}`)}&_sort=-date&_count=20`,
+        `Encounter?subject=Patient/${patientId}&type=${encodeURIComponent(ENCOUNTER_TYPE_FILTER)}&_sort=-date&_count=20`,
         token
       );
       const encounters = (encBundle?.entry || []).map(e => e.resource).filter(Boolean);
@@ -378,6 +386,32 @@ export default async function handler(req, res) {
       }));
 
       return res.status(200).json({ source: 'medplum', sessions });
+    }
+
+    // ── Read: poll for a single session's persistence status ──
+    // The pipecat pipeline persists Encounters asynchronously in bot.py's
+    // finally block — there's no synchronous return path from EC2 to the
+    // browser. The frontend polls this endpoint after a call ends to verify
+    // the Encounter actually landed in Medplum before flipping the
+    // PostCallSummary status from "saving" to "saved".
+    //
+    // Encounter identifier shape (from vardana-voice/vardana_tools.py):
+    //   identifier=https://vardana.ai/fhir/identifier|session-<sessionId>
+    if (action === 'session-status') {
+      const sessionId = req.query.sessionId;
+      if (!sessionId) return res.status(400).json({ error: 'sessionId query param required' });
+      const identifierToken = `https://vardana.ai/fhir/identifier|session-${sessionId}`;
+      const bundle = await fhirGet(
+        `Encounter?identifier=${encodeURIComponent(identifierToken)}&_count=1`,
+        token,
+      );
+      const enc = (bundle?.entry || [])[0]?.resource;
+      if (!enc) return res.status(200).json({ found: false });
+      return res.status(200).json({
+        found: true,
+        encounterId: enc.id,
+        period: enc.period || null,
+      });
     }
 
     if (action === 'roster') {
