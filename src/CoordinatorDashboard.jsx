@@ -460,6 +460,16 @@ export const LOCAL_PATIENTS = [
 const LOCAL_MARCUS_ROSTER = LOCAL_PATIENTS[0];
 export const LOCAL_PATIENT_BY_ID = new Map(LOCAL_PATIENTS.map(p => [p.id, p]));
 export const LOCAL_PATIENT_NAMES = new Set(LOCAL_PATIENTS.map(p => p.name));
+// Local-fixture roster IDs that DO have a real Medplum Patient.id
+// counterpart on the backend. Used by the Sessions tab fetch to translate
+// the frontend fixture key (e.g. "local-marcus") into the FHIR UUID that
+// vardana-voice's persist_voice_encounter writes Encounters under
+// (resolve_patient_id maps the slug "marcus-williams-test" to this same
+// UUID server-side). Keep this in lockstep with vardana-voice's
+// DEMO_PATIENTS map and with FHIR_ID_TO_SLUG further down this file.
+export const LOCAL_FIXTURE_TO_FHIR_ID = {
+  [LOCAL_MARCUS_ID]: "1de9768a-2459-4586-a888-d184a70479cc",
+};
 // Patients suppressed from the Medplum roster for this demo. They are
 // not deleted — older links, eval fixtures, and recorded demo content
 // may still reference them. Suppression is reversible; deletion is not.
@@ -2115,17 +2125,31 @@ export default function CoordinatorDashboard() {
 
   // ── Fetch logged sessions for the selected patient ──
   // Refetches whenever the selected patient changes or a new session is
-  // logged (sessionLogStatus === "saved"). Local Marcus has no Medplum
-  // Patient resource yet, so we short-circuit to [] for him and rely on
-  // fixtures + the pinned lastCallSummary card for his demo session view.
+  // logged (sessionLogStatus === "saved"). Local-fixture patients still
+  // need their Sessions tab to query Medplum if they have a real FHIR
+  // Patient.id seeded backend-side — Marcus is the canonical example:
+  // his roster card is rendered from local fixture data (date-shifted
+  // vitals via _demoAnchor), but his voice calls persist Encounters
+  // under FHIR UUID 1de9768a-… via vardana-voice's resolve_patient_id.
+  // Without this map the Sessions tab would short-circuit to [] for him
+  // and his voice-call history would never surface despite landing
+  // cleanly in Medplum.
   useEffect(() => {
     if (!selectedPatientId) return;
-    if (LOCAL_PATIENT_BY_ID.has(selectedPatientId)) { setSessions([]); return; }
+    const fhirId = LOCAL_FIXTURE_TO_FHIR_ID[selectedPatientId];
+    const queryId = fhirId || selectedPatientId;
+    // Only short-circuit for local-fixture patients with NO Medplum
+    // counterpart. Today that's nobody — keeping the branch documents
+    // the contract for future fixture-only patients.
+    if (LOCAL_PATIENT_BY_ID.has(selectedPatientId) && !fhirId) {
+      setSessions([]);
+      return;
+    }
     let cancelled = false;
     setSessionsLoading(true);
     (async () => {
       try {
-        const res = await fetch(`/api/medplum-fhir?action=sessions&patientId=${encodeURIComponent(selectedPatientId)}`);
+        const res = await fetch(`/api/medplum-fhir?action=sessions&patientId=${encodeURIComponent(queryId)}`);
         if (!res.ok) throw new Error(`Sessions fetch failed: ${res.status}`);
         const data = await res.json();
         if (cancelled) return;
