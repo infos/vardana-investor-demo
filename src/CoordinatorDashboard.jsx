@@ -1553,9 +1553,13 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
   const transcriptScrollRef = useRef(null);
 
   useEffect(() => {
+    // Freeze the elapsed counter once the call ends — otherwise the
+    // top-bar timer keeps ticking past disconnect and looks like the
+    // call is still live.
+    if (connState === "disconnected") return;
     const t = setInterval(() => setElapsed(e => e + 1), 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [connState]);
 
   // Auto-scroll transcript pane to the latest line on every append.
   useEffect(() => {
@@ -1587,16 +1591,17 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
 
   const isConnected = connState === "connected";
   const isConnecting = connState === "connecting" || connState === "reconnecting";
+  const callEnded = connState === "disconnected";
   const statusLabel =
     connState === "connected" ? "Connected · live" :
     connState === "connecting" ? "Connecting to LiveKit room…" :
     connState === "reconnecting" ? "Reconnecting…" :
-    connState === "disconnected" ? "Disconnected" :
+    callEnded ? "Call ended" :
     "Starting voice session…";
   const statusColor =
     isConnected ? S.green :
     isConnecting ? S.amber :
-    connState === "disconnected" ? S.red :
+    callEnded ? S.textLight :
     S.textLight;
 
   // ── Risk view (left panel) ──
@@ -1697,10 +1702,14 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
           </div>
           <button
             onClick={onEnd}
-            aria-label="End call and return to dashboard"
+            aria-label={callEnded ? "Call ended — return to dashboard" : "End call and return to dashboard"}
             style={{
-              background: S.red,
-              color: "white",
+              // Once the call has ended, swap the red "End call" CTA for a
+              // softer navy "Return to dashboard" affordance — the
+              // destructive action is no longer applicable, the user is
+              // dismissing a finished call.
+              background: callEnded ? S.navy : S.red,
+              color: callEnded ? S.navyText : "white",
               border: "none",
               borderRadius: 6,
               padding: "7px 14px",
@@ -1710,7 +1719,7 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
               ...css.sans,
             }}
           >
-            End call
+            {callEnded ? "Call ended · Return to dashboard" : "End call"}
           </button>
         </div>
 
@@ -1832,7 +1841,7 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
                       microphone — the conversation will appear here as you talk.
                     </>
                   )}
-                  {connState === "disconnected" && "Disconnected from the room. Use End call to return to the dashboard."}
+                  {connState === "disconnected" && "Call ended. Click Return to dashboard above to dismiss this view."}
                   {!connState && "Waiting on session-start handshake…"}
                 </div>
               )}
