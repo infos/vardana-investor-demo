@@ -361,26 +361,81 @@ export default async function handler(req, res) {
       const sessions = await Promise.all(encounters.map(async (enc) => {
         const commBundle = await fhirGet(`Communication?encounter=Encounter/${enc.id}&_count=1`, token);
         const comm = commBundle?.entry?.[0]?.resource;
-        const payloadParts = Object.fromEntries((comm?.payload || []).map(p => {
+
+        // Two payload shapes coexist on this endpoint:
+        //   - Legacy log-session writer (api/medplum-fhir.js:286): emits
+        //     three separate payload entries with "SUMMARY:", "TRANSCRIPT:",
+        //     "META:" prefixes. Splitting on the first ":" gave us a tidy
+        //     key/value map.
+        //   - New pipecat persist_voice_communication (vardana-voice
+        //     vardana_tools.py): emits a single payload entry whose
+        //     contentString IS the formatted transcript starting with
+        //     "[mm:ss] AI: ...". The first ":" is inside the timestamp,
+        //     so the legacy splitter produced key="[00", losing the
+        //     transcript entirely and leaving summary+transcript empty.
+        // Detect the new shape by the leading "[mm:ss]" timestamp anchor.
+        // Legacy entries never start that way.
+        const payloadParts = {};
+        let pipecatTranscript = '';
+        for (const p of (comm?.payload || [])) {
           const s = p.contentString || '';
+          if (/^\[\d\d:\d\d\]/.test(s.trimStart())) {
+            pipecatTranscript = s;
+            continue;
+          }
           const idx = s.indexOf(':');
-          return idx > -1 ? [s.slice(0, idx).trim().toLowerCase(), s.slice(idx + 1).trim()] : ['raw', s];
-        }));
+          const key = idx > -1 ? s.slice(0, idx).trim().toLowerCase() : 'raw';
+          const value = idx > -1 ? s.slice(idx + 1).trim() : s;
+          payloadParts[key] = value;
+        }
+
         const meta = (payloadParts.meta || '').split('·').reduce((acc, kv) => {
           const [k, v] = kv.split('=').map(x => (x || '').trim());
           if (k) acc[k] = v;
           return acc;
         }, {});
+
+        // Pipecat persists don't emit a META block — derive duration from
+        // the Encounter's period instead. Legacy still gets it from META.
+        let duration = meta.duration || '';
+        if (!duration && enc.period?.start && enc.period?.end) {
+          const ms = new Date(enc.period.end) - new Date(enc.period.start);
+          if (ms > 0) {
+            const totalSec = Math.round(ms / 1000);
+            const m = Math.floor(totalSec / 60);
+            const s = totalSec % 60;
+            duration = `${m}m ${s.toString().padStart(2, '0')}s`;
+          }
+        }
+
+        // Derive riskLevel + alertGenerated from Encounter.reasonCode for
+        // pipecat-persisted calls. _build_session_synthesis() emits a
+        // synthesis line of the form
+        //   "Vardana voice session — escalated (LEVEL): <reason>"
+        // when the bot fired create_coordinator_alert; LEVEL is one of
+        // CRITICAL / HIGH / MEDIUM / LOW. Legacy still gets these from
+        // the META block.
+        let riskLevel = (meta.riskLevel && meta.riskLevel !== 'n/a') ? meta.riskLevel : null;
+        let alertGenerated = meta.alert === 'yes';
+        if (!riskLevel) {
+          const reasonText = enc.reasonCode?.[0]?.text || '';
+          const m = reasonText.match(/escalated\s+\(([A-Z]+)\)/);
+          if (m) {
+            riskLevel = m[1];
+            alertGenerated = true;
+          }
+        }
+
         return {
           id: enc.id,
           date: enc.period?.start,
           end: enc.period?.end,
-          duration: meta.duration || '',
+          duration,
           riskScore: meta.riskScore && meta.riskScore !== 'n/a' ? Number(meta.riskScore) : null,
-          riskLevel: meta.riskLevel && meta.riskLevel !== 'n/a' ? meta.riskLevel : null,
-          alertGenerated: meta.alert === 'yes',
+          riskLevel,
+          alertGenerated,
           summary: payloadParts.summary || '',
-          transcript: payloadParts.transcript || '',
+          transcript: pipecatTranscript || payloadParts.transcript || '',
           reason: enc.reasonCode?.[0]?.text || '',
         };
       }));
