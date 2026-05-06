@@ -50,6 +50,12 @@ import "@livekit/components-styles";
 //     Backend contract is owned by vardana-voice's bot.py
 //     _on_transcript_update — keep this hook in sync with that JSON
 //     shape.
+//   onObservation?: ({ kind, summary, value, occurredAt, observationId, raw }) => void
+//     Fired when the bot's record_observation tool successfully writes
+//     a patient-reported vital (BP / glucose / weight). Parent uses
+//     this to update the in-call chart panel in real time. Backend
+//     contract is owned by vardana-voice's bot.py handle_tool fan-out
+//     and vardana_tools.record_observation — keep this hook in sync.
 
 const TOKENS = {
   bg: "#F0EEE8",
@@ -83,6 +89,7 @@ export default function LiveKitVoiceOverlay({
   onCallComplete,
   onConnectionStateChange,
   onTranscript,
+  onObservation,
   sessionMode = "voice-test",
 }) {
   const [stage, setStage] = useState("init");
@@ -250,6 +257,7 @@ export default function LiveKitVoiceOverlay({
               embedded={true}
               onConnectionStateChange={onConnectionStateChange}
               onTranscript={onTranscript}
+              onObservation={onObservation}
             />
             <RoomAudioRenderer />
           </LiveKitRoom>
@@ -328,6 +336,7 @@ export default function LiveKitVoiceOverlay({
               compact={compact}
               onConnectionStateChange={onConnectionStateChange}
               onTranscript={onTranscript}
+              onObservation={onObservation}
             />
             <RoomAudioRenderer />
           </LiveKitRoom>
@@ -346,7 +355,7 @@ export default function LiveKitVoiceOverlay({
 // ── Body of the LiveKitRoom — uses the LiveKit React hooks (only valid
 // inside the LiveKitRoom provider). Split out so it can call
 // useConnectionState / useLocalParticipant. ──
-function RoomBody({ roomName, sessionId, patientName, compact, embedded = false, onConnectionStateChange, onTranscript }) {
+function RoomBody({ roomName, sessionId, patientName, compact, embedded = false, onConnectionStateChange, onTranscript, onObservation }) {
   const connectionState = useConnectionState();
   const { localParticipant } = useLocalParticipant();
   const [muted, setMuted] = useState(false);
@@ -372,7 +381,6 @@ function RoomBody({ roomName, sessionId, patientName, compact, embedded = false,
   // the handler below rather than splitting topics, since the bot's
   // transport.send_message() doesn't expose a topic argument.
   useDataChannel((msg) => {
-    if (typeof onTranscript !== "function") return;
     let parsed;
     try {
       // Pipecat's transport.send_message stringifies; payload arrives
@@ -383,16 +391,45 @@ function RoomBody({ roomName, sessionId, patientName, compact, embedded = false,
     } catch (e) {
       // A malformed message is non-fatal — the call audio is unaffected.
       // Surface to console for debugging without taking down the UI.
-      console.warn("[LiveKitVoiceOverlay] transcript decode failed:", e);
+      console.warn("[LiveKitVoiceOverlay] data-channel decode failed:", e);
       return;
     }
-    if (!parsed || parsed.type !== "transcript") return;
-    onTranscript({
-      role: parsed.role,
-      text: parsed.text,
-      timestamp: parsed.timestamp,
-      raw: parsed,
-    });
+    if (!parsed || typeof parsed.type !== "string") return;
+
+    // Dispatch by message type. Today the bot publishes two kinds:
+    //   - transcript: one JSON per finalized assistant/user turn
+    //   - observation: one JSON per record_observation tool success
+    // Future Stage 5 messages (risk-state updates etc.) will add new
+    // types here without splitting the data-channel topic, since the
+    // bot's transport.send_message() doesn't expose a topic argument.
+    if (parsed.type === "transcript") {
+      if (typeof onTranscript === "function") {
+        onTranscript({
+          role: parsed.role,
+          text: parsed.text,
+          timestamp: parsed.timestamp,
+          raw: parsed,
+        });
+      }
+      return;
+    }
+
+    if (parsed.type === "observation") {
+      if (typeof onObservation === "function") {
+        onObservation({
+          kind: parsed.kind,
+          summary: parsed.summary,
+          value: parsed.value,
+          occurredAt: parsed.occurred_at,
+          observationId: parsed.observation_id,
+          raw: parsed,
+        });
+      }
+      return;
+    }
+
+    // Unknown type — log once for visibility, never throw.
+    console.info("[LiveKitVoiceOverlay] unknown data-channel type:", parsed.type);
   });
 
   const isConnecting =

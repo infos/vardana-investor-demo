@@ -1551,6 +1551,14 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
   // emitted by vardana-voice's User/AssistantTranscriptProcessor.
   const [transcript, setTranscript] = useState([]);
   const transcriptScrollRef = useRef(null);
+  // Live patient-reported observations — keyed by kind. Updated on
+  // each onObservation event from the overlay's useDataChannel
+  // subscriber, sourced from vardana-voice's record_observation tool
+  // when the patient verbally reports a vital. The right-panel chart
+  // prefers these over patientData.latestBP / latestWeight when
+  // present, with a "just now" badge to mark them as in-call captures.
+  // Shape: { blood_pressure?: {...}, glucose?: {...}, weight?: {...} }
+  const [liveObservations, setLiveObservations] = useState({});
 
   useEffect(() => {
     // Freeze the elapsed counter once the call ends — otherwise the
@@ -1581,6 +1589,20 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
       }
       return [...prev, { role, text, timestamp, key: `${role}-${timestamp}-${prev.length}` }];
     });
+  }, []);
+
+  // Live patient-reported observation handler. Replaces the kind's
+  // entry — if the patient self-corrects ("wait, 137/95 not 138/96"),
+  // the bot re-fires record_observation with the new value and the
+  // chart shows the latest. Older Observations are still in Medplum
+  // (we don't try to retract); the chart just reflects what the
+  // patient most recently said.
+  const handleObservation = useCallback(({ kind, summary, value, occurredAt, observationId }) => {
+    if (!kind) return;
+    setLiveObservations(prev => ({
+      ...prev,
+      [kind]: { summary, value, occurredAt, observationId, receivedAt: Date.now() },
+    }));
   }, []);
 
   const formatElapsed = (s) => {
@@ -1627,6 +1649,18 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
   );
   const latestBP = patientData?.latestBP;
   const latestWeight = patientData?.latestWeight;
+  // Derive latestGlucose from labs since normalizeBundle doesn't break
+  // it out into its own latest* shortcut. Match the LOINC codes the
+  // bot's _summarize_glucose accepts (capillary or POC fasting glucose).
+  const latestGlucose = useMemo(() => {
+    const glucoseLabs = (patientData?.labs || []).filter(
+      l => l.code === "41653-7" || l.code === "2339-0"
+    );
+    if (!glucoseLabs.length) return null;
+    return glucoseLabs
+      .slice()
+      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))[0];
+  }, [patientData]);
   const recentLabs = (patientData?.labs || [])
     .slice()
     .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
@@ -1928,6 +1962,7 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
                 sessionMode="embedded"
                 onConnectionStateChange={(state) => setConnState(String(state))}
                 onTranscript={handleTranscript}
+                onObservation={handleObservation}
                 onCallComplete={onCallComplete}
               />
             </div>
@@ -2019,34 +2054,108 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 8,
+                // Three tiles in one row: BP / Glucose / Weight. Each
+                // tile is ~90-100px wide in the 320px sidebar after
+                // padding + gap, which fits "138/95" and "186 mg/dL"
+                // comfortably. Live patient-reported observations
+                // (received via record_observation data-channel
+                // messages during the call) replace the static chart
+                // values for any of the three kinds.
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: 6,
                 marginBottom: 14,
               }}
             >
-              <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "8px 10px" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>
-                  Blood Pressure
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: latestBP && (latestBP.systolic >= 140 || latestBP.diastolic >= 90) ? S.red : S.text }}>
-                  {latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : "—"}
-                </div>
-                <div style={{ fontSize: 10, color: S.textLight, marginTop: 2 }}>
-                  {latestBP ? fmtDate(latestBP.date) : "No data"}
-                </div>
-              </div>
-              <div style={{ background: "#F6F7F9", borderRadius: 6, padding: "8px 10px" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>
-                  Weight
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: S.text }}>
-                  {latestWeight ? `${latestWeight.value}` : "—"}
-                  {latestWeight ? <span style={{ fontSize: 10, fontWeight: 600, marginLeft: 2 }}>{latestWeight.unit || "lb"}</span> : null}
-                </div>
-                <div style={{ fontSize: 10, color: S.textLight, marginTop: 2 }}>
-                  {latestWeight ? fmtDate(latestWeight.date) : "No data"}
-                </div>
-              </div>
+              {/* Blood Pressure tile */}
+              {(() => {
+                const live = liveObservations.blood_pressure;
+                const sys = live ? live.value.systolic : latestBP?.systolic;
+                const dia = live ? live.value.diastolic : latestBP?.diastolic;
+                const display = (sys != null && dia != null) ? `${sys}/${dia}` : "—";
+                const isElevated = sys && dia && (sys >= 140 || dia >= 90);
+                const dateLabel = live
+                  ? "Just now · live"
+                  : (latestBP ? fmtDate(latestBP.date) : "No data");
+                return (
+                  <div style={{
+                    background: live ? "#EEF6F3" : "#F6F7F9",
+                    border: live ? "1px solid #3DBFA0" : "1px solid transparent",
+                    borderRadius: 6,
+                    padding: "8px 10px",
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>
+                      Blood Pressure
+                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: isElevated ? S.red : S.text }}>
+                      {display}
+                    </div>
+                    <div style={{ fontSize: 10, color: live ? "#059669" : S.textLight, marginTop: 2, fontWeight: live ? 600 : 400 }}>
+                      {dateLabel}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Glucose tile */}
+              {(() => {
+                const live = liveObservations.glucose;
+                const val = live ? live.value.value : latestGlucose?.value;
+                const unit = live ? (live.value.unit || "mg/dL") : (latestGlucose?.unit || "mg/dL");
+                const ctx = live ? live.value.context : null;
+                const display = (val != null) ? `${val}` : "—";
+                const dateLabel = live
+                  ? `Just now · live${ctx ? ` · ${ctx}` : ""}`
+                  : (latestGlucose ? fmtDate(latestGlucose.date) : "No data");
+                return (
+                  <div style={{
+                    background: live ? "#EEF6F3" : "#F6F7F9",
+                    border: live ? "1px solid #3DBFA0" : "1px solid transparent",
+                    borderRadius: 6,
+                    padding: "8px 10px",
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>
+                      Glucose
+                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: S.text }}>
+                      {display}
+                      {val != null && <span style={{ fontSize: 9, fontWeight: 600, marginLeft: 2 }}>{unit}</span>}
+                    </div>
+                    <div style={{ fontSize: 10, color: live ? "#059669" : S.textLight, marginTop: 2, fontWeight: live ? 600 : 400 }}>
+                      {dateLabel}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Weight tile */}
+              {(() => {
+                const live = liveObservations.weight;
+                const val = live ? live.value.value : latestWeight?.value;
+                const unit = live ? (live.value.unit || "lb") : (latestWeight?.unit || "lb");
+                const display = (val != null) ? `${val}` : "—";
+                const dateLabel = live
+                  ? "Just now · live"
+                  : (latestWeight ? fmtDate(latestWeight.date) : "No data");
+                return (
+                  <div style={{
+                    background: live ? "#EEF6F3" : "#F6F7F9",
+                    border: live ? "1px solid #3DBFA0" : "1px solid transparent",
+                    borderRadius: 6,
+                    padding: "8px 10px",
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>
+                      Weight
+                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: S.text }}>
+                      {display}
+                      {val != null && <span style={{ fontSize: 9, fontWeight: 600, marginLeft: 2 }}>{unit}</span>}
+                    </div>
+                    <div style={{ fontSize: 10, color: live ? "#059669" : S.textLight, marginTop: 2, fontWeight: live ? 600 : 400 }}>
+                      {dateLabel}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {recentLabs.length > 0 && (
