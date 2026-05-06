@@ -2249,6 +2249,7 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete, onObservatio
               sessionStartedAt={sessionStartedAtRef.current}
               liveObservations={liveObservations}
               triggeringObservationId={triggeringObservationId}
+              patientData={patientData}
             />
           </div>
         </div>

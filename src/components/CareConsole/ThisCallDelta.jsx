@@ -1,28 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { DS } from "../../design-system.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ThisCallDelta
 //
-// Replaces the duplicate "Patient chart" sidebar that used to live on the
-// right side of the in-call shell. The chart panel showed the same
-// information already visible in the patient overview tab; during a live
-// call, what the coordinator actually needs is "what has the patient said
-// or reported in THIS call so far."
+// Right panel of the in-call shell. Two stacked sections:
 //
-// Data sources (strictly traced):
-//   * `liveObservations` — keyed map of { kind -> { value, summary,
-//     occurredAt, observationId } } produced by the LiveKitVoiceOverlay
-//     useDataChannel subscriber from the bot's `record_observation` tool
-//     fan-out (vardana-voice/bot.py emits a JSON `observation` message).
+//   1. PATIENT BASELINE — static during the call. Pulled from
+//      `patientData` (the bundle the bot pre-fetched at session start).
+//      Shows allergies, active conditions, active medications. Gives
+//      the coordinator something to read while waiting for the call
+//      to produce live signal.
+//
+//   2. THIS CALL — live, updates as the patient reports vitals during
+//      the session. Sourced strictly from `liveObservations` produced
+//      by the LiveKitVoiceOverlay useDataChannel subscriber from the
+//      bot's `record_observation` tool fan-out.
 //
 // Data sources NOT shown (bot does not emit structured events for these):
 //   * Symptoms (positive or denied)
 //   * Adherence statements
 //   * Red flag detections
 //
-// Per the spec for this surface, we omit those rows entirely rather than
-// stub or fake them. When the bot grows structured events, add a row in
+// Per the spec for this surface, we omit those rows entirely rather
+// than fake them. When the bot grows structured events, add a row in
 // `EVENT_RENDERERS` keyed on the new event type and pipe it through
 // `events`.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,52 +71,37 @@ function labelForKind(kind) {
   return kind || "Reading";
 }
 
+const SECTION_HEAD = {
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  color: SLATE[500],
+  marginBottom: 8,
+};
+
 export function ThisCallDelta({
   sessionStartedAt,
   liveObservations = {},
   triggeringObservationId = null,
+  patientData = null,
 }) {
-  // Flatten the keyed map into a chronological list. The bot emits one
-  // observation per record_observation call, and the consumer indexes by
-  // `kind` so a corrected reading overwrites the previous value of the
-  // same kind. That matches what the chart wants but loses the BP1→BP2
-  // history we want here. Persist arrival order with a local ref.
-  const arrivalOrder = useRef([]);
-  useEffect(() => {
-    const seen = new Set(arrivalOrder.current.map(o => o.observationId));
-    Object.values(liveObservations || {}).forEach(obs => {
-      if (obs && obs.observationId && !seen.has(obs.observationId)) {
-        arrivalOrder.current.push({
-          kind: obs.kind,
-          value: obs.value,
-          summary: obs.summary,
-          occurredAt: obs.occurredAt,
-          observationId: obs.observationId,
-        });
-      }
-    });
-  }, [liveObservations]);
-
+  // Derive events directly from liveObservations. Each kind has at
+  // most one entry (handler in InCallShell overwrites on
+  // self-corrections), so this is at most 3 rows for the current
+  // BP/glucose/weight set. No arrival-order ref needed; sorting by
+  // occurredAt gives a stable chronological order.
   const events = useMemo(() => {
-    return arrivalOrder.current
-      .slice()
+    return Object.values(liveObservations || {})
+      .filter(obs => obs && obs.observationId)
       .sort((a, b) => new Date(a.occurredAt || 0) - new Date(b.occurredAt || 0));
   }, [liveObservations]);
 
   return (
     <div>
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: SLATE[500],
-          marginBottom: 8,
-        }}
-      >
-        This call
-      </div>
+      {patientData && <PatientBaseline patientData={patientData} />}
+
+      <div style={{ ...SECTION_HEAD, marginTop: patientData ? 18 : 0 }}>This call</div>
 
       {events.length === 0 ? (
         <EmptyState />
@@ -137,9 +123,92 @@ export function ThisCallDelta({
   );
 }
 
+// Static baseline pulled from the pre-fetched bundle. Shown so the
+// coordinator can glance at allergies / conditions / meds during the
+// call without leaving the in-call view.
+function PatientBaseline({ patientData }) {
+  const allergies = patientData?.allergies || [];
+  const conditions = (patientData?.conditions || []).filter(
+    c => !c.status || c.status === "active",
+  );
+  const meds = (patientData?.medications || []).filter(
+    m => !m.status || m.status === "active",
+  );
+  return (
+    <div style={{ marginBottom: 4 }}>
+      <div style={SECTION_HEAD}>Patient baseline</div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <BaselineBlock label="Allergies">
+          {allergies.length === 0 ? (
+            <span style={{ fontSize: 12, color: JADE[600] }}>None known</span>
+          ) : (
+            allergies.map((a, i) => (
+              <div key={i} style={{ fontSize: 12, color: AMBER[700], lineHeight: 1.45 }}>
+                {a.substance}{a.reaction ? `, ${a.reaction}` : ""}
+              </div>
+            ))
+          )}
+        </BaselineBlock>
+
+        <BaselineBlock label="Active conditions">
+          {conditions.length === 0 ? (
+            <span style={{ fontSize: 12, color: SLATE[500] }}>None on record</span>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+              {conditions.map((c, i) => (
+                <span
+                  key={i}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: SLATE[700],
+                    background: SLATE[100],
+                    border: `1px solid ${SLATE[200]}`,
+                    borderRadius: 4,
+                    padding: "2px 7px",
+                  }}
+                >
+                  {c.text}
+                </span>
+              ))}
+            </div>
+          )}
+        </BaselineBlock>
+
+        <BaselineBlock label="Active medications">
+          {meds.length === 0 ? (
+            <span style={{ fontSize: 12, color: SLATE[500] }}>None on record</span>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {meds.map((m, i) => (
+                <div key={i} style={{ fontSize: 12, color: SLATE[900], lineHeight: 1.4 }}>
+                  <span style={{ fontWeight: 600 }}>{m.name}</span>
+                  {m.dosage && (
+                    <span style={{ color: SLATE[500] }}> · {m.dosage}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </BaselineBlock>
+      </div>
+    </div>
+  );
+}
+
+function BaselineBlock({ label, children }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: SLATE[500], textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 function DeltaRow({ ev, relative, isTrigger }) {
-  // Brief amber pulse when this row is the input that triggered the most
-  // recent escalation tier change. Auto-clears after 3s via parent state.
   return (
     <div
       style={{
@@ -190,11 +259,11 @@ function EmptyState() {
   );
 }
 
-// Honest disclosure of what this surface does NOT yet show. The bot only
-// emits structured `observation` events today. Symptom mentions, adherence
-// statements, and red-flag detections are not extracted bot-side, so we do
-// not render rows for them. Listing the gaps explicitly beats letting the
-// coordinator wonder why the panel is empty.
+// Honest disclosure of what this surface does NOT yet show. The bot
+// only emits structured `observation` events today. Symptom mentions,
+// adherence statements, and red-flag detections are not extracted bot-
+// side, so we do not render rows for them. Listing the gaps explicitly
+// beats letting the coordinator wonder why the panel is empty.
 function NotEmittedFooter() {
   return (
     <div
@@ -219,8 +288,8 @@ function NotEmittedFooter() {
   );
 }
 
-// Animation keyframes for the trigger pulse. Mounted once at module load
-// to avoid duplicate &lt;style&gt; tags if multiple panels render.
+// Animation keyframes for the trigger pulse. Mounted once at module
+// load to avoid duplicate style tags if multiple panels render.
 if (typeof document !== "undefined" && !document.getElementById("this-call-delta-anim")) {
   const styleEl = document.createElement("style");
   styleEl.id = "this-call-delta-anim";
