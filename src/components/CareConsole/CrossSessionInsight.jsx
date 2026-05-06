@@ -13,7 +13,14 @@ const TONES = {
   },
 };
 
-export function CrossSessionInsight({ severity = "watch", title, body, flaggedAt }) {
+export function CrossSessionInsight({
+  severity = "watch",
+  title,
+  body,
+  flaggedAt,
+  onViewEvidence,
+  evidenceLabel = "View supporting sessions",
+}) {
   const tone = TONES[severity] || TONES.watch;
   return (
     <div
@@ -41,11 +48,31 @@ export function CrossSessionInsight({ severity = "watch", title, body, flaggedAt
         {title}
       </div>
       <div style={{ ...DS.text.base, color: DS.color.slate[700], marginTop: 6 }}>{body}</div>
-      {flaggedAt && (
-        <div style={{ ...DS.text.xs, color: DS.color.slate[500], marginTop: 8 }}>
-          Flagged {flaggedAt}
-        </div>
-      )}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, gap: 12 }}>
+        {flaggedAt ? (
+          <div style={{ ...DS.text.xs, color: DS.color.slate[500] }}>
+            Flagged {flaggedAt}
+          </div>
+        ) : <span />}
+        {onViewEvidence && (
+          <button
+            onClick={onViewEvidence}
+            type="button"
+            style={{
+              ...DS.text.sm,
+              background: "transparent",
+              border: "none",
+              color: tone.label,
+              fontWeight: 600,
+              cursor: "pointer",
+              padding: 0,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {evidenceLabel} →
+          </button>
+        )}
+      </div>
     </div>
   );
 }
