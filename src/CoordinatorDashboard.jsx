@@ -1146,7 +1146,7 @@ function CurrentClinicalState({ patientName }) {
 }
 
 // ── Tab: Overview ──
-function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onViewCarePlan, medplumSessions, lastCallSummary, sessionLogStatus, onDismissLastCall }) {
+function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onViewCarePlan, medplumSessions, lastCallSummary, sessionLogStatus, onDismissLastCall, lastCallObservations = {}, selectedPatientId }) {
   if (!patientData) return <EmptyState>No patient data loaded from Medplum.</EmptyState>;
   const { conditions = [], medications = [], vitals = {} } = patientData;
   const patientName = patientData?.patient?.name || "";
@@ -1155,8 +1155,35 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onView
   const pceTier = pceTierLabel(pcePct);
   const pceColors = pceTierColors(pcePct);
   const pceShort = pcePct >= 20 ? "High" : pcePct >= 7.5 ? "Intermediate" : pcePct >= 5 ? "Borderline" : "Low";
-  const latestBP = patientData.latestBP;
-  const latestWeight = patientData.latestWeight;
+  // Prefer the just-captured BP / weight from the most recent voice
+  // session over the bundle's stale values when both apply to the
+  // currently selected patient. The `patientId` defensive gate
+  // prevents leaking observations across patients (also handled by
+  // the parent useEffect that wipes lastCallObservations on selection
+  // change, but belt-and-braces). The bundle remains the source of
+  // truth for everything else (history, trend, target).
+  const liveBP = lastCallObservations?.blood_pressure?.patientId === selectedPatientId
+    ? lastCallObservations.blood_pressure
+    : null;
+  const liveWeight = lastCallObservations?.weight?.patientId === selectedPatientId
+    ? lastCallObservations.weight
+    : null;
+  const latestBP = liveBP
+    ? {
+        systolic: liveBP.value?.systolic,
+        diastolic: liveBP.value?.diastolic,
+        date: liveBP.occurredAt,
+        liveFromCall: true,
+      }
+    : patientData.latestBP;
+  const latestWeight = liveWeight
+    ? {
+        value: liveWeight.value?.value,
+        unit: liveWeight.value?.unit || "lb",
+        date: liveWeight.occurredAt,
+        liveFromCall: true,
+      }
+    : patientData.latestWeight;
   const bps = (vitals.bloodPressures || []).slice(0, 5);
   const weights = (vitals.weights || []).slice(0, 5);
   const bpTrend = computeTrend(bps, {
@@ -1201,7 +1228,7 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onView
         label="Latest BP"
         value={latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : "—"}
         unit={latestBP ? "mmHg" : ""}
-        date={latestBP ? fmtDate(latestBP.date) : "No data"}
+        date={latestBP ? (latestBP.liveFromCall ? "From last call" : fmtDate(latestBP.date)) : "No data"}
         status={bpStatus}
         trend={bpTrend && {
           arrow: bpTrend.arrow,
@@ -1214,7 +1241,7 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onView
         label="Weight"
         value={latestWeight ? latestWeight.value : "—"}
         unit={latestWeight ? (latestWeight.unit || "lb") : ""}
-        date={latestWeight ? fmtDate(latestWeight.date) : "No data"}
+        date={latestWeight ? (latestWeight.liveFromCall ? "From last call" : fmtDate(latestWeight.date)) : "No data"}
         status="neutral"
         trend={wtTrend && {
           arrow: wtTrend.arrow,
@@ -1571,7 +1598,7 @@ function TierStatePill({ state }) {
   );
 }
 
-function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
+function InCallShell({ patient, patientData, onEnd, onCallComplete, onObservationCaptured }) {
   const [elapsed, setElapsed] = useState(0);
   const [connState, setConnState] = useState(null);
   // Live transcript — appended on each onTranscript event from the
@@ -1661,7 +1688,15 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
     // to "stable" once the engine result settles.
     if (observationId) lastObservationIdRef.current = observationId;
     setTierState("re-evaluating");
-  }, []);
+    // Lift the captured observation up so the parent can render it on
+    // the Overview tab after this call unmounts. Static-bundle
+    // patients (Marcus / Linda / David) won't see their just-recorded
+    // BP otherwise, since /public/data/*.json is the read source and
+    // Medplum writes don't flow back into it.
+    if (typeof onObservationCaptured === "function") {
+      onObservationCaptured({ kind, summary, value, occurredAt, observationId });
+    }
+  }, [onObservationCaptured]);
 
   const formatElapsed = (s) => {
     const m = Math.floor(s / 60);
@@ -2242,6 +2277,20 @@ export default function CoordinatorDashboard() {
   const [patientLoading, setPatientLoading] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
 
+  // Observations captured during the most recently ended voice session,
+  // keyed by kind. Populated by InCallShell on each record_observation
+  // data-channel event and persisted across the call's unmount so the
+  // Overview tab can show "the BP the patient just reported" rather
+  // than the stale bundle value. Cleared when the user switches
+  // patients (the new patient's call hasn't happened yet). The values
+  // are real — they were persisted to Medplum during the call by the
+  // bot's record_observation tool — we keep an in-memory copy here
+  // because local-fixture patients (Marcus/Linda/David) read from a
+  // static /public/data bundle that doesn't reflect new writes.
+  // Shape: { [kind]: { value, summary, occurredAt, observationId,
+  // patientId } }
+  const [lastCallObservations, setLastCallObservations] = useState({});
+
   // ── Chat surface (additive to voice — voice flow untouched) ──
   // mode "live" hits /chat/turn on the EC2 voice service. mode "replay"
   // plays back a static JSON scenario; never touches the network or Medplum.
@@ -2329,6 +2378,10 @@ export default function CoordinatorDashboard() {
   // ── Fetch selected patient's full bundle ──
   useEffect(() => {
     if (!selectedPatientId) return;
+    // Wipe any captured-during-call observations from a different
+    // patient. We only want to surface them on the patient who was
+    // actually on the call.
+    setLastCallObservations({});
     let cancelled = false;
     setPatientLoading(true);
     (async () => {
@@ -2639,6 +2692,8 @@ export default function CoordinatorDashboard() {
       lastCallSummary={summaryForSelected}
       sessionLogStatus={summaryForSelected ? sessionLogStatus : null}
       onDismissLastCall={() => { setLastCallSummary(null); setSessionLogStatus(null); }}
+      lastCallObservations={lastCallObservations}
+      selectedPatientId={selectedPatientId}
     />,
     "care-plan": <CarePlanTab patientData={patientData} />,
     risk: <RiskTab patientData={patientData} />,
@@ -2922,6 +2977,19 @@ export default function CoordinatorDashboard() {
           patientData={patientData}
           onEnd={() => setCallOpen(false)}
           onCallComplete={handleCallComplete}
+          onObservationCaptured={(observation) => {
+            // Lift the live observation into parent state so the
+            // Overview tab can render it after the call unmounts.
+            // Tag with the patient id so we can defensively gate it
+            // on the OverviewTab consumer.
+            setLastCallObservations(prev => ({
+              ...prev,
+              [observation.kind]: {
+                ...observation,
+                patientId: selectedPatientId,
+              },
+            }));
+          }}
         />
       )}
 
