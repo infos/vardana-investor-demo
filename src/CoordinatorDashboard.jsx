@@ -2036,54 +2036,14 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete, onObservatio
               </div>
             </div>
 
-            <div style={sectionHead}>10-year ASCVD risk</div>
-            <div
-              style={{
-                background: "#F0EEE8",
-                borderRadius: 10,
-                padding: "16px 14px",
-                textAlign: "center",
-                marginBottom: 12,
-              }}
-            >
-              <div style={{ fontSize: 32, ...css.serif, color: pceColors.text, lineHeight: 1.1 }}>
-                {pcePct.toFixed(1)}
-                <span style={{ fontSize: 18, marginLeft: 2 }}>%</span>
-              </div>
-              <div
-                style={{
-                  fontSize: 13,
-                  ...css.sans,
-                  marginTop: 6,
-                  padding: "3px 8px",
-                  borderRadius: 4,
-                  background: pceColors.bg,
-                  color: pceColors.text,
-                  display: "inline-block",
-                }}
-              >
-                {pceTier}
-              </div>
-              <div style={{ fontSize: 11, color: S.textLight, marginTop: 8 }}>
-                Per ACC/AHA PCE (2013)
-              </div>
-            </div>
-
-            <div style={sectionHead}>Tier inputs</div>
-            <div style={{ fontSize: 13, color: S.textMed, lineHeight: 1.6 }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>Age</span><span>{pceInputs.age}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>Systolic BP</span><span>{pceInputs.sbp} mmHg</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>Diabetes</span><span>{pceInputs.dm ? "Yes" : "No"}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>On BP Tx</span><span>{pceInputs.bptx ? "Yes" : "No"}</span>
-              </div>
-            </div>
+            {/* ASCVD risk + tier inputs were removed from the in-call
+                left panel per the live-assessment surface spec. ASCVD
+                is static cardiovascular baseline that belongs on the
+                overview / risk profile tabs, not the live-call view.
+                The call-phase indicator that was supposed to replace
+                this block is gated on bot-side phase events that are
+                not yet emitted, so the slot is intentionally left
+                blank until those events ship. */}
           </div>
 
           {/* CENTER: Transcript + audio control strip */}
@@ -2683,9 +2643,47 @@ export default function CoordinatorDashboard() {
     ? lastCallSummary
     : null;
 
+  // Merge captured-during-call observations into patientData so every
+  // tab (Overview, Risk, Sessions, Care plan, Outreach) sees the just-
+  // reported BP / weight rather than the static bundle value. Local-
+  // fixture patients (Marcus / Linda / David) read from /public/data
+  // JSON which doesn't reflect Medplum writes; this in-memory merge is
+  // how the live capture surfaces post-call until a page reload (which
+  // is acceptable for the demo flow). Defensive: only apply if the
+  // observation's patientId tag matches the selected patient.
+  const effectivePatientData = useMemo(() => {
+    if (!patientData) return patientData;
+    const liveBP = lastCallObservations?.blood_pressure?.patientId === selectedPatientId
+      ? lastCallObservations.blood_pressure
+      : null;
+    const liveWeight = lastCallObservations?.weight?.patientId === selectedPatientId
+      ? lastCallObservations.weight
+      : null;
+    if (!liveBP && !liveWeight) return patientData;
+    return {
+      ...patientData,
+      latestBP: liveBP
+        ? {
+            systolic: liveBP.value?.systolic,
+            diastolic: liveBP.value?.diastolic,
+            date: liveBP.occurredAt,
+            liveFromCall: true,
+          }
+        : patientData.latestBP,
+      latestWeight: liveWeight
+        ? {
+            value: liveWeight.value?.value,
+            unit: liveWeight.value?.unit || "lb",
+            date: liveWeight.occurredAt,
+            liveFromCall: true,
+          }
+        : patientData.latestWeight,
+    };
+  }, [patientData, lastCallObservations, selectedPatientId]);
+
   const tabContent = {
     overview: <OverviewTab
-      patientData={patientData}
+      patientData={effectivePatientData}
       onViewAllSessions={() => setActiveTab("sessions")}
       onViewRiskProfile={() => setActiveTab("risk")}
       onViewCarePlan={() => setActiveTab("care-plan")}
@@ -2696,10 +2694,10 @@ export default function CoordinatorDashboard() {
       lastCallObservations={lastCallObservations}
       selectedPatientId={selectedPatientId}
     />,
-    "care-plan": <CarePlanTab patientData={patientData} />,
-    risk: <RiskTab patientData={patientData} />,
-    sessions: <SessionsTab patientData={patientData} medplumSessions={sessions} loading={sessionsLoading} />,
-    outreach: <OutreachTab patientData={patientData} onInitiateCall={handleInitiateCall} />,
+    "care-plan": <CarePlanTab patientData={effectivePatientData} />,
+    risk: <RiskTab patientData={effectivePatientData} />,
+    sessions: <SessionsTab patientData={effectivePatientData} medplumSessions={sessions} loading={sessionsLoading} />,
+    outreach: <OutreachTab patientData={effectivePatientData} onInitiateCall={handleInitiateCall} />,
   };
 
   const patient = patientData?.patient;
