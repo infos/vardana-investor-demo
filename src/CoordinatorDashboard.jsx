@@ -17,6 +17,14 @@ import {
 } from "./components/CareConsole/careConsoleData.js";
 import CoordinatorSidebar from "./components/CoordinatorSidebar.jsx";
 import { useIsMobile } from "./demo/useIsMobile";
+// In-call real-time escalation tier engine. Same canonical rule set used by
+// the eval harness (Python) and the voice-chat Vercel function (JS port at
+// api/_lib/escalation.js). When the patient reports a fresh vital mid-call
+// via record_observation, we re-run this against the merged
+// (patientData ∪ liveObservations) state so the LEFT panel risk tile updates
+// in real time. Trigger + citation strings stay verbatim with the framework
+// deck — no paraphrasing.
+import { assessEscalationState } from "./lib/clinical-skills/escalation";
 
 function navigate(path) {
   window.history.pushState({}, "", path);
@@ -1632,6 +1640,93 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
   const pceTier = pceTierLabel(pcePct);
   const pceColors = pceTierColors(pcePct);
 
+  // ── In-call escalation tier (real-time, observation-driven) ──
+  // Re-runs the deterministic escalation rule set every time the
+  // patient reports a fresh vital via record_observation. The rule
+  // engine output (state + subtype + triggers + citation) is the
+  // canonical source — same engine the eval harness validates.
+  const inCallEscalation = useMemo(() => {
+    // Build a ScenarioInput from the merged
+    // (patientData ∪ liveObservations) state. Live observations win
+    // when both are present — that's the whole point of mid-call
+    // updates. Field names match scenarios.json verbatim.
+    const liveBP = liveObservations.blood_pressure?.value;
+    const liveGlucose = liveObservations.glucose?.value;
+    const sysFromLive = liveBP?.systolic;
+    const diaFromLive = liveBP?.diastolic;
+    const glucoseFromLive = liveGlucose?.value;
+    const glucoseContext = liveGlucose?.context;
+
+    // Derive A1c + eGFR from labs if present (LOINC 4548-4 a1c, 33914-3 eGFR).
+    const a1cLab = (patientData?.labs || []).find(
+      l => l.code === "4548-4" || /a1c/i.test(l.name || "")
+    );
+    const egfrLab = (patientData?.labs || []).find(
+      l => l.code === "33914-3" || /egfr|gfr/i.test(l.name || "")
+    );
+
+    // Recent BP series for 7-day average (descending date).
+    const bps = (patientData?.vitals?.bloodPressures || [])
+      .slice()
+      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+    const recent7 = bps.slice(0, 7);
+    const avgSys = recent7.length
+      ? Math.round(recent7.reduce((a, b) => a + (b.systolic || 0), 0) / recent7.length)
+      : undefined;
+    const avgDia = recent7.length
+      ? Math.round(recent7.reduce((a, b) => a + (b.diastolic || 0), 0) / recent7.length)
+      : undefined;
+
+    const scenario = {
+      vitals: {
+        current_bp_systolic:  sysFromLive ?? latestBP?.systolic,
+        current_bp_diastolic: diaFromLive ?? latestBP?.diastolic,
+        bp_7day_avg_systolic: avgSys,
+        bp_7day_avg_diastolic: avgDia,
+        current_glucose_mgdl: glucoseFromLive ?? latestGlucose?.value,
+        // Map glucose "fasting" context into the rule input shape if
+        // the bot tagged it. Otherwise the rule's fallback path runs.
+        ...(glucoseContext === "fasting" && glucoseFromLive
+          ? { fasting_glucose_recent_readings: [glucoseFromLive] }
+          : {}),
+      },
+      labs: {
+        a1c_pct: a1cLab?.value,
+        egfr: egfrLab?.value,
+      },
+      symptoms: {},
+      context: {},
+    };
+
+    const conditionsCanonical = [];
+    const conds = patientData?.conditions || [];
+    if (conds.some(c => /hypertension|htn/i.test(c.text || ""))) conditionsCanonical.push("HTN");
+    if (hasActiveDiabetes(conds)) conditionsCanonical.push("T2DM");
+    if (conds.some(c => /hyperlipidemia|dyslipidemia/i.test(c.text || ""))) conditionsCanonical.push("HLD");
+    if (conds.some(c => /chronic kidney|ckd/i.test(c.text || ""))) conditionsCanonical.push("CKD");
+
+    const patient = {
+      conditions: conditionsCanonical,
+      egfr: egfrLab?.value,
+    };
+
+    try {
+      return assessEscalationState(scenario, patient);
+    } catch (e) {
+      // Defensive: if a rule throws on partial input, render a routine
+      // fallback rather than crashing the whole shell.
+      console.warn("[InCallShell] escalation rule engine error:", e);
+      return { state: "ROUTINE", subtype: "rule-engine-error", triggers: [], citation: "" };
+    }
+  }, [patientData, liveObservations, latestBP, latestGlucose]);
+
+  const tierStyle = {
+    "IMMEDIATE": { bg: "#FEE2E2", border: "#F87171", text: "#7F1D1D", label: "IMMEDIATE" },
+    "SAME-DAY":  { bg: "#FFEDD5", border: "#FB923C", text: "#7C2D12", label: "SAME-DAY" },
+    "WATCH":     { bg: "#FFFBEB", border: "#FCD34D", text: "#78350F", label: "WATCH" },
+    "ROUTINE":   { bg: "#DCFCE7", border: "#86EFAC", text: "#14532D", label: "ROUTINE" },
+  }[inCallEscalation.state] || { bg: "#F6F7F9", border: "#E5E1D8", text: S.text, label: inCallEscalation.state };
+
   // ── Patient chart (right panel) ──
   const chartName = patientData?.patient?.name || patient?.name || "Patient";
   const chartAge = ageFromBirthDate(patientData?.patient?.birthDate) || patient?.age;
@@ -1777,6 +1872,43 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
               overflowY: "auto",
             }}
           >
+            {/* In-call escalation tier — recomputes when patient
+                reports a fresh vital. This is the live, observation-
+                driven panel; the 10-year ASCVD% below is the static
+                cardiovascular baseline. */}
+            <div style={sectionHead}>Current escalation tier</div>
+            <div
+              style={{
+                background: tierStyle.bg,
+                border: `1px solid ${tierStyle.border}`,
+                borderRadius: 10,
+                padding: "14px 12px",
+                marginBottom: 12,
+              }}
+            >
+              <div style={{ fontSize: 22, fontWeight: 800, ...css.sans, color: tierStyle.text, lineHeight: 1.1, letterSpacing: "0.04em" }}>
+                {tierStyle.label}
+              </div>
+              {inCallEscalation.subtype && inCallEscalation.subtype !== "rule-engine-error" && (
+                <div style={{ fontSize: 11, color: tierStyle.text, opacity: 0.85, marginTop: 4 }}>
+                  {inCallEscalation.subtype.replace(/_/g, " ")}
+                </div>
+              )}
+              {inCallEscalation.triggers && inCallEscalation.triggers.length > 0 && (
+                <div style={{ fontSize: 11, color: tierStyle.text, opacity: 0.9, marginTop: 6, lineHeight: 1.4 }}>
+                  {inCallEscalation.triggers[0]}
+                </div>
+              )}
+              {inCallEscalation.citation && (
+                <div style={{ fontSize: 10, color: tierStyle.text, opacity: 0.6, marginTop: 6, fontStyle: "italic" }}>
+                  {inCallEscalation.citation}
+                </div>
+              )}
+              <div style={{ fontSize: 10, color: tierStyle.text, opacity: 0.6, marginTop: 6 }}>
+                Updates as the patient reports new readings.
+              </div>
+            </div>
+
             <div style={sectionHead}>10-year ASCVD risk</div>
             <div
               style={{
