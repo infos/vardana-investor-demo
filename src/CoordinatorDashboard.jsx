@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { VoiceCallDemo } from "./App.jsx"; // legacy — kept on import for /demo/{token} flow only; not rendered from this view
 import ChatCheckinDemo from "./ChatCheckinDemo.jsx";
 import LiveKitVoiceOverlay from "./components/LiveKitVoiceOverlay.jsx";
@@ -1546,10 +1546,37 @@ function OutreachTab({ patientData, onInitiateCall }) {
 function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
   const [elapsed, setElapsed] = useState(0);
   const [connState, setConnState] = useState(null);
+  // Live transcript — appended on each onTranscript event from the
+  // overlay's useDataChannel subscriber. One entry per finalized turn
+  // emitted by vardana-voice's User/AssistantTranscriptProcessor.
+  const [transcript, setTranscript] = useState([]);
+  const transcriptScrollRef = useRef(null);
 
   useEffect(() => {
     const t = setInterval(() => setElapsed(e => e + 1), 1000);
     return () => clearInterval(t);
+  }, []);
+
+  // Auto-scroll transcript pane to the latest line on every append.
+  useEffect(() => {
+    const el = transcriptScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [transcript.length]);
+
+  // Stable across renders so useDataChannel's effect doesn't re-bind
+  // every paint. setTranscript via functional updater so we don't
+  // depend on the latest closure.
+  const handleTranscript = useCallback(({ role, text, timestamp }) => {
+    if (!text || !text.trim()) return;
+    setTranscript(prev => {
+      // Defensive dedupe — if Pipecat retransmits the exact same turn
+      // (rare but possible if a frame replays), drop the duplicate.
+      const last = prev[prev.length - 1];
+      if (last && last.role === role && last.text === text && last.timestamp === timestamp) {
+        return prev;
+      }
+      return [...prev, { role, text, timestamp, key: `${role}-${timestamp}-${prev.length}` }];
+    });
   }, []);
 
   const formatElapsed = (s) => {
@@ -1775,6 +1802,7 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
               Live transcript
             </div>
             <div
+              ref={transcriptScrollRef}
               style={{
                 flex: 1,
                 overflowY: "auto",
@@ -1782,52 +1810,93 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
                 background: "#FFFFFF",
                 display: "flex",
                 flexDirection: "column",
-                gap: 12,
+                gap: 10,
               }}
             >
-              <div
-                style={{
-                  padding: "12px 14px",
-                  background: "#FFFBEB",
-                  border: "1px solid #FCD34D",
-                  borderRadius: 6,
-                  fontSize: 13,
-                  color: "#78350F",
-                  lineHeight: 1.55,
-                }}
-              >
-                <strong style={{ display: "block", marginBottom: 4 }}>
-                  Live transcript not yet wired in
-                </strong>
-                The Pipecat bot pipeline currently runs STT → LLM → TTS
-                without publishing transcript frames to the LiveKit data
-                channel. Audio still streams normally. Adding a transcript
-                processor + frontend `useDataChannel` subscription is
-                tracked as a Stage&nbsp;3 follow-up.
-              </div>
-
-              <div
-                style={{
-                  padding: "10px 14px",
-                  background: S.card,
-                  border: `1px solid ${S.border}`,
-                  borderRadius: 6,
-                  fontSize: 13,
-                  color: S.textMed,
-                  lineHeight: 1.55,
-                }}
-              >
-                {isConnecting && "Negotiating with LiveKit Cloud and joining the room…"}
-                {isConnected && (
-                  <>
-                    Connected to {chartName}'s voice session. Speak into your
-                    microphone — the bot's reply (Cartesia TTS) plays through
-                    your speakers automatically.
-                  </>
-                )}
-                {connState === "disconnected" && "Disconnected from the room. Use End call to return to the dashboard."}
-                {!connState && "Waiting on session-start handshake…"}
-              </div>
+              {transcript.length === 0 && (
+                <div
+                  style={{
+                    padding: "10px 14px",
+                    background: S.card,
+                    border: `1px solid ${S.border}`,
+                    borderRadius: 6,
+                    fontSize: 13,
+                    color: S.textMed,
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {isConnecting && "Negotiating with LiveKit Cloud and joining the room…"}
+                  {isConnected && (
+                    <>
+                      Connected to {chartName}'s voice session. Speak into your
+                      microphone — the conversation will appear here as you talk.
+                    </>
+                  )}
+                  {connState === "disconnected" && "Disconnected from the room. Use End call to return to the dashboard."}
+                  {!connState && "Waiting on session-start handshake…"}
+                </div>
+              )}
+              {transcript.map((line) => {
+                const isAI = line.role === "assistant";
+                return (
+                  <div
+                    key={line.key}
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: "50%",
+                        flexShrink: 0,
+                        background: isAI ? "#3DBFA0" : S.navy,
+                        color: "white",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        marginTop: 2,
+                      }}
+                    >
+                      {isAI ? "V" : (chartName.charAt(0) || "P")}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: S.textLight,
+                          marginBottom: 3,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                        }}
+                      >
+                        {isAI ? "Vardana AI" : (chartName || "Patient")}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: S.text,
+                          lineHeight: 1.55,
+                          background: isAI ? "#EEF6F3" : "#EEF1F5",
+                          border: `1px solid ${isAI ? "#C2E8DE" : "#D1D9E0"}`,
+                          padding: "9px 13px",
+                          borderRadius: 10,
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {line.text}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <div style={{ padding: "12px 20px", borderTop: `1px solid ${S.border}`, background: S.card }}>
@@ -1835,6 +1904,7 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
                 patient={patient}
                 sessionMode="embedded"
                 onConnectionStateChange={(state) => setConnState(String(state))}
+                onTranscript={handleTranscript}
                 onCallComplete={onCallComplete}
               />
             </div>

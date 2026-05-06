@@ -4,6 +4,7 @@ import {
   RoomAudioRenderer,
   useLocalParticipant,
   useConnectionState,
+  useDataChannel,
 } from "@livekit/components-react";
 import { ConnectionState, Track } from "livekit-client";
 import "@livekit/components-styles";
@@ -39,6 +40,16 @@ import "@livekit/components-styles";
 //     (Connecting / Connected / Reconnecting / Disconnected). The parent
 //     uses this to drive its own speaking / listening indicators when
 //     it owns the in-call chrome.
+//   onTranscript?: ({ role, text, timestamp, raw }) => void
+//     Fired once per finalized conversation turn while the call is
+//     active. role is 'user' or 'assistant' (matching the bot's
+//     UserTranscriptProcessor / AssistantTranscriptProcessor emits).
+//     text is the full utterance. timestamp is the bot's ISO 8601
+//     wall-clock string. raw is the original parsed JSON in case the
+//     parent wants additional fields the bot adds later.
+//     Backend contract is owned by vardana-voice's bot.py
+//     _on_transcript_update — keep this hook in sync with that JSON
+//     shape.
 
 const TOKENS = {
   bg: "#F0EEE8",
@@ -71,6 +82,7 @@ export default function LiveKitVoiceOverlay({
   patient,
   onCallComplete,
   onConnectionStateChange,
+  onTranscript,
   sessionMode = "voice-test",
 }) {
   const [stage, setStage] = useState("init");
@@ -237,6 +249,7 @@ export default function LiveKitVoiceOverlay({
               compact={true}
               embedded={true}
               onConnectionStateChange={onConnectionStateChange}
+              onTranscript={onTranscript}
             />
             <RoomAudioRenderer />
           </LiveKitRoom>
@@ -314,6 +327,7 @@ export default function LiveKitVoiceOverlay({
               patientName={patientName}
               compact={compact}
               onConnectionStateChange={onConnectionStateChange}
+              onTranscript={onTranscript}
             />
             <RoomAudioRenderer />
           </LiveKitRoom>
@@ -332,7 +346,7 @@ export default function LiveKitVoiceOverlay({
 // ── Body of the LiveKitRoom — uses the LiveKit React hooks (only valid
 // inside the LiveKitRoom provider). Split out so it can call
 // useConnectionState / useLocalParticipant. ──
-function RoomBody({ roomName, sessionId, patientName, compact, embedded = false, onConnectionStateChange }) {
+function RoomBody({ roomName, sessionId, patientName, compact, embedded = false, onConnectionStateChange, onTranscript }) {
   const connectionState = useConnectionState();
   const { localParticipant } = useLocalParticipant();
   const [muted, setMuted] = useState(false);
@@ -345,6 +359,41 @@ function RoomBody({ roomName, sessionId, patientName, compact, embedded = false,
       onConnectionStateChange(connectionState);
     }
   }, [connectionState, onConnectionStateChange]);
+
+  // ── Live transcript subscriber ──
+  // Backend (vardana-voice/bot.py _on_transcript_update) publishes one
+  // JSON message per finalized turn via transport.send_message, which
+  // arrives here on RoomEvent.DataReceived. Shape (kept in lockstep
+  // with the backend):
+  //   { type: "transcript", role: "user"|"assistant", text, timestamp }
+  // Empty topic — the backend doesn't tag, and the only data traffic
+  // in this room is transcript today. If we add other message types
+  // later (e.g. risk-state updates per Stage 5), gate by msg.type in
+  // the handler below rather than splitting topics, since the bot's
+  // transport.send_message() doesn't expose a topic argument.
+  useDataChannel((msg) => {
+    if (typeof onTranscript !== "function") return;
+    let parsed;
+    try {
+      // Pipecat's transport.send_message stringifies; payload arrives
+      // here as Uint8Array. Decode UTF-8 then JSON.parse.
+      const decoder = new TextDecoder("utf-8");
+      const text = decoder.decode(msg.payload);
+      parsed = JSON.parse(text);
+    } catch (e) {
+      // A malformed message is non-fatal — the call audio is unaffected.
+      // Surface to console for debugging without taking down the UI.
+      console.warn("[LiveKitVoiceOverlay] transcript decode failed:", e);
+      return;
+    }
+    if (!parsed || parsed.type !== "transcript") return;
+    onTranscript({
+      role: parsed.role,
+      text: parsed.text,
+      timestamp: parsed.timestamp,
+      raw: parsed,
+    });
+  });
 
   const isConnecting =
     connectionState === ConnectionState.Connecting ||
