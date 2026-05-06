@@ -8,6 +8,7 @@ import { AdherenceRow } from "./components/CareConsole/AdherenceRow.jsx";
 import { SessionsCadence } from "./components/CareConsole/SessionsCadence.jsx";
 import { CrossSessionInsight } from "./components/CareConsole/CrossSessionInsight.jsx";
 import { SessionCard } from "./components/CareConsole/SessionCard.jsx";
+import { ThisCallDelta } from "./components/CareConsole/ThisCallDelta.jsx";
 import {
   computeTrend,
   sourceForAdherence,
@@ -1078,40 +1079,11 @@ function SessionsStrip({ patientName, isMarcus, medplumSessions, onViewAll }) {
       ) : (
         <div style={{ fontSize: 14, color: S.textLight, fontStyle: "italic" }}>No sessions yet</div>
       )}
-      {insight && (
-        <div
-          style={{
-            marginTop: 10,
-            paddingTop: 10,
-            borderTop: `1px solid ${S.border}`,
-            display: "flex",
-            gap: 10,
-            alignItems: "flex-start",
-          }}
-        >
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: STATE_TONES.watch.fg,
-              background: STATE_TONES.watch.bg,
-              border: `1px solid ${STATE_TONES.watch.border}`,
-              padding: "2px 6px",
-              borderRadius: 3,
-              flexShrink: 0,
-              marginTop: 2,
-            }}
-          >
-            {insight.severity === "sameDay" ? "Same-day" : insight.severity}
-          </span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, color: S.text, fontWeight: 600 }}>{insight.title}</div>
-            <div style={{ fontSize: 13, color: S.textMed, marginTop: 2, lineHeight: 1.5 }}>{insight.body}</div>
-          </div>
-        </div>
-      )}
+      {/* Cross-session insight moved out of this card and promoted to a
+          top-of-overview slot above the vitals tiles. See OverviewTab
+          for the new render site. The `insight` const is no longer
+          read here but the lookup remains harmless and may be re-used
+          for future cadence-card affordances. */}
       {total > 0 && (
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
           <button onClick={onViewAll} style={{ fontSize: 14, ...css.sans, color: S.navy, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
@@ -1174,7 +1146,7 @@ function CurrentClinicalState({ patientName }) {
 }
 
 // ── Tab: Overview ──
-function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onViewCarePlan, medplumSessions, lastCallSummary, sessionLogStatus, onDismissLastCall }) {
+function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onViewCarePlan, medplumSessions, lastCallSummary, sessionLogStatus, onDismissLastCall, lastCallObservations = {}, selectedPatientId }) {
   if (!patientData) return <EmptyState>No patient data loaded from Medplum.</EmptyState>;
   const { conditions = [], medications = [], vitals = {} } = patientData;
   const patientName = patientData?.patient?.name || "";
@@ -1183,8 +1155,35 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onView
   const pceTier = pceTierLabel(pcePct);
   const pceColors = pceTierColors(pcePct);
   const pceShort = pcePct >= 20 ? "High" : pcePct >= 7.5 ? "Intermediate" : pcePct >= 5 ? "Borderline" : "Low";
-  const latestBP = patientData.latestBP;
-  const latestWeight = patientData.latestWeight;
+  // Prefer the just-captured BP / weight from the most recent voice
+  // session over the bundle's stale values when both apply to the
+  // currently selected patient. The `patientId` defensive gate
+  // prevents leaking observations across patients (also handled by
+  // the parent useEffect that wipes lastCallObservations on selection
+  // change, but belt-and-braces). The bundle remains the source of
+  // truth for everything else (history, trend, target).
+  const liveBP = lastCallObservations?.blood_pressure?.patientId === selectedPatientId
+    ? lastCallObservations.blood_pressure
+    : null;
+  const liveWeight = lastCallObservations?.weight?.patientId === selectedPatientId
+    ? lastCallObservations.weight
+    : null;
+  const latestBP = liveBP
+    ? {
+        systolic: liveBP.value?.systolic,
+        diastolic: liveBP.value?.diastolic,
+        date: liveBP.occurredAt,
+        liveFromCall: true,
+      }
+    : patientData.latestBP;
+  const latestWeight = liveWeight
+    ? {
+        value: liveWeight.value?.value,
+        unit: liveWeight.value?.unit || "lb",
+        date: liveWeight.occurredAt,
+        liveFromCall: true,
+      }
+    : patientData.latestWeight;
   const bps = (vitals.bloodPressures || []).slice(0, 5);
   const weights = (vitals.weights || []).slice(0, 5);
   const bpTrend = computeTrend(bps, {
@@ -1208,12 +1207,28 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onView
       onViewAll={onViewAllSessions}
     />
     <CurrentClinicalState patientName={patientName} />
+    {/* Cross-session insight promoted above the vitals tiles. This is the
+        platform's headline differentiator and was previously buried inside
+        the SessionsStrip card. Shown only for patients with a curated
+        cross-session pattern (Marcus today). The "View supporting
+        sessions" affordance routes to the Sessions tab so the coordinator
+        can audit which BP trend, adherence statements, and dates underlie
+        the synthesized claim. */}
+    {isMarcus && (
+      <CrossSessionInsight
+        severity={MARCUS_CROSS_SESSION_INSIGHT.severity}
+        title={MARCUS_CROSS_SESSION_INSIGHT.title}
+        body={MARCUS_CROSS_SESSION_INSIGHT.body}
+        flaggedAt={MARCUS_CROSS_SESSION_INSIGHT.flaggedAt}
+        onViewEvidence={onViewAllSessions}
+      />
+    )}
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
       <MetricTile
         label="Latest BP"
         value={latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : "—"}
         unit={latestBP ? "mmHg" : ""}
-        date={latestBP ? fmtDate(latestBP.date) : "No data"}
+        date={latestBP ? (latestBP.liveFromCall ? "From last call" : fmtDate(latestBP.date)) : "No data"}
         status={bpStatus}
         trend={bpTrend && {
           arrow: bpTrend.arrow,
@@ -1226,7 +1241,7 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onView
         label="Weight"
         value={latestWeight ? latestWeight.value : "—"}
         unit={latestWeight ? (latestWeight.unit || "lb") : ""}
-        date={latestWeight ? fmtDate(latestWeight.date) : "No data"}
+        date={latestWeight ? (latestWeight.liveFromCall ? "From last call" : fmtDate(latestWeight.date)) : "No data"}
         status="neutral"
         trend={wtTrend && {
           arrow: wtTrend.arrow,
@@ -1551,7 +1566,39 @@ function OutreachTab({ patientData, onInitiateCall }) {
 // The full three-panel chrome stays here in the dashboard so the overlay
 // remains reusable for /voice-test (which renders its own standalone
 // chrome via sessionMode='voice-test').
-function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
+// Small status pill next to the tier label. Reads the InCallShell state
+// machine: "stable" (no recent inputs), "re-evaluating" (an observation
+// just arrived and the rule engine is recomputing), "tier-change" (the
+// engine returned a different result; flashes for 3s alongside the panel).
+// Tones use existing slate / amber / jade tokens; copy avoids em dashes.
+function TierStatePill({ state }) {
+  const tones = {
+    "stable":         { bg: "#F0EEE8", border: "#D8D2C2", text: "#6B5E3F", label: "stable" },
+    "re-evaluating":  { bg: "#FEF3C7", border: "#F59E0B", text: "#78350F", label: "re-evaluating" },
+    "tier-change":    { bg: "#FEE2E2", border: "#EF4444", text: "#7F1D1D", label: "tier change" },
+  };
+  const tone = tones[state] || tones.stable;
+  return (
+    <span
+      style={{
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: "0.06em",
+        textTransform: "uppercase",
+        color: tone.text,
+        background: tone.bg,
+        border: `1px solid ${tone.border}`,
+        padding: "2px 6px",
+        borderRadius: 3,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {tone.label}
+    </span>
+  );
+}
+
+function InCallShell({ patient, patientData, onEnd, onCallComplete, onObservationCaptured }) {
   const [elapsed, setElapsed] = useState(0);
   const [connState, setConnState] = useState(null);
   // Live transcript — appended on each onTranscript event from the
@@ -1567,6 +1614,30 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
   // present, with a "just now" badge to mark them as in-call captures.
   // Shape: { blood_pressure?: {...}, glucose?: {...}, weight?: {...} }
   const [liveObservations, setLiveObservations] = useState({});
+
+  // Session start anchor used to format relative timestamps in the
+  // "This call" delta panel. Set once on mount; never updates so all
+  // events resolve against the same origin even across re-renders.
+  const sessionStartedAtRef = useRef(Date.now());
+
+  // ── Reactive escalation tier state machine ────────────────────────
+  // Three visible states for the small pill next to the tier label:
+  //   "stable"          — no new inputs since the last evaluation
+  //   "re-evaluating"   — a new observation just arrived; rule engine
+  //                       is being re-run against the merged state
+  //   "tier-change"     — the engine returned a different state /
+  //                       subtype than before; flash for 3s
+  // Transitions are driven by handleObservation (sets re-evaluating)
+  // and by a useEffect on inCallEscalation (sets tier-change when
+  // state+subtype actually shifts).
+  const [tierState, setTierState] = useState("stable");
+  // ID of the observation that caused the most recent tier change.
+  // The ThisCallDelta panel highlights that row so the coordinator can
+  // see which input flipped the tier.
+  const [triggeringObservationId, setTriggeringObservationId] = useState(null);
+  // Internal ref tracking the most recent observation ID — read by the
+  // tier-change effect to attribute the change to the right input.
+  const lastObservationIdRef = useRef(null);
 
   useEffect(() => {
     // Freeze the elapsed counter once the call ends — otherwise the
@@ -1609,9 +1680,23 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
     if (!kind) return;
     setLiveObservations(prev => ({
       ...prev,
-      [kind]: { summary, value, occurredAt, observationId, receivedAt: Date.now() },
+      [kind]: { kind, summary, value, occurredAt, observationId, receivedAt: Date.now() },
     }));
-  }, []);
+    // Mark the rule engine as re-evaluating. The escalation useMemo
+    // recomputes synchronously on this state change; the tier-change
+    // effect below decides whether to flash "tier-change" or fall back
+    // to "stable" once the engine result settles.
+    if (observationId) lastObservationIdRef.current = observationId;
+    setTierState("re-evaluating");
+    // Lift the captured observation up so the parent can render it on
+    // the Overview tab after this call unmounts. Static-bundle
+    // patients (Marcus / Linda / David) won't see their just-recorded
+    // BP otherwise, since /public/data/*.json is the read source and
+    // Medplum writes don't flow back into it.
+    if (typeof onObservationCaptured === "function") {
+      onObservationCaptured({ kind, summary, value, occurredAt, observationId });
+    }
+  }, [onObservationCaptured]);
 
   const formatElapsed = (s) => {
     const m = Math.floor(s / 60);
@@ -1743,6 +1828,39 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
     "WATCH":     { bg: "#FFFBEB", border: "#FCD34D", text: "#78350F", label: "WATCH" },
     "ROUTINE":   { bg: "#DCFCE7", border: "#86EFAC", text: "#14532D", label: "ROUTINE" },
   }[inCallEscalation.state] || { bg: "#F6F7F9", border: "#E5E1D8", text: S.text, label: inCallEscalation.state };
+
+  // ── Tier-change detection ──
+  // Track the previous (state + subtype) signature. When it shifts, we
+  // know the rule engine returned a different result on the most
+  // recent observation. Flash the pill into "tier-change" for ~3s and
+  // mark the triggering observation. Otherwise (engine ran but result
+  // was unchanged) revert from "re-evaluating" back to "stable".
+  const lastTierKeyRef = useRef(null);
+  useEffect(() => {
+    const key = `${inCallEscalation.state}|${inCallEscalation.subtype || ""}`;
+    if (lastTierKeyRef.current === null) {
+      // First evaluation — establish baseline without flashing.
+      lastTierKeyRef.current = key;
+      return;
+    }
+    if (key !== lastTierKeyRef.current) {
+      lastTierKeyRef.current = key;
+      setTierState("tier-change");
+      setTriggeringObservationId(lastObservationIdRef.current);
+      const t = setTimeout(() => {
+        setTierState("stable");
+        setTriggeringObservationId(null);
+      }, 3000);
+      return () => clearTimeout(t);
+    }
+    // Engine ran but tier did not change. If we are mid re-evaluating
+    // (just received an observation), settle back to stable after a
+    // brief delay so the pill animation reads cleanly.
+    if (tierState === "re-evaluating") {
+      const t = setTimeout(() => setTierState("stable"), 800);
+      return () => clearTimeout(t);
+    }
+  }, [inCallEscalation.state, inCallEscalation.subtype]);
 
   // ── Patient chart (right panel) ──
   const chartName = patientData?.patient?.name || patient?.name || "Patient";
@@ -1889,10 +2007,14 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
                 borderRadius: 10,
                 padding: "14px 12px",
                 marginBottom: 12,
+                animation: tierState === "tier-change" ? "thisCallTierFlash 1.6s ease-out" : "none",
               }}
             >
-              <div style={{ fontSize: 22, fontWeight: 800, ...css.sans, color: tierStyle.text, lineHeight: 1.1, letterSpacing: "0.04em" }}>
-                {tierStyle.label}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, ...css.sans, color: tierStyle.text, lineHeight: 1.1, letterSpacing: "0.04em", flex: 1 }}>
+                  {tierStyle.label}
+                </div>
+                <TierStatePill state={tierState} />
               </div>
               {inCallEscalation.subtype && inCallEscalation.subtype !== "rule-engine-error" && (
                 <div style={{ fontSize: 11, color: tierStyle.text, opacity: 0.85, marginTop: 4 }}>
@@ -1914,54 +2036,14 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
               </div>
             </div>
 
-            <div style={sectionHead}>10-year ASCVD risk</div>
-            <div
-              style={{
-                background: "#F0EEE8",
-                borderRadius: 10,
-                padding: "16px 14px",
-                textAlign: "center",
-                marginBottom: 12,
-              }}
-            >
-              <div style={{ fontSize: 32, ...css.serif, color: pceColors.text, lineHeight: 1.1 }}>
-                {pcePct.toFixed(1)}
-                <span style={{ fontSize: 18, marginLeft: 2 }}>%</span>
-              </div>
-              <div
-                style={{
-                  fontSize: 13,
-                  ...css.sans,
-                  marginTop: 6,
-                  padding: "3px 8px",
-                  borderRadius: 4,
-                  background: pceColors.bg,
-                  color: pceColors.text,
-                  display: "inline-block",
-                }}
-              >
-                {pceTier}
-              </div>
-              <div style={{ fontSize: 11, color: S.textLight, marginTop: 8 }}>
-                Per ACC/AHA PCE (2013)
-              </div>
-            </div>
-
-            <div style={sectionHead}>Tier inputs</div>
-            <div style={{ fontSize: 13, color: S.textMed, lineHeight: 1.6 }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>Age</span><span>{pceInputs.age}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>Systolic BP</span><span>{pceInputs.sbp} mmHg</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>Diabetes</span><span>{pceInputs.dm ? "Yes" : "No"}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>On BP Tx</span><span>{pceInputs.bptx ? "Yes" : "No"}</span>
-              </div>
-            </div>
+            {/* ASCVD risk + tier inputs were removed from the in-call
+                left panel per the live-assessment surface spec. ASCVD
+                is static cardiovascular baseline that belongs on the
+                overview / risk profile tabs, not the live-call view.
+                The call-phase indicator that was supposed to replace
+                this block is gated on bot-side phase events that are
+                not yet emitted, so the slot is intentionally left
+                blank until those events ship. */}
           </div>
 
           {/* CENTER: Transcript + audio control strip */}
@@ -2105,7 +2187,14 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
             </div>
           </div>
 
-          {/* RIGHT: Patient chart sidebar */}
+          {/* RIGHT: "This call" delta panel
+              Replaces the old "Patient chart" duplicate. Shows only what
+              has been captured during THIS active session. Sources are
+              strictly traced — see ThisCallDelta.jsx for the data flow.
+              Symptoms / adherence statements / red flag detections are
+              NOT rendered because vardana-voice does not yet emit
+              structured events for them. Per the spec for this surface,
+              we omit those rows rather than fake them. */}
           <div
             style={{
               width: 320,
@@ -2116,204 +2205,12 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
               overflowY: "auto",
             }}
           >
-            <div style={sectionHead}>Patient chart</div>
-            <div style={{ fontSize: 13, color: S.textMed, marginBottom: 14, lineHeight: 1.6 }}>
-              {dob && (
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: S.textLight }}>DOB</span>
-                  <span>{dob}</span>
-                </div>
-              )}
-              {allergies.length === 0 ? (
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: S.textLight }}>Allergies</span>
-                  <span style={{ color: S.green }}>None known</span>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ color: S.textLight, marginBottom: 4 }}>Allergies</div>
-                  {allergies.map((a, i) => (
-                    <div key={i} style={{ color: S.amberText, fontSize: 12 }}>
-                      • {a.substance}
-                      {a.reaction ? ` — ${a.reaction}` : ""}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div style={sectionHead}>Active conditions</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 14 }}>
-              {activeConditions.length === 0 ? (
-                <span style={{ fontSize: 12, color: S.textLight }}>None on record</span>
-              ) : (
-                activeConditions.map((c, i) => (
-                  <span
-                    key={i}
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: "#4A6380",
-                      background: "#EEF1F5",
-                      border: "1px solid #E8EDF3",
-                      borderRadius: 4,
-                      padding: "2px 7px",
-                    }}
-                  >
-                    {c.text}
-                  </span>
-                ))
-              )}
-            </div>
-
-            <div style={sectionHead}>Active medications</div>
-            <div style={{ marginBottom: 14, display: "flex", flexDirection: "column", gap: 4 }}>
-              {activeMeds.length === 0 ? (
-                <span style={{ fontSize: 12, color: S.textLight }}>None on record</span>
-              ) : (
-                activeMeds.map((m, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      fontSize: 12,
-                      color: S.text,
-                      lineHeight: 1.45,
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>{m.name}</span>
-                    {m.dosage ? <span style={{ color: S.textLight }}> · {m.dosage}</span> : null}
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div style={sectionHead}>Recent vitals</div>
-            <div
-              style={{
-                display: "grid",
-                // Three tiles in one row: BP / Glucose / Weight. Each
-                // tile is ~90-100px wide in the 320px sidebar after
-                // padding + gap, which fits "138/95" and "186 mg/dL"
-                // comfortably. Live patient-reported observations
-                // (received via record_observation data-channel
-                // messages during the call) replace the static chart
-                // values for any of the three kinds.
-                gridTemplateColumns: "1fr 1fr 1fr",
-                gap: 6,
-                marginBottom: 14,
-              }}
-            >
-              {/* Blood Pressure tile */}
-              {(() => {
-                const live = liveObservations.blood_pressure;
-                const sys = live ? live.value.systolic : latestBP?.systolic;
-                const dia = live ? live.value.diastolic : latestBP?.diastolic;
-                const display = (sys != null && dia != null) ? `${sys}/${dia}` : "—";
-                const isElevated = sys && dia && (sys >= 140 || dia >= 90);
-                const dateLabel = live
-                  ? "Just now · live"
-                  : (latestBP ? fmtDate(latestBP.date) : "No data");
-                return (
-                  <div style={{
-                    background: live ? "#EEF6F3" : "#F6F7F9",
-                    border: live ? "1px solid #3DBFA0" : "1px solid transparent",
-                    borderRadius: 6,
-                    padding: "8px 10px",
-                  }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>
-                      Blood Pressure
-                    </div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: isElevated ? S.red : S.text }}>
-                      {display}
-                    </div>
-                    <div style={{ fontSize: 10, color: live ? "#059669" : S.textLight, marginTop: 2, fontWeight: live ? 600 : 400 }}>
-                      {dateLabel}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Glucose tile */}
-              {(() => {
-                const live = liveObservations.glucose;
-                const val = live ? live.value.value : latestGlucose?.value;
-                const unit = live ? (live.value.unit || "mg/dL") : (latestGlucose?.unit || "mg/dL");
-                const ctx = live ? live.value.context : null;
-                const display = (val != null) ? `${val}` : "—";
-                const dateLabel = live
-                  ? `Just now · live${ctx ? ` · ${ctx}` : ""}`
-                  : (latestGlucose ? fmtDate(latestGlucose.date) : "No data");
-                return (
-                  <div style={{
-                    background: live ? "#EEF6F3" : "#F6F7F9",
-                    border: live ? "1px solid #3DBFA0" : "1px solid transparent",
-                    borderRadius: 6,
-                    padding: "8px 10px",
-                  }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>
-                      Glucose
-                    </div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: S.text }}>
-                      {display}
-                      {val != null && <span style={{ fontSize: 9, fontWeight: 600, marginLeft: 2 }}>{unit}</span>}
-                    </div>
-                    <div style={{ fontSize: 10, color: live ? "#059669" : S.textLight, marginTop: 2, fontWeight: live ? 600 : 400 }}>
-                      {dateLabel}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Weight tile */}
-              {(() => {
-                const live = liveObservations.weight;
-                const val = live ? live.value.value : latestWeight?.value;
-                const unit = live ? (live.value.unit || "lb") : (latestWeight?.unit || "lb");
-                const display = (val != null) ? `${val}` : "—";
-                const dateLabel = live
-                  ? "Just now · live"
-                  : (latestWeight ? fmtDate(latestWeight.date) : "No data");
-                return (
-                  <div style={{
-                    background: live ? "#EEF6F3" : "#F6F7F9",
-                    border: live ? "1px solid #3DBFA0" : "1px solid transparent",
-                    borderRadius: 6,
-                    padding: "8px 10px",
-                  }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#7A96B0", textTransform: "uppercase", marginBottom: 2 }}>
-                      Weight
-                    </div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: S.text }}>
-                      {display}
-                      {val != null && <span style={{ fontSize: 9, fontWeight: 600, marginLeft: 2 }}>{unit}</span>}
-                    </div>
-                    <div style={{ fontSize: 10, color: live ? "#059669" : S.textLight, marginTop: 2, fontWeight: live ? 600 : 400 }}>
-                      {dateLabel}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {recentLabs.length > 0 && (
-              <>
-                <div style={sectionHead}>Recent labs</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {recentLabs.map((lab, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 6, fontSize: 11 }}>
-                      <span style={{ color: S.text, fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {lab.name || lab.code}
-                      </span>
-                      <span style={{ color: S.textMed, fontWeight: 600 }}>
-                        {lab.value}
-                        {lab.unit ? ` ${lab.unit}` : ""}
-                      </span>
-                      <span style={{ color: S.textLight, fontSize: 10 }}>{fmtDate(lab.date)}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+            <ThisCallDelta
+              sessionStartedAt={sessionStartedAtRef.current}
+              liveObservations={liveObservations}
+              triggeringObservationId={triggeringObservationId}
+              patientData={patientData}
+            />
           </div>
         </div>
       </div>
@@ -2340,6 +2237,20 @@ export default function CoordinatorDashboard() {
   const [patientData, setPatientData] = useState(null);
   const [patientLoading, setPatientLoading] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
+
+  // Observations captured during the most recently ended voice session,
+  // keyed by kind. Populated by InCallShell on each record_observation
+  // data-channel event and persisted across the call's unmount so the
+  // Overview tab can show "the BP the patient just reported" rather
+  // than the stale bundle value. Cleared when the user switches
+  // patients (the new patient's call hasn't happened yet). The values
+  // are real — they were persisted to Medplum during the call by the
+  // bot's record_observation tool — we keep an in-memory copy here
+  // because local-fixture patients (Marcus/Linda/David) read from a
+  // static /public/data bundle that doesn't reflect new writes.
+  // Shape: { [kind]: { value, summary, occurredAt, observationId,
+  // patientId } }
+  const [lastCallObservations, setLastCallObservations] = useState({});
 
   // ── Chat surface (additive to voice — voice flow untouched) ──
   // mode "live" hits /chat/turn on the EC2 voice service. mode "replay"
@@ -2428,6 +2339,10 @@ export default function CoordinatorDashboard() {
   // ── Fetch selected patient's full bundle ──
   useEffect(() => {
     if (!selectedPatientId) return;
+    // Wipe any captured-during-call observations from a different
+    // patient. We only want to surface them on the patient who was
+    // actually on the call.
+    setLastCallObservations({});
     let cancelled = false;
     setPatientLoading(true);
     (async () => {
@@ -2728,9 +2643,47 @@ export default function CoordinatorDashboard() {
     ? lastCallSummary
     : null;
 
+  // Merge captured-during-call observations into patientData so every
+  // tab (Overview, Risk, Sessions, Care plan, Outreach) sees the just-
+  // reported BP / weight rather than the static bundle value. Local-
+  // fixture patients (Marcus / Linda / David) read from /public/data
+  // JSON which doesn't reflect Medplum writes; this in-memory merge is
+  // how the live capture surfaces post-call until a page reload (which
+  // is acceptable for the demo flow). Defensive: only apply if the
+  // observation's patientId tag matches the selected patient.
+  const effectivePatientData = useMemo(() => {
+    if (!patientData) return patientData;
+    const liveBP = lastCallObservations?.blood_pressure?.patientId === selectedPatientId
+      ? lastCallObservations.blood_pressure
+      : null;
+    const liveWeight = lastCallObservations?.weight?.patientId === selectedPatientId
+      ? lastCallObservations.weight
+      : null;
+    if (!liveBP && !liveWeight) return patientData;
+    return {
+      ...patientData,
+      latestBP: liveBP
+        ? {
+            systolic: liveBP.value?.systolic,
+            diastolic: liveBP.value?.diastolic,
+            date: liveBP.occurredAt,
+            liveFromCall: true,
+          }
+        : patientData.latestBP,
+      latestWeight: liveWeight
+        ? {
+            value: liveWeight.value?.value,
+            unit: liveWeight.value?.unit || "lb",
+            date: liveWeight.occurredAt,
+            liveFromCall: true,
+          }
+        : patientData.latestWeight,
+    };
+  }, [patientData, lastCallObservations, selectedPatientId]);
+
   const tabContent = {
     overview: <OverviewTab
-      patientData={patientData}
+      patientData={effectivePatientData}
       onViewAllSessions={() => setActiveTab("sessions")}
       onViewRiskProfile={() => setActiveTab("risk")}
       onViewCarePlan={() => setActiveTab("care-plan")}
@@ -2738,11 +2691,13 @@ export default function CoordinatorDashboard() {
       lastCallSummary={summaryForSelected}
       sessionLogStatus={summaryForSelected ? sessionLogStatus : null}
       onDismissLastCall={() => { setLastCallSummary(null); setSessionLogStatus(null); }}
+      lastCallObservations={lastCallObservations}
+      selectedPatientId={selectedPatientId}
     />,
-    "care-plan": <CarePlanTab patientData={patientData} />,
-    risk: <RiskTab patientData={patientData} />,
-    sessions: <SessionsTab patientData={patientData} medplumSessions={sessions} loading={sessionsLoading} />,
-    outreach: <OutreachTab patientData={patientData} onInitiateCall={handleInitiateCall} />,
+    "care-plan": <CarePlanTab patientData={effectivePatientData} />,
+    risk: <RiskTab patientData={effectivePatientData} />,
+    sessions: <SessionsTab patientData={effectivePatientData} medplumSessions={sessions} loading={sessionsLoading} />,
+    outreach: <OutreachTab patientData={effectivePatientData} onInitiateCall={handleInitiateCall} />,
   };
 
   const patient = patientData?.patient;
@@ -3021,6 +2976,19 @@ export default function CoordinatorDashboard() {
           patientData={patientData}
           onEnd={() => setCallOpen(false)}
           onCallComplete={handleCallComplete}
+          onObservationCaptured={(observation) => {
+            // Lift the live observation into parent state so the
+            // Overview tab can render it after the call unmounts.
+            // Tag with the patient id so we can defensively gate it
+            // on the OverviewTab consumer.
+            setLastCallObservations(prev => ({
+              ...prev,
+              [observation.kind]: {
+                ...observation,
+                patientId: selectedPatientId,
+              },
+            }));
+          }}
         />
       )}
 
