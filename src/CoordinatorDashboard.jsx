@@ -1640,6 +1640,23 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
   const pceTier = pceTierLabel(pcePct);
   const pceColors = pceTierColors(pcePct);
 
+  // ── Latest patient-chart derivations (declared BEFORE inCallEscalation
+  // because the escalation useMemo's dep array references them — `const`
+  // declarations are not hoisted, so referencing them before this point
+  // throws a TDZ ReferenceError, which bubbles up unhandled and unmounts
+  // the React root, leaving the page blank). Keep all three here.
+  const latestBP = patientData?.latestBP;
+  const latestWeight = patientData?.latestWeight;
+  const latestGlucose = useMemo(() => {
+    const glucoseLabs = (patientData?.labs || []).filter(
+      l => l.code === "41653-7" || l.code === "2339-0"
+    );
+    if (!glucoseLabs.length) return null;
+    return glucoseLabs
+      .slice()
+      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))[0];
+  }, [patientData]);
+
   // ── In-call escalation tier (real-time, observation-driven) ──
   // Re-runs the deterministic escalation rule set every time the
   // patient reports a fresh vital via record_observation. The rule
@@ -1742,20 +1759,8 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
   const activeMeds = (patientData?.medications || []).filter(
     m => !m.status || m.status === "active",
   );
-  const latestBP = patientData?.latestBP;
-  const latestWeight = patientData?.latestWeight;
-  // Derive latestGlucose from labs since normalizeBundle doesn't break
-  // it out into its own latest* shortcut. Match the LOINC codes the
-  // bot's _summarize_glucose accepts (capillary or POC fasting glucose).
-  const latestGlucose = useMemo(() => {
-    const glucoseLabs = (patientData?.labs || []).filter(
-      l => l.code === "41653-7" || l.code === "2339-0"
-    );
-    if (!glucoseLabs.length) return null;
-    return glucoseLabs
-      .slice()
-      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))[0];
-  }, [patientData]);
+  // latestBP / latestWeight / latestGlucose are declared above the
+  // inCallEscalation useMemo to avoid a TDZ on its dep array.
   const recentLabs = (patientData?.labs || [])
     .slice()
     .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
