@@ -1,4 +1,5 @@
 import { DS } from "../../design-system.js";
+import { PendingReconciliationBadge } from "./PendingReconciliationBadge.jsx";
 
 const TONES = {
   watch: {
@@ -20,6 +21,7 @@ export function CrossSessionInsight({
   flaggedAt,
   onViewEvidence,
   evidenceLabel = "View supporting sessions",
+  pendingBP = null,
 }) {
   const tone = TONES[severity] || TONES.watch;
   return (
@@ -48,6 +50,12 @@ export function CrossSessionInsight({
         {title}
       </div>
       <div style={{ ...DS.text.base, color: DS.color.slate[700], marginTop: 6 }}>{body}</div>
+      {pendingBP && (
+        <PendingReconciliationBadge
+          timestamp={pendingBP.occurredAt}
+          note="new reading may revise this pattern"
+        />
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, gap: 12 }}>
         {flaggedAt ? (
           <div style={{ ...DS.text.xs, color: DS.color.slate[500] }}>

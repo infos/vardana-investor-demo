@@ -9,6 +9,7 @@ import { SessionsCadence } from "./components/CareConsole/SessionsCadence.jsx";
 import { CrossSessionInsight } from "./components/CareConsole/CrossSessionInsight.jsx";
 import { SessionCard } from "./components/CareConsole/SessionCard.jsx";
 import { ThisCallDelta } from "./components/CareConsole/ThisCallDelta.jsx";
+import { PendingReconciliationBadge } from "./components/CareConsole/PendingReconciliationBadge.jsx";
 import {
   computeTrend,
   sourceForAdherence,
@@ -1021,8 +1022,13 @@ const STATE_TONES = {
 // Marcus. If there are zero sessions render the strip in muted form
 // rather than hiding — sessions ARE the product, the absence of them
 // is itself a signal.
-function SessionsStrip({ patientName, isMarcus, medplumSessions, onViewAll }) {
-  // Build the unified session list ordered newest-first.
+function SessionsStrip({ patientName, isMarcus, medplumSessions, onViewAll, callActive = false }) {
+  // Build the unified session list ordered newest-first. Cap to a
+  // reasonable window so test/dev replay sessions don't push the
+  // count to absurd numbers ("20 sessions in 1d" reads as test data
+  // leaking through). The harness can hammer the bot in dev without
+  // the demo surface treating it as patient cadence; we display a
+  // 30-day window of completed sessions.
   let sessions;
   if (!medplumSessions?.length && isMarcus) {
     sessions = MARCUS_SESSIONS.map(s => ({
@@ -1040,15 +1046,29 @@ function SessionsStrip({ patientName, isMarcus, medplumSessions, onViewAll }) {
       }))
       .sort((a, b) => new Date(b.sortDate) - new Date(a.sortDate));
   }
+  // Cap the displayed window to 30d. Anything older is excluded from
+  // the count and the "Last session" line. This is purely a display
+  // guard; full history remains available on the Sessions tab.
+  const SESSION_WINDOW_MS = 30 * 86400000;
+  const cutoff = Date.now() - SESSION_WINDOW_MS;
+  const recent = sessions.filter(s => {
+    const t = new Date(s.sortDate || 0).getTime();
+    return Number.isFinite(t) && t >= cutoff;
+  });
+  // Also cap the visible count at 12 to dampen test-replay floods
+  // until the harness writes are filtered server-side.
+  const VISIBLE_CAP = 12;
+  const display = recent.slice(0, VISIBLE_CAP);
 
-  const last = sessions[0];
-  const total = sessions.length;
+  const last = display[0];
+  const total = display.length;
   // Compute window from earliest to latest. Floor to 1d so a single-session
   // patient still reads as "1 session in 1d" rather than 0d.
   const windowDays = total > 1
-    ? Math.max(1, Math.ceil((new Date(sessions[0].sortDate) - new Date(sessions[total - 1].sortDate)) / 86400000))
+    ? Math.max(1, Math.ceil((new Date(display[0].sortDate) - new Date(display[total - 1].sortDate)) / 86400000))
     : 1;
   const insight = isMarcus ? MARCUS_CROSS_SESSION_INSIGHT : null;
+  const overflow = recent.length > VISIBLE_CAP;
 
   return (
     <div
@@ -1065,11 +1085,20 @@ function SessionsStrip({ patientName, isMarcus, medplumSessions, onViewAll }) {
         <CardTitle>Sessions</CardTitle>
         {total > 0 && (
           <span style={{ fontSize: 13, color: S.textLight, fontVariantNumeric: "tabular-nums" }}>
-            {total} {total === 1 ? "session" : "sessions"} in {windowDays}d
+            {total}{overflow ? "+" : ""} {total === 1 ? "session" : "sessions"} in {windowDays}d
           </span>
         )}
       </div>
-      {last ? (
+      {callActive ? (
+        <div>
+          <div style={{ fontSize: 13, color: S.amber, ...css.mono, marginBottom: 4 }}>
+            Session in progress
+          </div>
+          <div style={{ fontSize: 15, color: S.textMed, lineHeight: 1.5, fontStyle: "italic" }}>
+            Live voice session active. Summary will land here when the call ends.
+          </div>
+        </div>
+      ) : last ? (
         <div>
           <div style={{ fontSize: 13, color: S.textLight, ...css.mono, marginBottom: 4 }}>
             Last session · {last.label}
@@ -1108,7 +1137,7 @@ function fmtSessionDateTime(iso) {
 }
 
 // ── Current Clinical State block ──
-function CurrentClinicalState({ patientName }) {
+function CurrentClinicalState({ patientName, pendingBP = null }) {
   const cs = CLINICAL_STATES[patientName];
   if (!cs) return null;
   const tone = STATE_TONES[cs.state] || STATE_TONES.stable;
@@ -1141,20 +1170,51 @@ function CurrentClinicalState({ patientName }) {
         <div style={{ fontSize: 12, color: S.textLight, textTransform: "uppercase", letterSpacing: "0.06em" }}>Escalation</div>
         <div style={{ fontSize: 13, color: S.textMed, lineHeight: 1.5, ...css.mono }}>{cs.threshold}</div>
       </div>
+      {pendingBP && (
+        <div style={{ marginTop: 10 }}>
+          <PendingReconciliationBadge timestamp={pendingBP.occurredAt} />
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Tab: Overview ──
-function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onViewCarePlan, medplumSessions, lastCallSummary, sessionLogStatus, onDismissLastCall, lastCallObservations = {}, selectedPatientId }) {
+function OverviewTab({ patientData, bundlePatientData, onViewAllSessions, onViewRiskProfile, onViewCarePlan, medplumSessions, lastCallSummary, sessionLogStatus, onDismissLastCall, lastCallObservations = {}, selectedPatientId, callActive = false }) {
   if (!patientData) return <EmptyState>No patient data loaded from Medplum.</EmptyState>;
   const { conditions = [], medications = [], vitals = {} } = patientData;
   const patientName = patientData?.patient?.name || "";
   const isMarcus = /marcus\s+williams/i.test(patientName);
-  const pcePct = calcPCE(defaultPCEInputs(patientData));
+  // ASCVD calc must use the bundle's stored BP, NOT the live home
+  // reading. Single home readings do not reflect the trended clinic
+  // BP that the PCE coefficients were calibrated against, so live-
+  // recalculating from 24.5% to 19.1% on one data point is clinically
+  // incorrect. We pin the input here to the un-merged bundle's BP.
+  // Falls through to defaultPCEInputs's own fallback if the bundle is
+  // missing.
+  const ascvdInputs = useMemo(() => {
+    const bundleBP = bundlePatientData?.latestBP || patientData.latestBP;
+    return {
+      ...defaultPCEInputs(bundlePatientData || patientData),
+      sbp: bundleBP?.systolic || defaultPCEInputs(patientData).sbp,
+    };
+  }, [bundlePatientData, patientData]);
+  const pcePct = calcPCE(ascvdInputs);
   const pceTier = pceTierLabel(pcePct);
   const pceColors = pceTierColors(pcePct);
   const pceShort = pcePct >= 20 ? "High" : pcePct >= 7.5 ? "Intermediate" : pcePct >= 5 ? "Borderline" : "Low";
+
+  // Pending-reconciliation predicate: a new BP was captured this
+  // session and the call is still active. Surfaces show the badge
+  // mid-call to make stale-vs-live visually unambiguous; on session
+  // close (callActive=false) the badges clear and the surfaces
+  // continue to show bundle data — the demo's static fixtures don't
+  // get rewritten by a single call, but the in-memory effective
+  // tile values already reflect the live capture (see Latest BP
+  // tile's "From last call" date label).
+  const pendingBP = callActive && lastCallObservations?.blood_pressure?.patientId === selectedPatientId
+    ? lastCallObservations.blood_pressure
+    : null;
   // Prefer the just-captured BP / weight from the most recent voice
   // session over the bundle's stale values when both apply to the
   // currently selected patient. The `patientId` defensive gate
@@ -1205,8 +1265,9 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onView
       isMarcus={isMarcus}
       medplumSessions={medplumSessions}
       onViewAll={onViewAllSessions}
+      callActive={callActive}
     />
-    <CurrentClinicalState patientName={patientName} />
+    <CurrentClinicalState patientName={patientName} pendingBP={pendingBP} />
     {/* Cross-session insight promoted above the vitals tiles. This is the
         platform's headline differentiator and was previously buried inside
         the SessionsStrip card. Shown only for patients with a curated
@@ -1221,22 +1282,31 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onView
         body={MARCUS_CROSS_SESSION_INSIGHT.body}
         flaggedAt={MARCUS_CROSS_SESSION_INSIGHT.flaggedAt}
         onViewEvidence={onViewAllSessions}
+        pendingBP={pendingBP}
       />
     )}
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
-      <MetricTile
-        label="Latest BP"
-        value={latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : "—"}
-        unit={latestBP ? "mmHg" : ""}
-        date={latestBP ? (latestBP.liveFromCall ? "From last call" : fmtDate(latestBP.date)) : "No data"}
-        status={bpStatus}
-        trend={bpTrend && {
-          arrow: bpTrend.arrow,
-          series: bpTrend.series,
-          window: bpTrend.window,
-          target: "<130/80",
-        }}
-      />
+      <div>
+        <MetricTile
+          label="Latest BP"
+          value={latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : "—"}
+          unit={latestBP ? "mmHg" : ""}
+          date={latestBP ? (latestBP.liveFromCall ? "From last call" : fmtDate(latestBP.date)) : "No data"}
+          status={bpStatus}
+          trend={bpTrend && {
+            arrow: bpTrend.arrow,
+            series: bpTrend.series,
+            window: bpTrend.window,
+            target: "<130/80",
+          }}
+        />
+        {pendingBP && (
+          <PendingReconciliationBadge
+            timestamp={pendingBP.occurredAt}
+            note="trend below not yet updated"
+          />
+        )}
+      </div>
       <MetricTile
         label="Weight"
         value={latestWeight ? latestWeight.value : "—"}
@@ -1258,6 +1328,12 @@ function OverviewTab({ patientData, onViewAllSessions, onViewRiskProfile, onView
         </div>
         <div style={{ fontSize: 14, ...css.sans, padding: "2px 6px", borderRadius: 4, background: pceColors.bg, color: pceColors.text, alignSelf: "flex-start", marginTop: 4 }}>{pceShort}</div>
         <div style={{ fontSize: 13, ...css.sans, color: S.textLight, marginTop: 4 }}>Per ACC/AHA PCE (2013)</div>
+        {pendingBP && (
+          <PendingReconciliationBadge
+            timestamp={pendingBP.occurredAt}
+            note="single home BP does not update ASCVD"
+          />
+        )}
         <div style={{ flex: 1 }} />
         <button
           onClick={onViewRiskProfile}
@@ -2035,6 +2111,21 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete, onObservatio
                 Updates as the patient reports new readings.
               </div>
             </div>
+            {/* The trigger / citation strings above are produced from
+                the bundle's averaged BP. When a fresh live reading
+                comes in the rule engine re-evaluates against the
+                merged state, but the trigger label may still cite
+                the bundle average (e.g. "bp_avg_143_90"). Badge the
+                rationale so the coordinator knows the rationale is
+                pending reconciliation against the live capture. */}
+            {liveObservations?.blood_pressure && (
+              <div style={{ marginBottom: 12 }}>
+                <PendingReconciliationBadge
+                  timestamp={liveObservations.blood_pressure.occurredAt}
+                  note="rationale references bundle BP, not the live reading"
+                />
+              </div>
+            )}
 
             {/* ASCVD risk + tier inputs were removed from the in-call
                 left panel per the live-assessment surface spec. ASCVD
@@ -2684,6 +2775,7 @@ export default function CoordinatorDashboard() {
   const tabContent = {
     overview: <OverviewTab
       patientData={effectivePatientData}
+      bundlePatientData={patientData}
       onViewAllSessions={() => setActiveTab("sessions")}
       onViewRiskProfile={() => setActiveTab("risk")}
       onViewCarePlan={() => setActiveTab("care-plan")}
@@ -2693,6 +2785,7 @@ export default function CoordinatorDashboard() {
       onDismissLastCall={() => { setLastCallSummary(null); setSessionLogStatus(null); }}
       lastCallObservations={lastCallObservations}
       selectedPatientId={selectedPatientId}
+      callActive={callOpen}
     />,
     "care-plan": <CarePlanTab patientData={effectivePatientData} />,
     risk: <RiskTab patientData={effectivePatientData} />,
