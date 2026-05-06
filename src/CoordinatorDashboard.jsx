@@ -1654,7 +1654,14 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
     >
       <div
         style={{
-          minHeight: "100vh",
+          // Hard bound the modal at viewport height, NOT minHeight. With
+          // minHeight the modal could grow with content and the inner
+          // CENTER column's `flex:1 + overflowY:auto` scroll container
+          // would never get a bounded height to scroll within — so new
+          // transcript bubbles pushed older ones off-screen at the
+          // bottom instead of auto-scrolling. Locking to 100vh restores
+          // the standard flex+overflow chain.
+          height: "100vh",
           background: "#F8F9FB",
           display: "flex",
           flexDirection: "column",
@@ -1792,7 +1799,14 @@ function InCallShell({ patient, patientData, onEnd, onCallComplete }) {
               flex: 1,
               display: "flex",
               flexDirection: "column",
+              // minWidth: 0 keeps long transcript words from blowing out
+              // the column horizontally; minHeight: 0 is the flexbox+overflow
+              // gotcha that lets the inner scroll container actually
+              // activate scrolling. Without minHeight: 0 a child with
+              // `flex: 1 + overflowY: auto` cannot constrain its height
+              // because flex defaults min-height to its content size.
               minWidth: 0,
+              minHeight: 0,
               overflow: "hidden",
             }}
           >
